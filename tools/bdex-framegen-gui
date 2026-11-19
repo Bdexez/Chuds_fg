@@ -2083,6 +2083,21 @@ def detect_games():
     return out
 
 
+def display_name(pid, name):
+    """A detected game's name as its file has it (« Cyberpunk2077 »), for the
+    eye: the layer matches config sections by the lower-case one (layer_name)."""
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            args = [a.decode(errors="replace") for a in f.read().split(b"\0") if a.strip()]
+    except OSError:
+        return name
+    for a in [a for a in args if a.lower().endswith(".exe")] + args[:1]:
+        stem = a.replace("\\", "/").rsplit("/", 1)[-1].strip().split(".", 1)[0]
+        if stem.lower() == name:
+            return stem
+    return name
+
+
 def describe_entry(e):
     """One line of French for a status entry."""
     if e.get("kind") == "device":
