@@ -6,6 +6,52 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### A new control panel: « Simple » and « Avancé » (2026-11-19)
+
+- **`bdex-framegen-gui` rebuilt around two pages** (header switcher,
+  <kbd>Ctrl</kbd>+<kbd>1</kbd> / <kbd>Ctrl</kbd>+<kbd>2</kbd>; the last one is
+  remembered). **Simple**: a banner with the state and the one button
+  (*Démarrer* / *Arrêter*, *Pause*; while generating, the game's FPS, the
+  frames shown, the multiplier in force and the latency, live), then
+  *1 — Choisis le jeu* (the running games, refreshed every two seconds, each
+  with its state and how it will generate; capture of a window for a game
+  that is not listed) and *2 — Règle la génération*: *Auto* / ×2 / ×3 / ×4,
+  *Limiter les FPS du jeu* (30, 40, 45, 60, *Auto* = screen ÷ multiplier, or
+  any rate), the priority (*Fluidité* = interpolation, *Réactivité* =
+  extrapolation) and the in-game FPS counter, with one line saying what they
+  give (« Jeu limité à 40 i/s × 3 = 120 i/s affichées »). **Avancé**: every
+  option — the layer's and the panel's own — by category in a sidebar, a
+  search over names, descriptions and config keys (<kbd>Ctrl</kbd>+<kbd>F</kbd>),
+  each row with its full help and config key behind ⓘ, changed options
+  marked with a ↶ back to their default, per-category counts, *Tout
+  réinitialiser* with *Annuler*. The system tools (layer install, GPU,
+  calibration, Game Mode per game, Steam launch options, configuration
+  file, report, recording) are its *Système* category and the header menu.
+- **Every engine option is in the panel**: 16 were missing from
+  `layer/options_ui.conf` and are now there (French and English):
+  `content_clock`, `pace_plan`, `virtual_grid`, `precise_wake`,
+  `thread_priority`, `border_predict`, `border_fill`, `still_occluder`,
+  `hud_avoid`, `static_soft`, `interp_accel`, `false_detail`, `latency_log`,
+  `async_compute`, `pipeline_cache`, `ignore_anticheat` (panel only; the
+  Windows launcher's column is unchanged).
+- **Options the engine turns on with a discrete GPU** (`pixel_vectors`,
+  `mosaic_blur`, `hud_layer`, `border_fill`, `zero_bias`… — `autoOptionsSet`)
+  get an **Auto** state in the panel, the default, never written: a value
+  chosen, 0 included, is written and pins them. Before, a 0 equalled the
+  default and was not written, so such an option could not be turned off
+  from the panel on a discrete GPU. `fps_limit`, `target_fps`,
+  `interp_hold` show their `auto` the same way.
+- The HUD level read from the file is no longer clamped at 4 (the layer's
+  levels go to 6: latency, pacing graph).
+- Fixed in the plain GTK 4 rows (SteamOS, Debian 12): a row set to its own
+  value from inside its change signal hung the window.
+- Tests: `tests/panel_logic.py` fails on a panel text without its English
+  or an English text no longer used; `tests/panel_ui.py` drives the window
+  (game, ×N, cap, priority, counter, Démarrer / Arrêter, Auto / value /
+  default, search, reset) and reads every change back from the config file —
+  in `tools/ci/panel-check.sh`, under Xvfb in a container, with and without
+  libadwaita, in French and English (Arch, Debian 12).
+
 ### `gpu_budget`: the first level now frees 40 % of the generation (2026-11-11)
 
 - **`gpu_budget`'s level 1 also turns off the two passes over each finished
