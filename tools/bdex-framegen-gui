@@ -2343,6 +2343,103 @@ class ExtraRow:
         self.text = " ".join(t for t in texts if t).lower()
 
 
+class Segmented:
+    """Linked toggle buttons, one value at a time; `extra` shows a value that
+    is none of the buttons' (set elsewhere: ×6, Hybride...), or stays hidden
+    and active when no button should be."""
+
+    def __init__(self, items, on_pick):
+        self.box = Gtk.Box(halign=Gtk.Align.START)
+        self.box.add_css_class("linked")
+        self.box.add_css_class("bdex-seg")
+        self.on_pick = on_pick
+        self.buttons = {}
+        self._quiet = False
+        self.extra = Gtk.ToggleButton(visible=False)
+        self.extra.connect("toggled", self._toggled, None)
+        for text, value, tip in items:
+            b = Gtk.ToggleButton(label=text, tooltip_text=tip)
+            b.set_group(self.extra)
+            b.connect("toggled", self._toggled, value)
+            self.box.append(b)
+            self.buttons[value] = b
+        self.box.append(self.extra)
+
+    def set(self, value, extra_label=None):
+        self._quiet = True
+        if value in self.buttons:
+            self.extra.set_visible(False)
+            self.buttons[value].set_active(True)
+        else:
+            self.extra.set_visible(extra_label is not None)
+            self.extra.set_label(extra_label or "")
+            self.extra.set_active(True)
+        self._quiet = False
+
+    def _toggled(self, button, value):
+        if self._quiet or not button.get_active() or value is None:
+            return
+        self.on_pick(value)
+
+
+def game_summary(entries, how, replaced, targeted):
+    """(pill text, pill style, one line) for a detected game's row."""
+    dev = next((e for e in entries if e.get("kind") == "device"), {})
+    sw = next((e for e in entries if e.get("kind") == "swapchain"), None)
+    via = how[1] if how else ""
+    if replaced:
+        return tr("Relancer"), "warn", tr("Lancé avant l'installation de cette version — relance le jeu")
+    if dev.get("state") == "anti-cheat":
+        return tr("Anti-triche"), "warn", tr("La couche reste hors du jeu : génération par capture de sa fenêtre")
+    if sw is None:
+        if how and how[0] == "capture":
+            return tr("Capture"), "", via[:1].upper() + via[1:]
+        return "", "", tr("En attente de la fenêtre du jeu…")
+    state = sw.get("state", "")
+    try:
+        game, out = float(sw.get("game_fps", 0)), float(sw.get("output_fps", 0))
+    except ValueError:
+        game = out = 0.0
+    if state == "generating":
+        line = tr(f"{game:.0f} → {out:.0f} i/s · ×{sw.get('multiplier', '?')}")
+        return tr("En cours"), "on", line + " · " + via
+    if state == "paused":
+        return tr("En pause"), "", tr("Génération en pause") + " · " + via
+    if state == "pass-through":
+        return tr("Transparent"), "warn", sw.get("reason", "") or tr("raison inconnue")
+    line = tr(f"{game:.0f} i/s") if game > 0 else tr("Prêt à générer")
+    return (tr("Sélectionné") if targeted else tr("Prêt")), "ready", line + " · " + via
+
+
+class GameRow:
+    """A detected game in « Choisis le jeu »: a radio, its name and state."""
+
+    def __init__(self, win, pid, name):
+        self.pid, self.name = pid, name
+        self.row = Adw.ActionRow(title=display_name(pid, name))
+        self.radio = Gtk.CheckButton(valign=Gtk.Align.CENTER)
+        self.radio.set_group(win.radio_anchor)
+        self.radio.connect("toggled", win.on_pick, (pid, name))
+        self.row.add_prefix(self.radio)
+        self.row.set_activatable_widget(self.radio)
+        self.pill = label("", ("bdex-pill",), valign=Gtk.Align.CENTER, xalign=0.5)
+        self.row.add_suffix(self.pill)
+
+    def update(self, entries, how, replaced, targeted):
+        text, style, line = game_summary(entries, how, replaced, targeted)
+        self.row.set_subtitle(line)
+        self.pill.set_text(text)
+        self.pill.set_visible(bool(text))
+        for c in ("on", "ready", "warn"):
+            self.pill.remove_css_class(c)
+        if style:
+            self.pill.add_css_class(style)
+        details = [d for d in (describe_entry(e) for e in entries) if d]
+        self.row.set_tooltip_text("\n".join(details) if details else None)
+        self.radio.set_sensitive(any(e.get("kind") == "swapchain" for e in entries) or
+                                 (how is not None and how[0] == "capture"))
+
+
 class Window(Adw.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app, title="bdex-framegen")
