@@ -568,7 +568,7 @@ try:
         raise ImportError
     import gi
     gi.require_version("Gtk", "4.0")
-    from gi.repository import Gio, GObject, Gtk, Gdk, GLib  # noqa: E402
+    from gi.repository import Gio, GObject, Gtk, Gdk, GLib, Pango  # noqa: E402
     HAVE_GTK = True
 except (ImportError, ValueError):
     HAVE_GTK = False
@@ -586,7 +586,7 @@ except (ImportError, ValueError):
         def __init__(self, *args, **kwargs):
             pass
 
-    Gio = GObject = Gtk = Gdk = GLib = _Stub
+    Gio = GObject = Gtk = Gdk = GLib = Pango = _Stub
 
 # libadwaita 1.4+ when installed; otherwise (SteamOS, Debian 12, Ubuntu 22.04:
 # none, or too old for SwitchRow / SpinRow) the same widgets in plain GTK 4.
@@ -699,7 +699,7 @@ class _Compat:
         def __init__(self, title="", subtitle="", **kw):
             super().__init__(activatable=False, **kw)
             box = Gtk.Box(spacing=12, margin_start=12, margin_end=12, margin_top=8, margin_bottom=8)
-            self._prefix = Gtk.Box(spacing=6)
+            self._prefix = Gtk.Box(spacing=6, visible=False)   # (shown with its first widget)
             texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True, valign=Gtk.Align.CENTER)
             self._title = Gtk.Label(xalign=0, wrap=True)
             self._subtitle = Gtk.Label(xalign=0, wrap=True)
@@ -727,8 +727,13 @@ class _Compat:
         def get_subtitle(self):
             return self._subtitle.get_text()
 
+        def set_subtitle_lines(self, n):
+            self._subtitle.set_lines(n)
+            self._subtitle.set_ellipsize(Pango.EllipsizeMode.END if n > 0 else Pango.EllipsizeMode.NONE)
+
         def add_prefix(self, widget):
             self._prefix.append(widget)
+            self._prefix.set_visible(True)
 
         def add_suffix(self, widget):
             self._suffix.append(widget)
@@ -792,6 +797,10 @@ class _Compat:
         def get_value(self):
             return self.props.value
 
+        def set_value(self, value):
+            if self.props.value != value:
+                self.props.value = value
+
     class EntryRow(ActionRow):
         __gsignals__ = {"apply": (GObject.SignalFlags.RUN_FIRST, None, ())}
 
@@ -808,6 +817,9 @@ class _Compat:
 
         def get_text(self):
             return self._entry.get_text()
+
+        def set_text(self, text):
+            self._entry.set_text(text)
 
     class ExpanderRow(Gtk.ListBoxRow):
         def __init__(self, title="", subtitle=""):
