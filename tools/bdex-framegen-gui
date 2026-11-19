@@ -2048,6 +2048,90 @@ def write_ui_state(d):
         pass
 
 
+# -- the frame multiplier, as the window shows it ----------------------------
+
+def mult_value(opt):
+    """"1" (off), "auto", "adaptive" or "2".."8"."""
+    if not opt.generate:
+        return "1"
+    if opt.adaptive:
+        return "adaptive"
+    if opt.auto_mult:
+        return "auto"
+    return str(opt.multiplier)
+
+
+def set_mult(opt, v):
+    opt.generate = v != "1"
+    opt.adaptive = v == "adaptive"
+    opt.auto_mult = v == "auto"
+    if v.isdigit() and v != "1":
+        opt.multiplier = int(v)
+
+
+def mult_label(v):
+    return {"1": tr("Désactivé"), "auto": "Auto", "adaptive": tr("Adaptatif")}.get(v, f"×{v}")
+
+
+def mult_explain(v, hz):
+    if v == "1":
+        return tr("Désactivé : aucune image générée, le jeu passe tel quel.")
+    if v == "auto":
+        return (tr(f"Auto : ×2, ×3 ou ×4 selon les FPS du jeu, sans dépasser les {hz:.0f} Hz de l'écran.") if hz > 0
+                else tr("Auto : ×2, ×3 ou ×4 selon les FPS du jeu, sans dépasser la fréquence de l'écran."))
+    if v == "adaptive":
+        return tr("Adaptatif : vise toute la fréquence de l'écran, même en rapport fractionnaire (50 i/s → 144 i/s).")
+    n = int(v)
+    return tr(f"×{n} : {n - 1} image(s) générée(s) entre deux images du jeu — {n} fois plus d'images affichées.")
+
+
+def limit_suggestion(opt, hz):
+    """The cap offered when the limit is switched on: the screen ÷ the
+    multiplier where both are known, else 60."""
+    m = opt.multiplier if opt.generate and not (opt.auto_mult or opt.adaptive) else 0
+    if hz > 0 and m >= 2 and hz / m >= 25:
+        return str(int(round(hz / m)))
+    return "60"
+
+
+def limit_explain(limit, opt, hz):
+    """The line under the frame limit's choices."""
+    m = opt.multiplier if opt.generate and not (opt.auto_mult or opt.adaptive) else 0
+    if limit == "auto":
+        if hz > 0 and m >= 2:
+            return tr(f"Auto : {hz:.0f} Hz ÷ ×{m} = {hz / m:.0f} i/s, une image du jeu tous les {m} rafraîchissements.")
+        return tr("Auto : la fréquence de l'écran ÷ le multiplicateur, mesurée par la couche en jeu (écran à "
+                  "fréquence fixe ; sans effet en VRR).")
+    hint = limit_hint(hz)
+    return hint if hint else tr("Fréquence de l'écran inconnue : 30, 40 ou 60 i/s selon ce que le jeu tient.")
+
+
+def expected_summary(opt, hz):
+    """What the settings give, in one sentence."""
+    v = mult_value(opt)
+    limit = limit_value(opt.values.get("fps_limit", "0"))
+    screen = tr(f" · écran {hz:.0f} Hz") if hz > 0 else ""
+    if v == "1":
+        return tr("Génération désactivée : les images du jeu passent telles quelles.")
+    if v == "adaptive":
+        return tr("Toute la fréquence de l'écran, quelles que soient les FPS du jeu") + screen
+    if v == "auto":
+        if limit not in ("0", "auto"):
+            base = float(limit)
+            m = auto_ceiling()
+            if hz > 0:
+                m = max(1, min(m, int(hz // base)))
+            return tr(f"Jeu limité à {base:.0f} i/s × {m} = {base * m:.0f} i/s affichées") + screen
+        return tr("Le plus grand multiplicateur qui tient sous la fréquence de l'écran") + screen
+    m = int(v)
+    if limit == "auto" and hz > 0:
+        return tr(f"Jeu limité à {hz / m:.0f} i/s (écran ÷ {m}) × {m} = {hz:.0f} i/s affichées") + screen
+    if limit not in ("0", "auto"):
+        base = float(limit)
+        return tr(f"Jeu limité à {base:.0f} i/s × {m} = {base * m:.0f} i/s affichées") + screen
+    return tr(f"Chaque image du jeu en devient {m} : 60 i/s → {60 * m} i/s affichées") + screen
+
+
 class Window(Adw.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app, title="bdex-framegen")
