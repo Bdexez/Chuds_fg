@@ -815,8 +815,20 @@ def load_sections():
     return sections
 
 
+# Options the engine turns on by itself with a discrete GPU unless the file
+# sets them (Config::autoConfigure, autoOptionsSet): the panel gives them an
+# « Auto » state, their default, never written — any value, 0 included, is
+# written and pins the option (a 0 left unwritten would be « Auto » again).
+AUTO_KEYS = {"pixel_vectors", "extrapolate_splat", "reveal_fill", "scene_cut_local", "interp_splat", "rot_weight",
+             "temporal_prediction", "zero_bias", "global_motion", "hud_mask", "static_soft", "interp_accel",
+             "false_detail", "border_predict", "border_fill", "still_occluder", "hud_avoid", "mosaic_blur",
+             "hud_layer"}
+
 SECTIONS = load_sections()
 OPTIONS = [o for _, _, _, _, opts in SECTIONS for o in opts]
+for _o in OPTIONS:
+    if _o["key"] in AUTO_KEYS and _o["kind"] in ("switch", "spin"):
+        _o["auto"], _o["registry_default"], _o["default"] = True, _o["default"], "auto"
 
 
 def _parse_option(o, raw):
@@ -824,6 +836,8 @@ def _parse_option(o, raw):
     if raw is None:
         return o["default"]
     raw = raw.strip()
+    if o.get("auto") and raw.lower() == "auto":
+        return "auto"
     if o["kind"] == "spin":
         if raw.lower() == "auto" and o["lower"] < 0:
             return "auto"   # (-1 in the file says the same)
