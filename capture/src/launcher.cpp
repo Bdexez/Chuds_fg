@@ -310,6 +310,13 @@ Layout launcherLayout() {
     return l;
 }
 
+// The basic page: the left column's first two groups, then "En cours" (382)
+// and the buttons, in a window of one column.
+constexpr int kBasicRunningY = 382;
+constexpr int kBasicButtonsY = kBasicRunningY + 124 + 10;
+constexpr int kBasicClientW = 496, kAdvancedClientW = 980;
+constexpr int kBasicClientH = kBasicButtonsY + 26 + 12;
+
 const std::vector<ExtraOpt>& extraOptions() {
     static const std::vector<ExtraOpt> opts = [] {
         std::vector<ExtraOpt> out;
@@ -514,6 +521,7 @@ enum {
     ID_CAL_RUN,
     ID_CAL_APPLY,
     ID_LIMIT,
+    ID_ADVANCED,
     ID_TIMER_RUNNING = 1,
 };
 
@@ -541,6 +549,11 @@ struct Ui {
     std::wstring runningText;
     HWND fpsLimit = nullptr;  // the game's frame cap (fps_limit)
     std::vector<std::string> limitValues;  // its entries' values
+    // The basic page shows the left column's first two groups; « Mode avancé »
+    // every control. Moved between the two: "En cours" and the buttons.
+    bool advanced = false;
+    std::vector<HWND> advancedOnly;
+    HWND runningGroup = nullptr, advToggle = nullptr, startBtn = nullptr, quitBtn = nullptr;
 };
 
 // fps_limit as the launcher keeps it: "0", "auto" or a rate ("%g").
@@ -577,6 +590,60 @@ void fillLimit(Ui& ui, const std::string& value) {
     }
     const auto it = std::find(ui.limitValues.begin(), ui.limitValues.end(), value);
     SendMessageW(ui.fpsLimit, CB_SETCURSEL, static_cast<WPARAM>(it - ui.limitValues.begin()), 0);
+}
+
+std::wstring launcherModePath() {
+    wchar_t buf[MAX_PATH];
+    const DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", buf, MAX_PATH);
+    if (!n || n >= MAX_PATH) return L"";
+    return std::wstring(buf, n) + L"\\bdex-framegen\\launcher-mode";
+}
+
+bool readAdvancedMode() {
+    const std::wstring path = launcherModePath();
+    if (path.empty()) return false;
+    std::ifstream in{std::filesystem::path(path)};
+    std::string word;
+    in >> word;
+    return word == "advanced";
+}
+
+void writeAdvancedMode(bool advanced) {
+    const std::wstring path = launcherModePath();
+    if (path.empty()) return;
+    std::error_code ec;
+    std::filesystem::create_directories(std::filesystem::path(path).parent_path(), ec);
+    std::ofstream out{std::filesystem::path(path), std::ios::trunc};
+    out << (advanced ? "advanced" : "basic") << "\n";
+}
+
+// Shows the page `ui.advanced` says: the advanced controls, "En cours" and
+// the buttons where that page has them, the window at its size (kept on the
+// screen's work area).
+void applyMode(Ui& ui, HWND hwnd) {
+    for (HWND c : ui.advancedOnly) ShowWindow(c, ui.advanced ? SW_SHOW : SW_HIDE);
+    const Layout layout = launcherLayout();
+    const int runningY = ui.advanced ? 816 : kBasicRunningY;
+    const int buttonsY = ui.advanced ? layout.buttonsY : kBasicButtonsY;
+    const int clientW = ui.advanced ? kAdvancedClientW : kBasicClientW;
+    const int clientH = ui.advanced ? layout.clientH : kBasicClientH;
+    const UINT flags = SWP_NOZORDER | SWP_NOACTIVATE;
+    SetWindowPos(ui.runningGroup, nullptr, 12, runningY, 472, 124, flags);
+    SetWindowPos(ui.running, nullptr, 24, runningY + 18, 448, 98, flags);
+    SetWindowPos(ui.advToggle, nullptr, 14, buttonsY + 3, 250, 20, flags);
+    SetWindowPos(ui.startBtn, nullptr, clientW - 12 - 94 - 8 - 96, buttonsY, 96, 26, flags);
+    SetWindowPos(ui.quitBtn, nullptr, clientW - 12 - 94, buttonsY, 94, 26, flags);
+    RECT r{0, 0, clientW, clientH};
+    AdjustWindowRect(&r, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
+    const int w = r.right - r.left, h = r.bottom - r.top;
+    RECT now{}, wa{};
+    GetWindowRect(hwnd, &now);
+    SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
+    const int x = std::max<int>(wa.left, std::min<int>(now.left, wa.right - w));
+    const int y = std::max<int>(wa.top, std::min<int>(now.top, wa.bottom - h));
+    SetWindowPos(hwnd, nullptr, x, y, w, h, SWP_NOZORDER);
+    SendMessageW(ui.advToggle, BM_SETCHECK, ui.advanced ? BST_CHECKED : BST_UNCHECKED, 0);
+    InvalidateRect(hwnd, nullptr, TRUE);
 }
 
 static std::wstring wideFromUtf8(const std::string& s) {
@@ -1049,6 +1116,12 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             return add(L"COMBOBOX", nullptr, CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_VSCROLL,
                        x, y, w, 150, id);
         };
+        // The controls adv() is given belong to « Mode avancé » only (hidden
+        // on the basic page).
+        auto adv = [&](HWND c) {
+            if (c) ui->advancedOnly.push_back(c);
+            return c;
+        };
 
         group(T(L"Jeu à capturer", L"Game to capture"), 12, 8, 472, 168);
         ui->lb = add(L"LISTBOX", nullptr,
@@ -1075,31 +1148,31 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         add(L"STATIC", T(L"Compteur de FPS", L"FPS counter"), SS_LEFT, 36, 335, 140, 16, 0);
         ui->hud = combo(180, 332, 292, ID_HUD);
 
-        group(T(L"Affichage", L"Display"), 12, 382, 472, 134);
-        add(L"STATIC", T(L"Taille de la fenêtre", L"Window size"), SS_LEFT, 36, 400, 140, 16, 0);
-        ui->size = combo(180, 397, 292, ID_SIZE);
-        add(L"STATIC", T(L"Échelle", L"Scale"), SS_LEFT, 36, 426, 140, 16, 0);
-        ui->scaleEd = add(L"EDIT", nullptr, ES_NUMBER | WS_TABSTOP, 180, 423, 90, 23, ID_SCALE);
-        add(L"STATIC", L"%", SS_LEFT, 276, 426, 20, 16, 0);
-        add(L"STATIC", T(L"Filtre d'agrandissement", L"Upscaling filter"), SS_LEFT, 36, 452, 140, 16, 0);
-        ui->filter = combo(180, 449, 292, ID_FILTER);
-        add(L"STATIC", T(L"Netteté (CAS)", L"Sharpness (CAS)"), SS_LEFT, 36, 478, 140, 16, 0);
-        ui->sharpEd = add(L"EDIT", nullptr, ES_NUMBER | WS_TABSTOP, 180, 475, 90, 23, ID_SHARP);
-        add(L"STATIC", L"%", SS_LEFT, 276, 478, 20, 16, 0);
+        adv(group(T(L"Affichage", L"Display"), 12, 382, 472, 134));
+        adv(add(L"STATIC", T(L"Taille de la fenêtre", L"Window size"), SS_LEFT, 36, 400, 140, 16, 0));
+        ui->size = adv(combo(180, 397, 292, ID_SIZE));
+        adv(add(L"STATIC", T(L"Échelle", L"Scale"), SS_LEFT, 36, 426, 140, 16, 0));
+        ui->scaleEd = adv(add(L"EDIT", nullptr, ES_NUMBER | WS_TABSTOP, 180, 423, 90, 23, ID_SCALE));
+        adv(add(L"STATIC", L"%", SS_LEFT, 276, 426, 20, 16, 0));
+        adv(add(L"STATIC", T(L"Filtre d'agrandissement", L"Upscaling filter"), SS_LEFT, 36, 452, 140, 16, 0));
+        ui->filter = adv(combo(180, 449, 292, ID_FILTER));
+        adv(add(L"STATIC", T(L"Netteté (CAS)", L"Sharpness (CAS)"), SS_LEFT, 36, 478, 140, 16, 0));
+        ui->sharpEd = adv(add(L"EDIT", nullptr, ES_NUMBER | WS_TABSTOP, 180, 475, 90, 23, ID_SHARP));
+        adv(add(L"STATIC", L"%", SS_LEFT, 276, 478, 20, 16, 0));
 
-        group(T(L"Présentation", L"Presentation"), 12, 524, 472, 50);
-        ui->fifo = add(L"BUTTON", T(L"Synchroniser avec l'écran (FIFO / vsync)", L"Sync with the screen (FIFO / vsync)"),
-                       BS_AUTOCHECKBOX | WS_TABSTOP, 24, 542, 360, 20, ID_FIFO);
+        adv(group(T(L"Présentation", L"Presentation"), 12, 524, 472, 50));
+        ui->fifo = adv(add(L"BUTTON", T(L"Synchroniser avec l'écran (FIFO / vsync)", L"Sync with the screen (FIFO / vsync)"),
+                           BS_AUTOCHECKBOX | WS_TABSTOP, 24, 542, 360, 20, ID_FIFO));
 
         // Advanced optical-flow tuning. A plain EDIT (no ES_NUMBER) accepts a
         // decimal point; the two integer radii use ES_NUMBER.
-        group(T(L"Réglages avancés", L"Advanced settings"), 12, 582, 472, 226);
-        add(L"STATIC", T(L"Laisser par défaut convient à la plupart des jeux. 0 pour désactiver la netteté.", L"The defaults suit most games. 0 turns sharpening off."),
-            SS_LEFT, 24, 600, 452, 16, 0);
+        adv(group(T(L"Réglages avancés", L"Advanced settings"), 12, 582, 472, 226));
+        adv(add(L"STATIC", T(L"Laisser par défaut convient à la plupart des jeux. 0 pour désactiver la netteté.", L"The defaults suit most games. 0 turns sharpening off."),
+                SS_LEFT, 24, 600, 452, 16, 0));
         auto advEdit = [&](const wchar_t* label, int y, int id, bool integer) -> HWND {
-            add(L"STATIC", label, SS_LEFT, 36, y + 3, 214, 16, 0);
+            adv(add(L"STATIC", label, SS_LEFT, 36, y + 3, 214, 16, 0));
             const DWORD st = WS_TABSTOP | WS_BORDER | (integer ? ES_NUMBER : 0);
-            return add(L"EDIT", nullptr, st, 258, y, 90, 23, id);
+            return adv(add(L"EDIT", nullptr, st, 258, y, 90, 23, id));
         };
         ui->grad   = advEdit(T(L"Netteté du mouvement rapide", L"Sharp fast motion"), 622, ID_GRAD, false);
         ui->scLow  = advEdit(T(L"Coupure de scène — début du fondu", L"Scene cut — blend start"), 648, ID_SCLOW, false);
@@ -1113,24 +1186,24 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         // launcher sections (extraOptions), section by section.
         const Layout layout = launcherLayout();
         const auto& extra = extraOptions();
-        group(T(L"Options avancées", L"Advanced options"), 496, 8, 472, layout.columnGroupH);
-        add(L"STATIC", T(L"Seules les valeurs modifiées sont enregistrées ; par défaut convient à la plupart des jeux.", L"Only the values changed are saved; the defaults suit most games."),
-            SS_LEFT, 508, 26, 452, 16, 0);
+        adv(group(T(L"Options avancées", L"Advanced options"), 496, 8, 472, layout.columnGroupH));
+        adv(add(L"STATIC", T(L"Seules les valeurs modifiées sont enregistrées ; par défaut convient à la plupart des jeux.", L"Only the values changed are saved; the defaults suit most games."),
+                SS_LEFT, 508, 26, 452, 16, 0));
         ui->extra.assign(extra.size(), nullptr);
         int y = 48;
         // How and where: injection by the Vulkan layer (inside the game's
         // presentation: the lowest latency) where it has the game, else
         // capture; the GPU that generates (another one than the game's:
         // capture on it — the two-GPU setup).
-        add(L"STATIC", T(L"Méthode", L"Method"), SS_LEFT, 508, y + 3, 186, 16, 0);
-        ui->method = combo(700, y, 260, ID_METHOD);
+        adv(add(L"STATIC", T(L"Méthode", L"Method"), SS_LEFT, 508, y + 3, 186, 16, 0));
+        ui->method = adv(combo(700, y, 260, ID_METHOD));
         for (const wchar_t* s : {T(L"Auto — injection si possible, sinon capture", L"Auto — injection if possible, else capture"),
                                  T(L"Injection (couche Vulkan) seulement", L"Injection (Vulkan layer) only"),
                                  T(L"Capture seulement", L"Capture only")})
             SendMessageW(ui->method, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s));
         y += 26;
-        add(L"STATIC", T(L"GPU de génération", L"Generation GPU"), SS_LEFT, 508, y + 3, 190, 16, 0);
-        ui->gpu = combo(700, y, 260, ID_GPU);
+        adv(add(L"STATIC", T(L"GPU de génération", L"Generation GPU"), SS_LEFT, 508, y + 3, 190, 16, 0));
+        ui->gpu = adv(combo(700, y, 260, ID_GPU));
         SendMessageW(ui->gpu, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(T(L"Auto — celui du jeu", L"Auto — the game's")));
         ui->gpuNames = vulkanGpuNames();
         for (const auto& n : ui->gpuNames)
@@ -1138,19 +1211,19 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         y += 28;
         // Direct3D games get DXVK / VKD3D-Proton next to their executable for
         // the injection (injection.h): this takes them all away again.
-        add(L"BUTTON", T(L"Retirer les injections (DXVK) des jeux…", L"Remove the injections (DXVK) from the games..."),
-            BS_PUSHBUTTON | WS_TABSTOP, 508, y, 452, 23, ID_UNINJECT);
+        adv(add(L"BUTTON", T(L"Retirer les injections (DXVK) des jeux…", L"Remove the injections (DXVK) from the games..."),
+                BS_PUSHBUTTON | WS_TABSTOP, 508, y, 452, 23, ID_UNINJECT));
         y += 30;
         // A problem: the diagnostic report (written, copied) and the issue form.
-        add(L"BUTTON", T(L"Signaler un problème… (rapport de diagnostic)", L"Report a problem... (diagnostic report)"),
-            BS_PUSHBUTTON | WS_TABSTOP, 508, y, 452, 23, ID_REPORT);
+        adv(add(L"BUTTON", T(L"Signaler un problème… (rapport de diagnostic)", L"Report a problem... (diagnostic report)"),
+                BS_PUSHBUTTON | WS_TABSTOP, 508, y, 452, 23, ID_REPORT));
         y += 30;
         // The GPU's calibration (bdex-calibrate.exe).
         {
             const Calibration cal = readCalibration();
-            ui->calLabel = add(L"STATIC", calibrationText(cal).c_str(), SS_LEFT, 508, y + 2, 288, 32, 0);
-            ui->calRun = add(L"BUTTON", T(L"Mesurer", L"Measure"), BS_PUSHBUTTON | WS_TABSTOP, 800, y, 76, 23, ID_CAL_RUN);
-            ui->calApply = add(L"BUTTON", T(L"Appliquer", L"Apply"), BS_PUSHBUTTON | WS_TABSTOP, 884, y, 76, 23, ID_CAL_APPLY);
+            ui->calLabel = adv(add(L"STATIC", calibrationText(cal).c_str(), SS_LEFT, 508, y + 2, 288, 32, 0));
+            ui->calRun = adv(add(L"BUTTON", T(L"Mesurer", L"Measure"), BS_PUSHBUTTON | WS_TABSTOP, 800, y, 76, 23, ID_CAL_RUN));
+            ui->calApply = adv(add(L"BUTTON", T(L"Appliquer", L"Apply"), BS_PUSHBUTTON | WS_TABSTOP, 884, y, 76, 23, ID_CAL_APPLY));
             EnableWindow(ui->calRun, !calibrateExe().empty());
             EnableWindow(ui->calApply, cal.ok);
             if (!cal.ok && !calibrateExe().empty()) {
@@ -1165,33 +1238,35 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             const int id = 300 + static_cast<int>(i);
             if (o.key.empty()) {  // section header
                 y += 3;
-                add(L"STATIC", o.label.c_str(), SS_LEFT, 508, y, 452, 16, 0);
+                adv(add(L"STATIC", o.label.c_str(), SS_LEFT, 508, y, 452, 16, 0));
                 y += 17;
                 continue;
             }
             if (o.kind == kCheck) {
-                ui->extra[i] = add(L"BUTTON", o.label.c_str(), BS_AUTOCHECKBOX | WS_TABSTOP, 520, y, 440, 20, id);
+                ui->extra[i] = adv(add(L"BUTTON", o.label.c_str(), BS_AUTOCHECKBOX | WS_TABSTOP, 520, y, 440, 20, id));
             } else if (o.kind == kChoice) {
-                add(L"STATIC", o.label.c_str(), SS_LEFT, 520, y + 3, 250, 16, 0);
-                ui->extra[i] = combo(776, y, 184, id);
+                adv(add(L"STATIC", o.label.c_str(), SS_LEFT, 520, y + 3, 250, 16, 0));
+                ui->extra[i] = adv(combo(776, y, 184, id));
                 for (int k = 0; k < o.choices; ++k)
                     SendMessageW(ui->extra[i], CB_ADDSTRING, 0,
                                  reinterpret_cast<LPARAM>(o.choiceLabels[size_t(k)].c_str()));
             } else {
-                add(L"STATIC", o.label.c_str(), SS_LEFT, 520, y + 3, 330, 16, 0);
-                ui->extra[i] = add(L"EDIT", nullptr, WS_TABSTOP | WS_BORDER, 870, y, 90, 21, id);
+                adv(add(L"STATIC", o.label.c_str(), SS_LEFT, 520, y + 3, 330, 16, 0));
+                ui->extra[i] = adv(add(L"EDIT", nullptr, WS_TABSTOP | WS_BORDER, 870, y, 90, 21, id));
             }
             y += 22;
         }
 
-        // Under the left column.
-        group(T(L"En cours", L"Running"), 12, 816, 472, 124);
+        // Under the left column, on both pages (applyMode places them).
+        ui->runningGroup = group(T(L"En cours", L"Running"), 12, 816, 472, 124);
         ui->running = add(L"EDIT", nullptr, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_BORDER,
                           24, 834, 448, 98, ID_RUNNING);
         SetTimer(hwnd, ID_TIMER_RUNNING, 1000, nullptr);
 
-        add(L"BUTTON", T(L"Démarrer", L"Start"), BS_DEFPUSHBUTTON | WS_TABSTOP, 770, layout.buttonsY, 96, 26, IDOK);
-        add(L"BUTTON", T(L"Quitter", L"Quit"), BS_PUSHBUTTON | WS_TABSTOP, 874, layout.buttonsY, 94, 26, IDCANCEL);
+        ui->advToggle = add(L"BUTTON", T(L"Mode avancé (toutes les options)", L"Advanced mode (every option)"),
+                            BS_AUTOCHECKBOX | WS_TABSTOP, 14, layout.buttonsY + 3, 250, 20, ID_ADVANCED);
+        ui->startBtn = add(L"BUTTON", T(L"Démarrer", L"Start"), BS_DEFPUSHBUTTON | WS_TABSTOP, 770, layout.buttonsY, 96, 26, IDOK);
+        ui->quitBtn = add(L"BUTTON", T(L"Quitter", L"Quit"), BS_PUSHBUTTON | WS_TABSTOP, 874, layout.buttonsY, 94, 26, IDCANCEL);
 
         for (const wchar_t* s : kPresets)
             SendMessageW(ui->preset, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s));
@@ -1210,6 +1285,8 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         fillFromChoice(*ui);
         refreshList(*ui);
         refreshRunning(*ui);
+        ui->advanced = readAdvancedMode();
+        applyMode(*ui, hwnd);
         return 0;
     }
     case kMsgCalibrated:
@@ -1235,6 +1312,11 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         case ID_GEN:
         case ID_SIZE:
             updateEnabled(*ui);
+            return 0;
+        case ID_ADVANCED:
+            ui->advanced = SendMessageW(ui->advToggle, BM_GETCHECK, 0, 0) == BST_CHECKED;
+            writeAdvancedMode(ui->advanced);
+            applyMode(*ui, hwnd);
             return 0;
         case IDOK: {
             gather(*ui);
@@ -1399,7 +1481,8 @@ bool runLauncher(LaunchChoice& choice) {
             const std::string v = globalConfigValue(o.key);
             if (!v.empty()) choice.extra[o.key] = normalizeExtra(o, v);
         }
-    RECT client{0, 0, 980, launcherLayout().clientH};
+    const bool advanced = readAdvancedMode();   // (WM_CREATE sizes it again: applyMode)
+    RECT client{0, 0, advanced ? kAdvancedClientW : kBasicClientW, advanced ? launcherLayout().clientH : kBasicClientH};
     AdjustWindowRect(&client, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
     RECT wa{};
     SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);

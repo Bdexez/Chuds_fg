@@ -72,6 +72,10 @@ struct LaunchChoice {
     std::map<std::string, std::string> extra;
 };
 
+// The launcher opens on its basic page (the game, the multiplier, the mode,
+// the game's frame cap, the FPS counter, what runs) or, once « Mode avancé »
+// has been ticked, on every option (remembered in
+// %LOCALAPPDATA%\bdex-framegen\launcher-mode).
 // Runs the launcher modally (its own message loop). `choice` carries both
 // the defaults shown and the result; on Démarrer the options are persisted
 // to the config file's [*] section (game sections and unknown keys are
