@@ -3,14 +3,22 @@
 
 The layer is an *implicit* Vulkan layer: once installed it loads into every
 Vulkan game automatically and stays a pure pass-through until it is turned on.
-This window works like the Windows launcher: launch your game normally
-(Steam...), pick it in "Jeux détectés", set the options, press "Démarrer" —
-frame generation starts in the running game, "Arrêter" stops it, and the
-options apply live. The panel always writes `enabled = 1` and `require_app =
-1`: every Vulkan game is armed (the layer takes its swapchain and passes the
-frames through) and only the game this window targets generates frames;
-nothing happens with the window closed. Upscaling changes what the game
-renders, so it applies to games started while this window is open.
+This window works like the Windows launcher, in two pages:
+
+- « Simple »: launch your game normally (Steam...), it shows up in « Choisis
+  le jeu »; pick the multiplier (Auto, x2, x3, x4), the game's frame cap and
+  the priority (smoothness: interpolation, responsiveness: extrapolation),
+  press « Démarrer » — frame generation starts in the running game,
+  « Arrêter » stops it, the settings apply live;
+- « Avancé »: every option of the layer (layer/options_ui.conf, through
+  options_ui.json) and the panel's own, by category, searchable, each one
+  marked when changed and one click from its default.
+
+The panel always writes `enabled = 1` and `require_app = 1`: every Vulkan
+game is armed (the layer takes its swapchain and passes the frames through)
+and only the game this window targets generates frames; nothing happens with
+the window closed. Upscaling changes what the game renders, so it applies to
+games started while this window is open.
 
 Everything here is stored in the layer's config file
 (~/.config/bdex-framegen.conf); the layer reads it on its own, so changes take
@@ -19,7 +27,10 @@ effect the next time a game starts.
 Depends only on Python 3 and PyGObject with GTK 4 (packages python-gobject,
 gtk4 on most distributions). libadwaita 1.4+ is used when installed; without
 it (SteamOS, Debian 12, Ubuntu 22.04) the same widgets are built from plain
-GTK 4 (_Compat).
+GTK 4 (_Compat). Without GTK 4, the same session and settings in a terminal
+(text_main). tests/panel_logic.py checks the config model and that every
+text has its English; tests/panel_ui.py drives the window on a virtual
+display (tools/ci/panel-check.sh).
 """
 import contextlib
 import json
