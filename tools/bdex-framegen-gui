@@ -1209,7 +1209,7 @@ class Options:
             self.hud = HUD_NAMED[hud]
         else:
             try:
-                self.hud = max(0, min(4, int(float(hud))))
+                self.hud = max(0, min(len(HUD_MODES) - 1, int(float(hud))))
             except ValueError:
                 self.hud = 0
         self.paused = flag("paused")
