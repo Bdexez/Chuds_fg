@@ -998,12 +998,12 @@ def _parse_option(o, raw):
     raw = raw.strip()
     if o["kind"] == "spin":
         if raw.lower() == "auto" and o["lower"] < 0:
-            return _fmt_num(-1, o["digits"])  # "auto", shown as -1
+            return "auto"   # (-1 in the file says the same)
         try:
             v = min(o["upper"], max(o["lower"], float(raw)))
         except ValueError:
             return o["default"]
-        return _fmt_num(v, o["digits"])
+        return "auto" if o["lower"] < 0 and v < 0 else _fmt_num(v, o["digits"])
     if o["kind"] == "switch":
         return "1" if raw.lower() in ("1", "true", "on", "yes") else "0"
     if o["kind"] == "choice":
