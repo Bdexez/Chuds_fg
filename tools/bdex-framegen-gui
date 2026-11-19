@@ -59,7 +59,7 @@ _EN = {
  'bdex-capture introuvable': 'bdex-capture not found',
  'capture (fenêtre choisie)': 'capture (window picked)',
  'anti-triche': 'anti-cheat',
- 'Enregistrer quelques secondes de ce jeu (corpus d\'évaluation)': 'Record a few seconds of this game (evaluation corpus)',
+ "Enregistrer quelques secondes de ce jeu (corpus d'évaluation)": 'Record a few seconds of this game (evaluation corpus)',
  '● Enregistrer': '● Record',
  'Enregistrement impossible : {}': 'Recording impossible: {}',
  'Enregistrement de {}… (le jeu peut ralentir quelques secondes)': 'Recording {}… (the game may slow down for a few seconds)',
@@ -67,14 +67,14 @@ _EN = {
  'Aucun jeu armé par la couche à enregistrer.': 'No game armed by the layer to record.',
  'Jeu à enregistrer :': 'Game to record:',
  'automatique': 'automatic',
- '{} à {}×{}, {} Hz : profil {}, jusqu\'à ×{} ({} ms de GPU par image du jeu)': '{} at {}×{}, {} Hz: {} preset, up to ×{} ({} ms of GPU a game frame)',
+ "{} à {}×{}, {} Hz : profil {}, jusqu'à ×{} ({} ms de GPU par image du jeu)": '{} at {}×{}, {} Hz: {} preset, up to ×{} ({} ms of GPU a game frame)',
  'Calibration du GPU': 'GPU calibration',
  'Pas encore mesurée': 'Not measured yet',
  'bdex-calibrate absent': 'bdex-calibrate missing',
  'Mesurer': 'Measure',
  'Mesure en cours… (quelques secondes)': 'Measuring… (a few seconds)',
  'La mesure a échoué': 'The measurement failed',
- 'Calibration appliquée : profil {}, jusqu\'à ×{}': 'Calibration applied: {} preset, up to ×{}',
+ "Calibration appliquée : profil {}, jusqu'à ×{}": 'Calibration applied: {} preset, up to ×{}',
  'k calibrer le GPU': 'k calibrate the GPU',
  'Appliquer ? (o/n) ': 'Apply? (y/n) ',
  'Fenêtre Wayland (portail)…': 'Wayland window (portal)…',
@@ -85,10 +85,8 @@ _EN = {
  'w capturer une autre fenêtre · c méthode · g GPU de génération · e enregistrer (corpus)': 'w capture another window · c method · g generation GPU · e record (corpus)',
  "L'enregistrement n'a pas abouti (le jeu est-il armé ?)": 'The recording did not finish (is the game armed?)',
  'Attention': 'Warning',
- '⚠ {} : anti-triche détecté ({}). La génération est injectée dans le jeu : un bannissement est possible, à tes risques. Le lancement continue.':
-     '⚠ {}: anti-cheat detected ({}). Frame generation is injected into the game: a ban is possible, at your own risk. The launch goes ahead.',
- '⚠ {} : anti-triche détecté ({}). Capture de la fenêtre (rien n\'est chargé dans le jeu), mais certains éditeurs interdisent tout logiciel tiers : à tes risques. Le lancement continue.':
-     '⚠ {}: anti-cheat detected ({}). The window is captured (nothing is loaded into the game), but some publishers forbid any third-party software: at your own risk. The launch goes ahead.',
+ '⚠ {} : anti-triche détecté ({}). La génération est injectée dans le jeu : un bannissement est possible, à tes risques. Le lancement continue.': '⚠ {}: anti-cheat detected ({}). Frame generation is injected into the game: a ban is possible, at your own risk. The launch goes ahead.',
+ "⚠ {} : anti-triche détecté ({}). Capture de la fenêtre (rien n'est chargé dans le jeu), mais certains éditeurs interdisent tout logiciel tiers : à tes risques. Le lancement continue.": '⚠ {}: anti-cheat detected ({}). The window is captured (nothing is loaded into the game), but some publishers forbid any third-party software: at your own risk. The launch goes ahead.',
  'Capture terminée (journal : ~/.cache/bdex-framegen/capture.log)': 'Capture ended (log: ~/.cache/bdex-framegen/capture.log)',
  'Capturer une autre fenêtre…': 'Capture another window…',
  'Un jeu absent de la liste (OpenGL, anti-triche…) : clique ensuite sur sa fenêtre': 'A game missing from the list (OpenGL, anti-cheat…): then click its window',
@@ -96,25 +94,17 @@ _EN = {
  'fenêtre choisie': 'window picked',
  'Clique sur la fenêtre du jeu': "Click the game's window",
  'Méthode': 'Method',
- "Limite sans latence ajoutée (jeux Direct3D sous Proton)": 'Frame limit without added latency (Direct3D games under Proton)',
- "Retient le jeu là où il attend ses images précédentes, avant qu'il lise ses entrées, au lieu du fil de présentation de DXVK / VKD3D-Proton : 1 à 2 images de latence en moins. Pris en compte au lancement du jeu":
-     "Holds the game where it waits for its earlier frames, before it reads its input, instead of DXVK's / VKD3D-Proton's present thread: one to two frames of latency less. Applies when the game starts",
- "Limite d'images retenue dans l'attente du jeu, avant qu'il lise ses entrées : pas de latence ajoutée (jeux Unreal, RE Engine : activer NVIDIA Reflex dans le jeu place la limite sur leur fil de jeu, une image de latence en moins)":
-     "Frame limit held in the game's wait, before it reads its input: no latency added (Unreal, RE Engine games: "
-     "NVIDIA Reflex on in the game puts the limit on their game thread, a frame of latency less)",
- "Limite d'images retenue au sommeil Reflex / Anti-Lag du jeu, avant qu'il lise ses entrées":
-     "Frame limit held at the game's Reflex / Anti-Lag sleep, before it reads its input",
- "Limite d'images sur un jeu Direct3D (DXVK / VKD3D) retenu à sa présentation (pilote sans present_wait, ou fps_limit_wait coupé) : le jeu garde une à trois images d'avance — la limite d'images du jeu (ou Reflex / Anti-Lag activé dans le jeu) est plus réactive":
-     "Frame rate cap on a Direct3D game (DXVK / VKD3D) held at its present (a driver without present wait, or fps_limit_wait off): the game keeps one to three frames ahead — the game's own frame cap (or Reflex / Anti-Lag on in the game) responds faster",
- "Cadence de l'écran non mesurée : hors VRR, en ×3 et plus les images tombent entre deux rafraîchissements — « Limite d'images du jeu » sur Auto, ou un écran à un multiple exact du jeu (30 i/s ×4 → 120 Hz)":
-     'Screen timing not measured: without VRR, at x3 and above frames fall between refreshes — set « Game frame rate cap » to Auto, or the screen to an exact multiple of the game (30 fps x4 -> 120 Hz)',
+ 'Limite sans latence ajoutée (jeux Direct3D sous Proton)': 'Frame limit without added latency (Direct3D games under Proton)',
+ "Retient le jeu là où il attend ses images précédentes, avant qu'il lise ses entrées, au lieu du fil de présentation de DXVK / VKD3D-Proton : 1 à 2 images de latence en moins. Pris en compte au lancement du jeu": "Holds the game where it waits for its earlier frames, before it reads its input, instead of DXVK's / VKD3D-Proton's present thread: one to two frames of latency less. Applies when the game starts",
+ "Limite d'images retenue dans l'attente du jeu, avant qu'il lise ses entrées : pas de latence ajoutée (jeux Unreal, RE Engine : activer NVIDIA Reflex dans le jeu place la limite sur leur fil de jeu, une image de latence en moins)": "Frame limit held in the game's wait, before it reads its input: no latency added (Unreal, RE Engine games: NVIDIA Reflex on in the game puts the limit on their game thread, a frame of latency less)",
+ "Limite d'images retenue au sommeil Reflex / Anti-Lag du jeu, avant qu'il lise ses entrées": "Frame limit held at the game's Reflex / Anti-Lag sleep, before it reads its input",
+ "Limite d'images sur un jeu Direct3D (DXVK / VKD3D) retenu à sa présentation (pilote sans present_wait, ou fps_limit_wait coupé) : le jeu garde une à trois images d'avance — la limite d'images du jeu (ou Reflex / Anti-Lag activé dans le jeu) est plus réactive": "Frame rate cap on a Direct3D game (DXVK / VKD3D) held at its present (a driver without present wait, or fps_limit_wait off): the game keeps one to three frames ahead — the game's own frame cap (or Reflex / Anti-Lag on in the game) responds faster",
+ "Cadence de l'écran non mesurée : hors VRR, en ×3 et plus les images tombent entre deux rafraîchissements — « Limite d'images du jeu » sur Auto, ou un écran à un multiple exact du jeu (30 i/s ×4 → 120 Hz)": 'Screen timing not measured: without VRR, at x3 and above frames fall between refreshes — set « Game frame rate cap » to Auto, or the screen to an exact multiple of the game (30 fps x4 -> 120 Hz)',
  "Limite d'images du jeu :": 'Game frame rate cap:',
  "Limite d'images du jeu (ou tape une valeur en i/s, ex. 58) :": 'Game frame rate cap (or type a rate in fps, e.g. 58):',
- 'Avant la génération : une base régulière donne une image fluide. Glisser pour choisir, 0 = aucune limite':
-     'Before generation: an even base rate gives smooth motion. Drag to choose, 0 = no cap',
+ 'Avant la génération : une base régulière donne une image fluide. Glisser pour choisir, 0 = aucune limite': 'Before generation: an even base rate gives smooth motion. Drag to choose, 0 = no cap',
  'Limite automatique : écran ÷ multiplicateur': 'Automatic cap: screen ÷ multiplier',
- 'Une image du jeu tous les N rafraîchissements (écran à fréquence fixe) ; le curseur ne sert plus':
-     'One game frame every N refreshes (fixed-refresh screens); the slider is not used',
+ 'Une image du jeu tous les N rafraîchissements (écran à fréquence fixe) ; le curseur ne sert plus': 'One game frame every N refreshes (fixed-refresh screens); the slider is not used',
  'aucune': 'none',
  'i/s': 'fps',
  ' · jeu limité à {} i/s': ' · game capped at {} fps',
@@ -124,9 +114,8 @@ _EN = {
  '{} i/s': '{} fps',
  'Écran {} Hz : ': '{} Hz screen: ',
  ' i/s': ' fps',
- "Limite d'images du jeu": "Game frame rate cap",
- 'Avant la génération : une base régulière donne une image fluide. Auto = écran ÷ multiplicateur':
-     'Before generation: an even base rate gives smooth motion. Auto = screen ÷ multiplier',
+ "Limite d'images du jeu": 'Game frame rate cap',
+ 'Avant la génération : une base régulière donne une image fluide. Auto = écran ÷ multiplicateur': 'Before generation: an even base rate gives smooth motion. Auto = screen ÷ multiplier',
  'Injection : dans la présentation du jeu, la latence la plus basse (jeux Vulkan, Proton). Capture : tout jeu, une image de latence en plus, sur le GPU de son choix': "Injection: inside the game's presentation, the lowest latency (Vulkan games, Proton). Capture: any game, a frame more latency, on the GPU of your choice",
  'GPU de génération': 'Generation GPU',
  'Un autre GPU que celui du jeu : capture sur ce GPU (le jeu rend sur le sien)': "Another GPU than the game's: capture on that GPU (the game renders on its own)",
@@ -135,7 +124,8 @@ _EN = {
  'Injection (couche Vulkan) seulement': 'Injection (Vulkan layer) only',
  'Capture seulement': 'Capture only',
  'Méthode :': 'Method:',
- 'GPU de génération :': 'Generation GPU:','Appliquer': 'Apply',
+ 'GPU de génération :': 'Generation GPU:',
+ 'Appliquer': 'Apply',
  'Interpolation (défaut)': 'Interpolation (default)',
  'Hybride — ×3/×4 : latence divisée par 2 à 3': 'Hybrid — ×3/×4: latency divided by 2 to 3',
  'Extrapolation — latence minimale': 'Extrapolation — lowest latency',
@@ -170,248 +160,73 @@ _EN = {
  '(~{} ms de latence en plus)': '(~{} ms more latency)',
  'budget GPU : niveau {}': 'GPU budget: level {}',
  "flux incertain sur {} % de l'image": 'flow uncertain on {} % of the picture',
- "génération inutile : le jeu tient déjà la fréquence de l'écran": 'generation not needed: the game already '
-                                                                   "holds the screen's refresh rate",
+ "génération inutile : le jeu tient déjà la fréquence de l'écran": "generation not needed: the game already holds the screen's refresh rate",
  'En pause — ': 'Paused — ',
  'Passes : ': 'Passes: ',
  'Réglage auto : ': 'Auto tuning: ',
  "Génération d'images": 'Frame generation',
- 'Copier les options de lancement Steam équivalentes (par jeu)': 'Copy the equivalent Steam launch options '
-                                                                 '(per game)',
+ 'Copier les options de lancement Steam équivalentes (par jeu)': 'Copy the equivalent Steam launch options (per game)',
  'Session impossible : {}': 'Cannot open the session: {}',
  'Couche mise à jour dans : ': 'Layer updated in: ',
  'Mode Jeu — sans le panneau': 'Game Mode — without the panel',
- 'Dans le mode Jeu de SteamOS (Steam Deck), ce panneau ne peut pas rester ouvert à côté du jeu : ces jeux génèrent dès leur lancement, avec les réglages ci-dessous. Steam, gamescope et les applications de bureau restent exclus. Autre voie, par jeu : les options de lancement Steam (bouton copier en haut).': 'In '
-                                                                                                                                                                                                                                                                                                                    "SteamOS's "
-                                                                                                                                                                                                                                                                                                                    'Game '
-                                                                                                                                                                                                                                                                                                                    'Mode '
-                                                                                                                                                                                                                                                                                                                    '(Steam '
-                                                                                                                                                                                                                                                                                                                    'Deck), '
-                                                                                                                                                                                                                                                                                                                    'this '
-                                                                                                                                                                                                                                                                                                                    'panel '
-                                                                                                                                                                                                                                                                                                                    'cannot '
-                                                                                                                                                                                                                                                                                                                    'stay '
-                                                                                                                                                                                                                                                                                                                    'open '
-                                                                                                                                                                                                                                                                                                                    'beside '
-                                                                                                                                                                                                                                                                                                                    'the '
-                                                                                                                                                                                                                                                                                                                    'game: '
-                                                                                                                                                                                                                                                                                                                    'these '
-                                                                                                                                                                                                                                                                                                                    'games '
-                                                                                                                                                                                                                                                                                                                    'generate '
-                                                                                                                                                                                                                                                                                                                    'from '
-                                                                                                                                                                                                                                                                                                                    'their '
-                                                                                                                                                                                                                                                                                                                    'start, '
-                                                                                                                                                                                                                                                                                                                    'with '
-                                                                                                                                                                                                                                                                                                                    'the '
-                                                                                                                                                                                                                                                                                                                    'settings '
-                                                                                                                                                                                                                                                                                                                    'below. '
-                                                                                                                                                                                                                                                                                                                    'Steam, '
-                                                                                                                                                                                                                                                                                                                    'gamescope '
-                                                                                                                                                                                                                                                                                                                    'and '
-                                                                                                                                                                                                                                                                                                                    'desktop '
-                                                                                                                                                                                                                                                                                                                    'applications '
-                                                                                                                                                                                                                                                                                                                    'stay '
-                                                                                                                                                                                                                                                                                                                    'excluded. '
-                                                                                                                                                                                                                                                                                                                    'Another '
-                                                                                                                                                                                                                                                                                                                    'way, '
-                                                                                                                                                                                                                                                                                                                    'per '
-                                                                                                                                                                                                                                                                                                                    'game: '
-                                                                                                                                                                                                                                                                                                                    'the '
-                                                                                                                                                                                                                                                                                                                    'Steam '
-                                                                                                                                                                                                                                                                                                                    'launch '
-                                                                                                                                                                                                                                                                                                                    'options '
-                                                                                                                                                                                                                                                                                                                    '(copy '
-                                                                                                                                                                                                                                                                                                                    'button '
-                                                                                                                                                                                                                                                                                                                    'at '
-                                                                                                                                                                                                                                                                                                                    'the '
-                                                                                                                                                                                                                                                                                                                    'top).',
+ 'Dans le mode Jeu de SteamOS (Steam Deck), ce panneau ne peut pas rester ouvert à côté du jeu : ces jeux génèrent dès leur lancement, avec les réglages ci-dessous. Steam, gamescope et les applications de bureau restent exclus. Autre voie, par jeu : les options de lancement Steam (bouton copier en haut).': "In SteamOS's Game Mode (Steam Deck), this panel cannot stay open beside the game: these games generate from their start, with the settings below. Steam, gamescope and desktop applications stay excluded. Another way, per game: the Steam launch options (copy button at the top).",
  'Tous les jeux': 'Every game',
- 'Chaque jeu Vulkan génère dès son lancement, panneau fermé': 'Every Vulkan game generates from its start, '
-                                                              'panel closed',
+ 'Chaque jeu Vulkan génère dès son lancement, panneau fermé': 'Every Vulkan game generates from its start, panel closed',
  'Le jeu sélectionné': 'The selected game',
  'Ce jeu : {}': 'This game: {}',
  'Génère dès son lancement, panneau fermé': 'Generates from its start, panel closed',
- 'Sélectionne un jeu dans « Jeux détectés » (lancé une fois ici)': 'Select a game in « Detected games » '
-                                                                   '(started once here)',
+ 'Sélectionne un jeu dans « Jeux détectés » (lancé une fois ici)': 'Select a game in « Detected games » (started once here)',
  'Génère sans le panneau': 'Generates without the panel',
  'Retirer': 'Remove',
  "Échec de l'enregistrement : {}": 'Could not save: {}',
  '{} : génère sans le panneau.': '{}: generates without the panel.',
  '{} : seulement avec « Démarrer ».': '{}: only with « Start ».',
  'Actif dans tous les jeux, sans le panneau': 'On in every game, without the panel',
- "Chaque jeu génère dès son lancement ; les réglages s'appliquent en direct, « En pause » suspend la génération.": 'Every '
-                                                                                                                   'game '
-                                                                                                                   'generates '
-                                                                                                                   'from '
-                                                                                                                   'its '
-                                                                                                                   'start; '
-                                                                                                                   'the '
-                                                                                                                   'settings '
-                                                                                                                   'apply '
-                                                                                                                   'live, '
-                                                                                                                   '« '
-                                                                                                                   'Paused '
-                                                                                                                   '» '
-                                                                                                                   'suspends '
-                                                                                                                   'the '
-                                                                                                                   'generation.',
+ "Chaque jeu génère dès son lancement ; les réglages s'appliquent en direct, « En pause » suspend la génération.": 'Every game generates from its start; the settings apply live, « Paused » suspends the generation.',
  'Génération en cours : {}': 'Generating: {}',
- "Les réglages s'appliquent en direct. « Arrêter » ou fermer cette fenêtre coupe la génération.": 'The '
-                                                                                                  'settings '
-                                                                                                  'apply '
-                                                                                                  'live. « '
-                                                                                                  'Stop » or '
-                                                                                                  'closing '
-                                                                                                  'this '
-                                                                                                  'window '
-                                                                                                  'stops the '
-                                                                                                  'generation.',
+ "Les réglages s'appliquent en direct. « Arrêter » ou fermer cette fenêtre coupe la génération.": 'The settings apply live. « Stop » or closing this window stops the generation.',
  'Framegen arrêté': 'Frame generation stopped',
  'Jeu sélectionné : {} — clique « Démarrer ».': 'Selected game: {} — click « Start ».',
- 'Lance ton jeu, sélectionne-le dans « Jeux détectés », puis « Démarrer ».': 'Start your game, select it in '
-                                                                             '« Detected games », then « '
-                                                                             'Start ».',
+ 'Lance ton jeu, sélectionne-le dans « Jeux détectés », puis « Démarrer ».': 'Start your game, select it in « Detected games », then « Start ».',
  'Arrêter': 'Stop',
  'Démarrer': 'Start',
  'Échec : {}': 'Failed: {}',
  'État': 'Status',
  'Couche Vulkan': 'Vulkan layer',
- 'Installée — chargée automatiquement dans tous les jeux Vulkan': 'Installed — loaded automatically into '
-                                                                  'every Vulkan game',
- "Non installée : lance tools/install.sh pour qu'elle s'active sans options Steam": 'Not installed: run '
-                                                                                    'tools/install.sh so '
-                                                                                    'that it works without '
-                                                                                    'Steam options',
+ 'Installée — chargée automatiquement dans tous les jeux Vulkan': 'Installed — loaded automatically into every Vulkan game',
+ "Non installée : lance tools/install.sh pour qu'elle s'active sans options Steam": 'Not installed: run tools/install.sh so that it works without Steam options',
  'Installer': 'Install',
  'Carte graphique': 'Graphics card',
  '\nProfil « Auto » : réglé selon ce GPU': '\n« Auto » preset: set for this GPU',
  'non détectée': 'not detected',
  'Signaler un problème': 'Report a problem',
- 'Écrit le rapport de diagnostic et ouvre le formulaire pré-rempli (à faire pendant que le jeu tourne)': 'Writes '
-                                                                                                         'the '
-                                                                                                         'diagnostic '
-                                                                                                         'report '
-                                                                                                         'and '
-                                                                                                         'opens '
-                                                                                                         'the '
-                                                                                                         'pre-filled '
-                                                                                                         'form '
-                                                                                                         '(do '
-                                                                                                         'it '
-                                                                                                         'while '
-                                                                                                         'the '
-                                                                                                         'game '
-                                                                                                         'runs)',
+ 'Écrit le rapport de diagnostic et ouvre le formulaire pré-rempli (à faire pendant que le jeu tourne)': 'Writes the diagnostic report and opens the pre-filled form (do it while the game runs)',
  'Rapport…': 'Report…',
  'Rapport impossible : bdex-framegen introuvable': 'No report: bdex-framegen not found',
  'Rapport écrit dans {} — à joindre au formulaire': 'Report written to {} — attach it to the form',
- 'Ouvre le lien affiché par « bdex-framegen --issue-url »': 'Open the link « bdex-framegen --issue-url » '
-                                                            'prints',
+ 'Ouvre le lien affiché par « bdex-framegen --issue-url »': 'Open the link « bdex-framegen --issue-url » prints',
  'Jeux détectés': 'Detected games',
- 'Jeux Vulkan en cours (natifs ou via Proton). Sélectionne celui où générer des images, puis « Démarrer » en haut.': 'Vulkan '
-                                                                                                                     'games '
-                                                                                                                     'running '
-                                                                                                                     '(native '
-                                                                                                                     'or '
-                                                                                                                     'through '
-                                                                                                                     'Proton). '
-                                                                                                                     'Select '
-                                                                                                                     'the '
-                                                                                                                     'one '
-                                                                                                                     'to '
-                                                                                                                     'generate '
-                                                                                                                     'frames '
-                                                                                                                     'in, '
-                                                                                                                     'then '
-                                                                                                                     '« '
-                                                                                                                     'Start '
-                                                                                                                     '» '
-                                                                                                                     'at '
-                                                                                                                     'the '
-                                                                                                                     'top.',
+ 'Jeux Vulkan en cours (natifs ou via Proton). Sélectionne celui où générer des images, puis « Démarrer » en haut.': 'Vulkan games running (native or through Proton). Select the one to generate frames in, then « Start » at the top.',
  'Actualiser la liste': 'Refresh the list',
  'Aucun jeu en cours': 'No game running',
- 'Lance un jeu Vulkan (natif ou via Proton), puis « Actualiser la liste »': 'Start a Vulkan game (native or '
-                                                                            'through Proton), then « Refresh '
-                                                                            'the list »',
- "Lancé avant l'installation de cette version — relance le jeu": 'Started before this version was installed '
-                                                                 '— restart the game',
+ 'Lance un jeu Vulkan (natif ou via Proton), puis « Actualiser la liste »': 'Start a Vulkan game (native or through Proton), then « Refresh the list »',
+ "Lancé avant l'installation de cette version — relance le jeu": 'Started before this version was installed — restart the game',
  'Insère des images de synthèse entre celles du jeu.': "Inserts synthesized frames between the game's.",
  'Activer': 'Enable',
  'Profil de qualité': 'Quality preset',
  "Auto s'adapte à la puissance du GPU": "Auto adapts to the GPU's power",
  'Images affichées par image rendue': 'Frames shown per frame rendered',
- "Auto : le plus grand multiple entier sous la fréquence de l'écran (×2 à 60 i/s sur 144 Hz). Adaptatif : toute la fréquence de l'écran, même en ratio fractionnaire (50 i/s → 144 i/s), une image par rafraîchissement": 'Auto: '
-                                                                                                                                                                                                                          'the '
-                                                                                                                                                                                                                          'largest '
-                                                                                                                                                                                                                          'whole '
-                                                                                                                                                                                                                          'multiple '
-                                                                                                                                                                                                                          'under '
-                                                                                                                                                                                                                          'the '
-                                                                                                                                                                                                                          "screen's "
-                                                                                                                                                                                                                          'refresh '
-                                                                                                                                                                                                                          'rate '
-                                                                                                                                                                                                                          '(×2 '
-                                                                                                                                                                                                                          'at '
-                                                                                                                                                                                                                          '60 '
-                                                                                                                                                                                                                          'fps '
-                                                                                                                                                                                                                          'on '
-                                                                                                                                                                                                                          '144 '
-                                                                                                                                                                                                                          'Hz). '
-                                                                                                                                                                                                                          'Adaptive: '
-                                                                                                                                                                                                                          'the '
-                                                                                                                                                                                                                          "screen's "
-                                                                                                                                                                                                                          'whole '
-                                                                                                                                                                                                                          'refresh '
-                                                                                                                                                                                                                          'rate, '
-                                                                                                                                                                                                                          'even '
-                                                                                                                                                                                                                          'at '
-                                                                                                                                                                                                                          'a '
-                                                                                                                                                                                                                          'fractional '
-                                                                                                                                                                                                                          'ratio '
-                                                                                                                                                                                                                          '(50 '
-                                                                                                                                                                                                                          'fps '
-                                                                                                                                                                                                                          '→ '
-                                                                                                                                                                                                                          '144 '
-                                                                                                                                                                                                                          'fps), '
-                                                                                                                                                                                                                          'one '
-                                                                                                                                                                                                                          'frame '
-                                                                                                                                                                                                                          'per '
-                                                                                                                                                                                                                          'refresh',
+ "Auto : le plus grand multiple entier sous la fréquence de l'écran (×2 à 60 i/s sur 144 Hz). Adaptatif : toute la fréquence de l'écran, même en ratio fractionnaire (50 i/s → 144 i/s), une image par rafraîchissement": "Auto: the largest whole multiple under the screen's refresh rate (×2 at 60 fps on 144 Hz). Adaptive: the screen's whole refresh rate, even at a fractional ratio (50 fps → 144 fps), one frame per refresh",
  "Auto — selon l'écran": 'Auto — from the screen',
  "Adaptatif — toute la fréquence de l'écran": "Adaptive — the screen's whole refresh rate",
  "L'extrapolation supprime la latence ajoutée": 'Extrapolation removes the added latency',
  'En pause': 'Paused',
- "Suspend la génération dans les jeux en cours (s'applique en moins d'une seconde ; raccourci : bdex-framegen --toggle)": 'Suspends '
-                                                                                                                          'the '
-                                                                                                                          'generation '
-                                                                                                                          'in '
-                                                                                                                          'the '
-                                                                                                                          'running '
-                                                                                                                          'games '
-                                                                                                                          '(applies '
-                                                                                                                          'within '
-                                                                                                                          'a '
-                                                                                                                          'second; '
-                                                                                                                          'shortcut: '
-                                                                                                                          'bdex-framegen '
-                                                                                                                          '--toggle)',
+ "Suspend la génération dans les jeux en cours (s'applique en moins d'une seconde ; raccourci : bdex-framegen --toggle)": 'Suspends the generation in the running games (applies within a second; shortcut: bdex-framegen --toggle)',
  'Compteur de FPS': 'FPS counter',
- 'Affiche les FPS en surimpression dans le jeu (coin haut-gauche).': 'Shows the FPS over the game (top-left '
-                                                                     'corner).',
+ 'Affiche les FPS en surimpression dans le jeu (coin haut-gauche).': 'Shows the FPS over the game (top-left corner).',
  'Affichage': 'Display',
- 'Les 1% / 0.1% low sont les FPS aux 99e / 99,9e centiles du jeu': "The 1% / 0.1% lows are the game's FPS at "
-                                                                   'the 99th / 99.9th percentiles',
- "Le jeu rend en résolution réduite, agrandie à l'affichage (X11, Xwayland et Wayland natif).": 'The game '
-                                                                                                'renders at '
-                                                                                                'a lower '
-                                                                                                'resolution, '
-                                                                                                'enlarged '
-                                                                                                'for display '
-                                                                                                '(X11, '
-                                                                                                'Xwayland '
-                                                                                                'and native '
-                                                                                                'Wayland).',
+ 'Les 1% / 0.1% low sont les FPS aux 99e / 99,9e centiles du jeu': "The 1% / 0.1% lows are the game's FPS at the 99th / 99.9th percentiles",
+ "Le jeu rend en résolution réduite, agrandie à l'affichage (X11, Xwayland et Wayland natif).": 'The game renders at a lower resolution, enlarged for display (X11, Xwayland and native Wayland).',
  'Résolution de rendu': 'Render resolution',
  "pourcentage de la résolution d'affichage": 'percentage of the display resolution',
  "Filtre d'agrandissement": 'Upscaling filter',
@@ -420,33 +235,9 @@ _EN = {
  'Présentation': 'Presentation',
  'Mode de présentation': 'Present mode',
  'Faible latence': 'Low latency',
- "Empêche le jeu de prendre de l'avance (utile en FIFO)": 'Keeps the game from running ahead (useful with '
-                                                          'FIFO)',
+ "Empêche le jeu de prendre de l'avance (utile en FIFO)": 'Keeps the game from running ahead (useful with FIFO)',
  'Réglages avancés': 'Advanced settings',
- "Toutes les autres options du layer. Les valeurs par défaut conviennent à la plupart des jeux ; seules les valeurs modifiées sont écrites. La plupart s'appliquent aussi aux jeux déjà lancés.": 'Every '
-                                                                                                                                                                                                  'other '
-                                                                                                                                                                                                  'option '
-                                                                                                                                                                                                  'of '
-                                                                                                                                                                                                  'the '
-                                                                                                                                                                                                  'layer. '
-                                                                                                                                                                                                  'The '
-                                                                                                                                                                                                  'defaults '
-                                                                                                                                                                                                  'suit '
-                                                                                                                                                                                                  'most '
-                                                                                                                                                                                                  'games; '
-                                                                                                                                                                                                  'only '
-                                                                                                                                                                                                  'the '
-                                                                                                                                                                                                  'values '
-                                                                                                                                                                                                  'changed '
-                                                                                                                                                                                                  'are '
-                                                                                                                                                                                                  'written. '
-                                                                                                                                                                                                  'Most '
-                                                                                                                                                                                                  'also '
-                                                                                                                                                                                                  'apply '
-                                                                                                                                                                                                  'to '
-                                                                                                                                                                                                  'games '
-                                                                                                                                                                                                  'already '
-                                                                                                                                                                                                  'running.',
+ "Toutes les autres options du layer. Les valeurs par défaut conviennent à la plupart des jeux ; seules les valeurs modifiées sont écrites. La plupart s'appliquent aussi aux jeux déjà lancés.": 'Every other option of the layer. The defaults suit most games; only the values changed are written. Most also apply to games already running.',
  'Options Steam (équivalent par jeu) copiées.': 'Steam options (the per-game equivalent) copied.',
  'tools/install.sh introuvable.': 'tools/install.sh not found.',
  'Installation…': 'Installing…',
@@ -456,88 +247,30 @@ _EN = {
  "Échec de l'installation : {}": 'Installation failed: {}',
  'adaptatif': 'adaptive',
  'désactivé': 'off',
- 'multiplicateur {} · mode {} · préréglage {} · compteur {}': 'multiplier {} · mode {} · preset {} · counter '
-                                                              '{}',
+ 'multiplicateur {} · mode {} · préréglage {} · compteur {}': 'multiplier {} · mode {} · preset {} · counter {}',
  ' · mode Jeu : tous les jeux sans le panneau': ' · Game Mode: every game without the panel',
  '   ← actuel': '   ← current',
  'Choix (Entrée : inchangé) : ': 'Choice (Enter: unchanged): ',
- "Couche mise à jour dans {} (copie d'une version précédente)": 'Layer updated in {} (a copy of an earlier '
-                                                                'version)',
+ "Couche mise à jour dans {} (copie d'une version précédente)": 'Layer updated in {} (a copy of an earlier version)',
  'bdex-framegen — panneau en mode texte': 'bdex-framegen — text-mode panel',
  ' (GTK 4 absent)': ' (no GTK 4)',
- "  La couche n'est pas installée pour ce compte (install.sh, ou le paquet de la distribution).": '  The '
-                                                                                                  'layer is '
-                                                                                                  'not '
-                                                                                                  'installed '
-                                                                                                  'for this '
-                                                                                                  'account '
-                                                                                                  '(install.sh, '
-                                                                                                  'or the '
-                                                                                                  "distribution's "
-                                                                                                  'package).',
- '  Lance le jeu normalement, puis choisis-le ici. Tant que ce panneau est ouvert,': '  Start the game as '
-                                                                                     'usual, then choose it '
-                                                                                     'here. While this panel '
-                                                                                     'is open,',
- '  le jeu choisi génère des images ; le fermer (q, Ctrl+C) arrête.': '  the game chosen generates frames; '
-                                                                      'closing it (q, Ctrl+C) stops.',
+ "  La couche n'est pas installée pour ce compte (install.sh, ou le paquet de la distribution).": "  The layer is not installed for this account (install.sh, or the distribution's package).",
+ '  Lance le jeu normalement, puis choisis-le ici. Tant que ce panneau est ouvert,': '  Start the game as usual, then choose it here. While this panel is open,',
+ '  le jeu choisi génère des images ; le fermer (q, Ctrl+C) arrête.': '  the game chosen generates frames; closing it (q, Ctrl+C) stops.',
  'Jeux détectés :': 'Detected games:',
  'Jeux détectés : aucun (lance un jeu Vulkan, puis r)': 'Detected games: none (start a Vulkan game, then r)',
  '  ▶ génère': '  ▶ generating',
  'Options : ': 'Options: ',
- '[numéro] démarrer dans ce jeu · a arrêter · r actualiser · m multiplicateur · o mode · p préréglage · h compteur · j mode Jeu · s options Steam · b signaler un problème · q quitter': '[number] '
-                                                                                                                                                                                         'start '
-                                                                                                                                                                                         'in '
-                                                                                                                                                                                         'that '
-                                                                                                                                                                                         'game '
-                                                                                                                                                                                         '· '
-                                                                                                                                                                                         'a '
-                                                                                                                                                                                         'stop '
-                                                                                                                                                                                         '· '
-                                                                                                                                                                                         'r '
-                                                                                                                                                                                         'refresh '
-                                                                                                                                                                                         '· '
-                                                                                                                                                                                         'm '
-                                                                                                                                                                                         'multiplier '
-                                                                                                                                                                                         '· '
-                                                                                                                                                                                         'o '
-                                                                                                                                                                                         'mode '
-                                                                                                                                                                                         '· '
-                                                                                                                                                                                         'p '
-                                                                                                                                                                                         'preset '
-                                                                                                                                                                                         '· '
-                                                                                                                                                                                         'h '
-                                                                                                                                                                                         'counter '
-                                                                                                                                                                                         '· '
-                                                                                                                                                                                         'j '
-                                                                                                                                                                                         'Game '
-                                                                                                                                                                                         'Mode '
-                                                                                                                                                                                         '· '
-                                                                                                                                                                                         's '
-                                                                                                                                                                                         'Steam '
-                                                                                                                                                                                         'options '
-                                                                                                                                                                                         '· '
-                                                                                                                                                                                         'b '
-                                                                                                                                                                                         'report '
-                                                                                                                                                                                         'a '
-                                                                                                                                                                                         'problem '
-                                                                                                                                                                                         '· '
-                                                                                                                                                                                         'q '
-                                                                                                                                                                                         'quit',
+ '[numéro] démarrer dans ce jeu · a arrêter · r actualiser · m multiplicateur · o mode · p préréglage · h compteur · j mode Jeu · s options Steam · b signaler un problème · q quitter': '[number] start in that game · a stop · r refresh · m multiplier · o mode · p preset · h counter · j Game Mode · s Steam options · b report a problem · q quit',
  'Génération démarrée dans {}.': 'Generation started in {}.',
  'Désactivé (×1)': 'Off (×1)',
  "Auto — jusqu'à la fréquence de l'écran": "Auto — up to the screen's refresh rate",
- 'Adaptatif — toute la fréquence, rapports fractionnaires': 'Adaptive — the whole refresh rate, fractional '
-                                                            'ratios',
+ 'Adaptatif — toute la fréquence, rapports fractionnaires': 'Adaptive — the whole refresh rate, fractional ratios',
  'Multiplicateur :': 'Multiplier:',
  'Mode :': 'Mode:',
  'Préréglage :': 'Preset:',
  "Compteur à l'écran :": 'On-screen counter:',
- 'Mode Jeu (Steam Deck) — tous les jeux génèrent dès leur lancement, sans le panneau :': 'Game Mode (Steam '
-                                                                                         'Deck) — every game '
-                                                                                         'generates from its '
-                                                                                         'start, without the '
-                                                                                         'panel:',
+ 'Mode Jeu (Steam Deck) — tous les jeux génèrent dès leur lancement, sans le panneau :': 'Game Mode (Steam Deck) — every game generates from its start, without the panel:',
  'Non — le panneau décide (« Démarrer »)': 'No — the panel decides (« Start »)',
  'Oui': 'Yes',
  'Options de lancement Steam équivalentes (par jeu) :': 'Equivalent Steam launch options (per game):',
