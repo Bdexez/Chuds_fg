@@ -52,6 +52,8 @@ struct LaunchChoice {
     bool fit = false;       // overlay fills the game's monitor
     std::string gpu;        // the GPU that generates ("" = the best: the game's), a part of its name
     int method = 0;         // 0 auto (injection where the Vulkan layer has the game, else capture), 1 injection, 2 capture
+    std::string fpsLimit;   // fps_limit, the game's frame cap before generation (by the layer: injection):
+                            // "0" none, "auto" (screen ÷ multiplier) or a rate; "" = read from the config
     bool perGame = false;   // save these options to the target's [game] section
                             // (a per-game profile) instead of the global [*]
     // Advanced optical-flow tuning (defaults mirror Config; a value left at its

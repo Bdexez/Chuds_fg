@@ -304,8 +304,8 @@ Layout launcherLayout() {
     for (const ExtraOpt& o : extraOptions()) h += o.key.empty() ? 20 : 22;
     Layout l;
     l.columnGroupH = std::max(770, h + 4);
-    // The left column (and "En cours" under it) ends at 910.
-    l.buttonsY = std::max(8 + l.columnGroupH, 910) + 10;
+    // The left column (and "En cours" under it) ends at 940.
+    l.buttonsY = std::max(8 + l.columnGroupH, 940) + 10;
     l.clientH = l.buttonsY + 26 + 12;
     return l;
 }
@@ -384,7 +384,7 @@ static std::string normalizeExtra(const ExtraOpt& o, std::string v) {
 static bool managedKey(const std::string& key) {
     for (const ExtraOpt& o : extraOptions())
         if (!o.key.empty() && key == o.key) return true;
-    static const char* kManaged[] = {"preset",        "multiplier",  "mode",      "present_mode",
+    static const char* kManaged[] = {"preset",        "multiplier",  "mode",      "present_mode", "fps_limit",
                                      "upscale_filter", "sharpness",  "overlay",   "hud",
                                      "grad_weight",   "smoothness",  "zero_bias", "search_fine",
                                      "flow_iterations", "scene_cut_low", "scene_cut_high"};
@@ -513,6 +513,7 @@ enum {
     ID_REPORT,
     ID_CAL_RUN,
     ID_CAL_APPLY,
+    ID_LIMIT,
     ID_TIMER_RUNNING = 1,
 };
 
@@ -538,7 +539,45 @@ struct Ui {
     std::vector<HWND> extra;  // one control per extraOptions() entry (nullptr for headers)
     HWND running = nullptr;   // "En cours": the live status files
     std::wstring runningText;
+    HWND fpsLimit = nullptr;  // the game's frame cap (fps_limit)
+    std::vector<std::string> limitValues;  // its entries' values
 };
+
+// fps_limit as the launcher keeps it: "0", "auto" or a rate ("%g").
+std::string normalizeLimit(const std::string& raw) {
+    const std::string v = lower(trim(raw));
+    if (v == "auto") return "auto";
+    char* e = nullptr;
+    const double d = std::strtod(v.c_str(), &e);
+    if (!e || e == v.c_str()) return "0";
+    if (d < 0) return "auto";
+    char buf[32];
+    std::snprintf(buf, sizeof buf, "%g", d);
+    return d > 0 ? std::string(buf) : std::string("0");
+}
+
+const char* const kLimitValues[] = {"0", "30", "40", "45", "60", "72", "90", "auto"};
+
+// The frame cap's menu, `value` selected (added as an entry of its own when
+// none is it: a rate written by hand, or by the Linux panel).
+void fillLimit(Ui& ui, const std::string& value) {
+    SendMessageW(ui.fpsLimit, CB_RESETCONTENT, 0, 0);
+    ui.limitValues.clear();
+    for (const char* v : kLimitValues) {
+        std::wstring label = std::string(v) == "0" ? std::wstring(T(L"Aucune", L"None"))
+                           : std::string(v) == "auto" ? std::wstring(T(L"Auto — écran ÷ multiplicateur", L"Auto — screen ÷ multiplier"))
+                           : wideFromAcp(v) + T(L" i/s", L" fps");
+        SendMessageW(ui.fpsLimit, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label.c_str()));
+        ui.limitValues.emplace_back(v);
+    }
+    if (std::find(ui.limitValues.begin(), ui.limitValues.end(), value) == ui.limitValues.end()) {
+        const std::wstring label = wideFromAcp(value.c_str()) + T(L" i/s", L" fps");
+        SendMessageW(ui.fpsLimit, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label.c_str()));
+        ui.limitValues.push_back(value);
+    }
+    const auto it = std::find(ui.limitValues.begin(), ui.limitValues.end(), value);
+    SendMessageW(ui.fpsLimit, CB_SETCURSEL, static_cast<WPARAM>(it - ui.limitValues.begin()), 0);
+}
 
 static std::wstring wideFromUtf8(const std::string& s) {
     int n = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
@@ -777,6 +816,7 @@ void applyScopeToChoice(const std::vector<std::pair<std::string, std::string>>& 
         } else if (k == "sharpness" || k == "sharpen") c.sharpness = std::clamp(toF(v, c.sharpness), 0.f, 1.f);
         else if (k == "overlay" || k == "hud") c.hud = std::clamp(toI(v, c.hud), 0, 4);
         else if (k == "present_mode") c.fifo = (v == "fifo" || v == "vsync");
+        else if (k == "fps_limit" || k == "fps_cap") c.fpsLimit = normalizeLimit(v);
         else if (k == "gpu") c.gpu = (v == "auto" || v == "game") ? std::string() : trim(p.second);
         else if (k == "method")
             c.method = (v == "layer" || v == "injection" || v == "1") ? 1 : (v == "capture" || v == "2") ? 2 : 0;
@@ -828,6 +868,7 @@ void fillFromChoice(Ui& ui) {
     SendMessageW(ui.filter, CB_SETCURSEL, f, 0);
     SendMessageW(ui.fifo, BM_SETCHECK, c.fifo ? BST_CHECKED : BST_UNCHECKED, 0);
     SendMessageW(ui.hud, CB_SETCURSEL, std::clamp(c.hud, 0, 4), 0);
+    fillLimit(ui, c.fpsLimit.empty() ? std::string("0") : c.fpsLimit);
     SendMessageW(ui.method, CB_SETCURSEL, std::clamp(c.method, 0, 2), 0);
     int g = 0;
     for (size_t i = 0; i < ui.gpuNames.size() && !c.gpu.empty(); ++i)
@@ -875,6 +916,7 @@ void persist(const LaunchChoice& c) {
     kv.emplace_back("gpu", c.gpu.empty() ? "auto" : c.gpu);
     kv.emplace_back("method", c.method == 1 ? "layer" : c.method == 2 ? "capture" : "auto");
     if (c.fifo) kv.emplace_back("present_mode", "fifo");
+    if (!c.fpsLimit.empty() && c.fpsLimit != "0") kv.emplace_back("fps_limit", c.fpsLimit);
     // Advanced flow keys: written only when they differ from the default, so an
     // untouched panel keeps the file minimal and the engine on its own defaults
     // (same behaviour as the Linux control panel).
@@ -949,6 +991,8 @@ void gather(Ui& ui) {
     c.sharpness = std::clamp(readInt(ui.sharpEd, 0), 0, 100) / 100.f;
     c.fifo = SendMessageW(ui.fifo, BM_GETCHECK, 0, 0) == BST_CHECKED;
     c.hud = sel(ui.hud);
+    const int li = sel(ui.fpsLimit);
+    c.fpsLimit = li >= 0 && li < static_cast<int>(ui.limitValues.size()) ? ui.limitValues[size_t(li)] : "0";
     c.method = std::clamp(sel(ui.method), 0, 2);
     const int g = sel(ui.gpu);
     c.gpu = g > 0 && g <= static_cast<int>(ui.gpuNames.size()) ? ui.gpuNames[size_t(g - 1)] : std::string();
@@ -999,7 +1043,7 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             return c;
         };
         auto group = [&](const wchar_t* t, int x, int y, int w, int h) {
-            add(L"BUTTON", t, BS_GROUPBOX, x, y, w, h, 0);
+            return add(L"BUTTON", t, BS_GROUPBOX, x, y, w, h, 0);
         };
         auto combo = [&](int x, int y, int w, int id) {
             return add(L"COMBOBOX", nullptr, CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_VSCROLL,
@@ -1015,7 +1059,7 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         ui->perGame = add(L"BUTTON", T(L"Profil pour ce jeu (sinon réglages globaux)", L"Profile for this game (else global settings)"),
                           BS_AUTOCHECKBOX | WS_TABSTOP, 24, 143, 324, 20, ID_PERGAME);
 
-        group(T(L"Génération d'images", L"Frame generation"), 12, 184, 472, 136);
+        group(T(L"Génération d'images", L"Frame generation"), 12, 184, 472, 190);
         ui->gen = add(L"BUTTON", T(L"Activer (plusieurs images par image du jeu)", L"Enable (several frames per game frame)"),
                       BS_AUTOCHECKBOX | WS_TABSTOP, 24, 202, 360, 20, ID_GEN);
         add(L"STATIC", T(L"Profil de qualité", L"Quality preset"), SS_LEFT, 36, 231, 140, 16, 0);
@@ -1024,42 +1068,46 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         ui->mult = combo(180, 254, 292, ID_MULT);
         add(L"STATIC", L"Mode", SS_LEFT, 36, 283, 140, 16, 0);
         ui->mode = combo(180, 280, 292, ID_MODE);
+        // The game's own rate, capped before generation (by the layer, in the
+        // game: injection — a captured window is not the game's to slow).
+        add(L"STATIC", T(L"Limite d'images du jeu", L"Game frame limit"), SS_LEFT, 36, 309, 140, 16, 0);
+        ui->fpsLimit = combo(180, 306, 292, ID_LIMIT);
+        add(L"STATIC", T(L"Compteur de FPS", L"FPS counter"), SS_LEFT, 36, 335, 140, 16, 0);
+        ui->hud = combo(180, 332, 292, ID_HUD);
 
-        group(T(L"Affichage", L"Display"), 12, 328, 472, 134);
-        add(L"STATIC", T(L"Taille de la fenêtre", L"Window size"), SS_LEFT, 36, 346, 140, 16, 0);
-        ui->size = combo(180, 343, 292, ID_SIZE);
-        add(L"STATIC", T(L"Échelle", L"Scale"), SS_LEFT, 36, 372, 140, 16, 0);
-        ui->scaleEd = add(L"EDIT", nullptr, ES_NUMBER | WS_TABSTOP, 180, 369, 90, 23, ID_SCALE);
-        add(L"STATIC", L"%", SS_LEFT, 276, 372, 20, 16, 0);
-        add(L"STATIC", T(L"Filtre d'agrandissement", L"Upscaling filter"), SS_LEFT, 36, 398, 140, 16, 0);
-        ui->filter = combo(180, 395, 292, ID_FILTER);
-        add(L"STATIC", T(L"Netteté (CAS)", L"Sharpness (CAS)"), SS_LEFT, 36, 424, 140, 16, 0);
-        ui->sharpEd = add(L"EDIT", nullptr, ES_NUMBER | WS_TABSTOP, 180, 421, 90, 23, ID_SHARP);
-        add(L"STATIC", L"%", SS_LEFT, 276, 424, 20, 16, 0);
+        group(T(L"Affichage", L"Display"), 12, 382, 472, 134);
+        add(L"STATIC", T(L"Taille de la fenêtre", L"Window size"), SS_LEFT, 36, 400, 140, 16, 0);
+        ui->size = combo(180, 397, 292, ID_SIZE);
+        add(L"STATIC", T(L"Échelle", L"Scale"), SS_LEFT, 36, 426, 140, 16, 0);
+        ui->scaleEd = add(L"EDIT", nullptr, ES_NUMBER | WS_TABSTOP, 180, 423, 90, 23, ID_SCALE);
+        add(L"STATIC", L"%", SS_LEFT, 276, 426, 20, 16, 0);
+        add(L"STATIC", T(L"Filtre d'agrandissement", L"Upscaling filter"), SS_LEFT, 36, 452, 140, 16, 0);
+        ui->filter = combo(180, 449, 292, ID_FILTER);
+        add(L"STATIC", T(L"Netteté (CAS)", L"Sharpness (CAS)"), SS_LEFT, 36, 478, 140, 16, 0);
+        ui->sharpEd = add(L"EDIT", nullptr, ES_NUMBER | WS_TABSTOP, 180, 475, 90, 23, ID_SHARP);
+        add(L"STATIC", L"%", SS_LEFT, 276, 478, 20, 16, 0);
 
-        group(T(L"Présentation", L"Presentation"), 12, 470, 472, 76);
+        group(T(L"Présentation", L"Presentation"), 12, 524, 472, 50);
         ui->fifo = add(L"BUTTON", T(L"Synchroniser avec l'écran (FIFO / vsync)", L"Sync with the screen (FIFO / vsync)"),
-                       BS_AUTOCHECKBOX | WS_TABSTOP, 24, 488, 360, 20, ID_FIFO);
-        add(L"STATIC", T(L"Compteur de FPS", L"FPS counter"), SS_LEFT, 36, 515, 140, 16, 0);
-        ui->hud = combo(180, 512, 292, ID_HUD);
+                       BS_AUTOCHECKBOX | WS_TABSTOP, 24, 542, 360, 20, ID_FIFO);
 
         // Advanced optical-flow tuning. A plain EDIT (no ES_NUMBER) accepts a
         // decimal point; the two integer radii use ES_NUMBER.
-        group(T(L"Réglages avancés", L"Advanced settings"), 12, 552, 472, 226);
+        group(T(L"Réglages avancés", L"Advanced settings"), 12, 582, 472, 226);
         add(L"STATIC", T(L"Laisser par défaut convient à la plupart des jeux. 0 pour désactiver la netteté.", L"The defaults suit most games. 0 turns sharpening off."),
-            SS_LEFT, 24, 570, 452, 16, 0);
+            SS_LEFT, 24, 600, 452, 16, 0);
         auto advEdit = [&](const wchar_t* label, int y, int id, bool integer) -> HWND {
             add(L"STATIC", label, SS_LEFT, 36, y + 3, 214, 16, 0);
             const DWORD st = WS_TABSTOP | WS_BORDER | (integer ? ES_NUMBER : 0);
             return add(L"EDIT", nullptr, st, 258, y, 90, 23, id);
         };
-        ui->grad   = advEdit(T(L"Netteté du mouvement rapide", L"Sharp fast motion"), 592, ID_GRAD, false);
-        ui->scLow  = advEdit(T(L"Coupure de scène — début du fondu", L"Scene cut — blend start"), 618, ID_SCLOW, false);
-        ui->scHigh = advEdit(T(L"Coupure de scène — image réelle", L"Scene cut — real frame"), 644, ID_SCHIGH, false);
-        ui->smooth = advEdit(T(L"Lissage du mouvement", L"Motion smoothing"), 670, ID_SMOOTH, false);
-        ui->zbias  = advEdit(T(L"Stabilité de l'image fixe", L"Still-picture stability"), 696, ID_ZBIAS, false);
-        ui->sfine  = advEdit(T(L"Précision de recherche (1–4)", L"Search precision (1–4)"), 722, ID_SFINE, true);
-        ui->fiter  = advEdit(T(L"Itérations de synthèse (0–3)", L"Synthesis iterations (0–3)"), 748, ID_FITER, true);
+        ui->grad   = advEdit(T(L"Netteté du mouvement rapide", L"Sharp fast motion"), 622, ID_GRAD, false);
+        ui->scLow  = advEdit(T(L"Coupure de scène — début du fondu", L"Scene cut — blend start"), 648, ID_SCLOW, false);
+        ui->scHigh = advEdit(T(L"Coupure de scène — image réelle", L"Scene cut — real frame"), 674, ID_SCHIGH, false);
+        ui->smooth = advEdit(T(L"Lissage du mouvement", L"Motion smoothing"), 700, ID_SMOOTH, false);
+        ui->zbias  = advEdit(T(L"Stabilité de l'image fixe", L"Still-picture stability"), 726, ID_ZBIAS, false);
+        ui->sfine  = advEdit(T(L"Précision de recherche (1–4)", L"Search precision (1–4)"), 752, ID_SFINE, true);
+        ui->fiter  = advEdit(T(L"Itérations de synthèse (0–3)", L"Synthesis iterations (0–3)"), 778, ID_FITER, true);
 
         // Second column: the engine options of layer/options_ui.conf's
         // launcher sections (extraOptions), section by section.
@@ -1137,9 +1185,9 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
 
         // Under the left column.
-        group(T(L"En cours", L"Running"), 12, 786, 472, 124);
+        group(T(L"En cours", L"Running"), 12, 816, 472, 124);
         ui->running = add(L"EDIT", nullptr, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_BORDER,
-                          24, 804, 448, 98, ID_RUNNING);
+                          24, 834, 448, 98, ID_RUNNING);
         SetTimer(hwnd, ID_TIMER_RUNNING, 1000, nullptr);
 
         add(L"BUTTON", T(L"Démarrer", L"Start"), BS_DEFPUSHBUTTON | WS_TABSTOP, 770, layout.buttonsY, 96, 26, IDOK);
@@ -1343,6 +1391,7 @@ bool runLauncher(LaunchChoice& choice) {
         wc.lpszClassName = cls;
         if (!RegisterClassExW(&wc)) return false;
     }
+    if (choice.fpsLimit.empty()) choice.fpsLimit = normalizeLimit(globalConfigValue("fps_limit"));
     // Prefill the advanced column from the global config scope (what the
     // capture would load), unless the caller already did.
     for (const ExtraOpt& o : extraOptions())
