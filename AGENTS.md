@@ -81,8 +81,9 @@ tous les shaders de `layer/shaders/`.
   exactement les frames du layer en ligne (hors compteur de la démo).
 - `demo/` — démo Vulkan (scène animée) servant de cobaye pour l'éval et les
   tests ; `tools/run_eval.sh` + `tools/eval_quality.py` (PSNR vs référence).
-- `tools/` — GUI de contrôle GTK4 (`bdex-framegen-gui`, Linux), `install.sh` /
-  `uninstall.sh` (x64 + x86), scripts PowerShell d'enregistrement du layer.
+- `tools/` — GUI de contrôle GTK4 (`bdex-framegen-gui`, Linux : pages
+  « Simple » et « Avancé », §12), `install.sh` / `uninstall.sh` (x64 + x86),
+  scripts PowerShell d'enregistrement du layer.
 - `tests/` — tests unitaires (config, formats), alignement de l'évaluateur,
   réindexation des métadonnées de present sur deux swapchains,
   `integration.sh` (démo 30 fps à travers la couche, vérifie le ratio x2 et
@@ -1439,6 +1440,60 @@ Tenus à jour dans `ROADMAP.md` (où en est le projet, ce qui reste) et
   SEQ…` (verdict par option ; liste `CANDIDATES` à tenir à jour quand une
   option est tranchée ou ajoutée).
 
+
+## 12. Interfaces (19/11, demande utilisateur : « une ui moderne, simple et compréhensible »)
+
+**Panneau Linux** (`tools/bdex-framegen-gui`, un seul fichier : installé tel
+quel par CMake et tous les paquets). Deux pages (`Adw.ViewStack`, sans
+libadwaita `Gtk.Stack`), la dernière retenue dans
+`~/.cache/bdex-framegen/panel-ui.json` :
+- **Simple** : bandeau d'état (`_hero_state` : à installer, mode Jeu, en
+  attente, prêt, en cours/en pause ; stats live du statut du jeu — ou de
+  `bdex-capture` — chaque seconde) avec le bouton unique Démarrer/Arrêter
+  (+ Pause) ; « 1 — Choisis le jeu » (`GameRow`, liste incrémentale toutes
+  les 2 s, noms affichés avec leur casse — `display_name` ; le nom de section
+  reste `layer_name`) ; « 2 — Règle la génération » : `Segmented` (boutons
+  liés) Auto/×2/×3/×4 (autre valeur = bouton « extra »), limite d'i/s
+  (interrupteur + 30/40/45/60/Auto + valeur libre ; la dernière valeur est
+  rendue au réenclenchement), priorité Fluidité/Réactivité, compteur ;
+  `expected_summary` dit ce que ça donne.
+- **Avancé** : barre latérale (catégories, compte des options modifiées,
+  « Tout réinitialiser » + Annuler), recherche (titre, aide, clé ; Ctrl+F),
+  une seule page défilante (la barre suit le défilement). Chaque option =
+  un `Setting` (valeur en chaîne canonique, `get`/`put` sur `Options`,
+  défaut) rendu par `SettingRow` : `Adw.ActionRow` + contrôles GTK posés à
+  droite dans un ordre fixe (↶ si modifiée, ⓘ aide complète + clé, contrôle) —
+  pas `SwitchRow`/`ComboRow` (l'ordre de leurs suffixes varie). « Système » :
+  couche, GPU, calibration, mode Jeu par jeu, outils.
+- Modèle : toute modification passe par `Options`, puis `changed()` →
+  `refresh()` (tous les widgets depuis `Options`, sous `quiet()`) →
+  `save_soon()` (250 ms : le jeu relit le fichier à chaque écriture).
+  **Rien de ce qu'un rafraîchissement règle ne doit écrire** : tout signal
+  vérifie `_loading`.
+- Pièges : (1) les lignes `_Compat` (GTK sans libadwaita) réglées sur leur
+  propre valeur depuis leur signal bloquaient la fenêtre (liaison
+  bidirectionnelle réentrante) : leurs setters ne font rien si la valeur ne
+  change pas — garder cette garde ; (2) un test qui joue le jeu avec son
+  propre pid doit avoir son environnement isolé **dès le lancement**
+  (`/proc/<pid>/environ`), sinon la session part dans le vrai `~/.cache`.
+- Tests : `panel_logic.py` (sans GTK : chaque `tr()` a son anglais dans
+  `_EN`, aucune entrée orpheline — un nouveau texte = sa traduction) ;
+  `panel_ui.py` (pilote la vraie fenêtre : Simple, Avancé, Auto/valeur/
+  défaut, recherche, réinitialisation, chaque changement relu dans le
+  fichier) — **seulement** sous Xvfb en conteneur (`tools/ci/panel-check.sh`,
+  libadwaita et GTK simple, fr et en ; Arch, Debian 12, Ubuntu 20.04 texte).
+  Captures d'écran : même conteneur + `xwd`, de faux jeux = processus
+  `exec -a NOM` qui chargent une bibliothèque nommée
+  `libVkLayer_bdex_framegen.so` + fichiers de statut écrits à la main.
+
+**Lanceur Windows** (`capture/src/launcher.cpp`) : page basique d'une colonne
+(jeu ; profil, ×N, mode, **limite d'images du jeu** `fps_limit`, compteur ;
+en cours ; Démarrer) et case « Mode avancé » (`advancedOnly` masqués,
+`applyMode` déplace « En cours » et les boutons, redimensionne la fenêtre,
+choix gardé dans `%LOCALAPPDATA%\bdex-framegen\launcher-mode`). Vérifiable
+sans Windows : MinGW (`tools/ci/run.sh mingw`) et, pour le voir, un exécutable
+de test (lanceur + `config/options_ui/status/platform/log` + fonctions Vulkan
+factices, `-static -mwindows`) lancé par Wine sous Xvfb.
 
 ### Session 2026-11-10 — présentation des README
 
