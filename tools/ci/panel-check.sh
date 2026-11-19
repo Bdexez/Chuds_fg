@@ -2,7 +2,9 @@
 # Starts the control panel in a container, on a virtual display (Xvfb) inside
 # it — nothing opens on the host's screen — with libadwaita and without it,
 # as on SteamOS (3.9 ships GTK 4 and PyGObject, no libadwaita), and checks
-# that it comes up and stays up without a Python error. Then its text mode
+# that it comes up and stays up without a Python error, then drives its window
+# (tests/panel_ui.py: « Simple » and « Avancé », each change read back from
+# the config file), in French and in English. Then its text mode
 # (the panel without GTK 4: Ubuntu 20.04, Debian 11), driven through a
 # pseudo-terminal, and its config model through the Game Mode settings
 # (tests/panel_logic.py).
@@ -57,6 +59,18 @@ for variant in "${variants[@]}"; do
   else
     echo "panel ($variant GTK 4): exit $rc"; tail -20 /tmp/panel.log; status=1
   fi
+  for lang in fr en; do
+    set +e
+    DISPLAY=:99 GDK_BACKEND=x11 GSK_RENDERER=cairo BDEX_FG_GUI_NO_ADW="$noadw" BDEX_LANG=$lang \
+      timeout 120 python3 /work/panel_ui.py /work/bdex-framegen-gui >/tmp/ui.log 2>&1
+    rc=$?
+    set -e
+    if [ $rc -eq 0 ]; then
+      echo "panel ($variant GTK 4, $lang): window driven, options written"
+    else
+      echo "panel ($variant GTK 4, $lang): exit $rc"; grep -v 'MESA\|DRI3\|session bus' /tmp/ui.log | tail -20; status=1
+    fi
+  done
 done
 # Text mode: x3 chosen in the multiplier menu reaches the config file, and
 # the session is gone once it quits.
@@ -82,7 +96,8 @@ JOB
 status=0
 for img in "${images[@]}"; do
   if docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/bdex-ci/apt-get:ro" -v "$job:/work/job.sh:ro" -v "$ROOT/tools/bdex-framegen-gui:/work/bdex-framegen-gui:ro" \
-       -v "$ROOT/tests/panel_logic.py:/work/panel_logic.py:ro" -v "$json:/work/options_ui.json:ro" \
+       -v "$ROOT/tests/panel_logic.py:/work/panel_logic.py:ro" -v "$ROOT/tests/panel_ui.py:/work/panel_ui.py:ro" \
+       -v "$json:/work/options_ui.json:ro" \
        "$img" bash /work/job.sh 2>&1 | sed "s|^|[$img] |"; then
     echo "[$img] OK"
   else
