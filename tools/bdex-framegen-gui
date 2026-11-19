@@ -759,7 +759,8 @@ class _Compat:
             return self.props.active
 
         def set_active(self, value):
-            self.props.active = value
+            if self.props.active != value:   # (as GTK's own: re-set from its notify, the binding hung)
+                self.props.active = value
 
     class ComboRow(ActionRow):
         selected = GObject.Property(type=int, default=0)
@@ -775,7 +776,8 @@ class _Compat:
             return self.props.selected
 
         def set_selected(self, index):
-            self.props.selected = index
+            if self.props.selected != index:
+                self.props.selected = index
 
     class SpinRow(ActionRow):
         value = GObject.Property(type=float, default=0.0)
