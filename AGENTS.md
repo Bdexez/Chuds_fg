@@ -798,7 +798,12 @@ launcher : `T(fr, en)`, `statusDescribe(f, english)`. La GUI lit `options_ui.jso
 `tools/options/bdex_options` au build, installé dans share/bdex-framegen) ;
 le launcher embarque le `.conf` (`options_ui_conf.h`, octets). Le build
 échoue sur une clé inconnue du `.conf` ; le test `option_keys` exige la clé
-dans le tableau du README.
+dans le tableau du README. **Toute option du moteur a sa ligne dans le
+`.conf`** (depuis le 19/11 : la page « Avancé » du panneau doit toutes les
+montrer ; `panel_ui.py` vérifie que chaque option de `options_ui.json` a sa
+ligne). Une option que `autoConfigure` active d'office sur GPU dédié
+(`autoOptionsSet`) va aussi dans `AUTO_KEYS` du panneau (état « Auto »
+jamais écrit ; une valeur, 0 compris, est écrite et l'épingle).
 
 ## 8. Produit Windows capture — architecture et pièges hardware
 
