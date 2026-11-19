@@ -297,6 +297,13 @@ les images répétées (`dedup`) et commande des passes en dispatch indirect,
     couche 32 bits sous Debian/Ubuntu/Fedora ; il teste maintenant la
     liaison d'une bibliothèque C++ 32 bits. Fedora : `glibc-devel.i686
     libstdc++-devel.i686 libatomic.i686`.
+- **Panneau** (`bdex-framegen-gui`, depuis le 19/11) : deux pages. *Simple* —
+  le jeu (détecté tout seul), Auto/×2/×3/×4, la limite d'i/s du jeu, la
+  priorité (fluidité = interpolation, réactivité = extrapolation), le
+  compteur, et un seul bouton Démarrer/Arrêter avec les chiffres du jeu en
+  direct. *Avancé* — toutes les options, par catégorie, avec recherche,
+  aide complète, retour à la valeur par défaut et état « Auto » pour celles
+  que le moteur active seul sur GPU dédié. Voir §7, 19/11.
 - **Panneau sans GTK 4** (Ubuntu 20.04, Debian 11) : mode texte dans un
   terminal (`text_main`), même session/battement, mêmes options ; lancé
   depuis le menu, il ouvre un terminal (`$TERMINAL`, `xdg-terminal-exec`,
@@ -4630,3 +4637,57 @@ vertes, 882 s), et la **couche Windows sur le GPU sous Wine**
 (`wine-gpu-check.sh` : Vulkan 64/32 bits, extrapolation, hybride ×3,
 D3D11 64/32 et D3D12, profondeur, limite à 30 tenue — 10/10, réveils
 70–80 µs) après le changement de lecture de l'environnement.
+
+### 19/11 — une nouvelle interface : pages « Simple » et « Avancé »
+
+Demande de l'utilisateur : ne plus améliorer la génération d'images, mais
+construire **une interface moderne, simple et compréhensible** — un mode
+basique optimisé (choisir le jeu où appliquer la génération, limiter les
+FPS, choisir ×2, ×3…) et un mode avancé qui modifie toutes les options.
+
+**Panneau Linux** (`tools/bdex-framegen-gui`, réécrit autour de la logique
+existante : config, détection, session, capture, mode texte inchangés) :
+- *Simple* : un bandeau d'état et son bouton (« Lance ton jeu » → « Prêt —
+  Cyberpunk2077 » → « En cours » avec JEU 40 / AFFICHÉ 120 / ×3 / LATENCE
+  23 ms, Pause) ; « 1 — Choisis le jeu » (liste mise à jour toutes les 2 s,
+  état et méthode de chaque jeu, capture d'une fenêtre absente) ;
+  « 2 — Règle la génération » (Auto/×2/×3/×4 ; limite 30/40/45/60/Auto ou
+  une valeur ; Fluidité/Réactivité ; compteur) et une phrase qui dit ce que
+  ça donne (« Jeu limité à 48 i/s × 3 = 144 i/s affichées »).
+- *Avancé* : barre latérale (Génération, Cadence, Affichage, Upscaling,
+  Qualité du mouvement, Structure du flux, Expérimental, Compatibilité,
+  Diagnostic, Système) avec le nombre d'options modifiées, recherche (Ctrl+F),
+  chaque option avec son aide (ⓘ : texte complet et clé), une barre et ↶ si
+  modifiée, « Tout réinitialiser » avec Annuler. Système : couche, GPU,
+  calibration, mode Jeu par jeu, options Steam, fichier de config, rapport,
+  enregistrement.
+- **Toutes les options** : 16 manquaient au panneau (`content_clock`,
+  `pace_plan`, `virtual_grid`, `precise_wake`, `thread_priority`,
+  `border_predict`, `border_fill`, `still_occluder`, `hud_avoid`,
+  `static_soft`, `interp_accel`, `false_detail`, `latency_log`,
+  `async_compute`, `pipeline_cache`, `ignore_anticheat`) : ajoutées à
+  `options_ui.conf` (fr/en), panneau seulement.
+- **Bug corrigé** : les options que le moteur active seul sur GPU dédié
+  (`pixel_vectors`, `mosaic_blur`, `hud_layer`, `zero_bias`…) ne pouvaient
+  pas être coupées depuis le panneau (0 = la valeur par défaut, jamais
+  écrite, donc « auto » à nouveau). Elles ont maintenant un état **Auto**
+  (non écrit) et toute valeur, 0 compris, est écrite.
+- Thème sombre par défaut (clair si le bureau le demande), français/anglais
+  complets (312 textes ; le test échoue sur un texte sans traduction).
+
+**Lanceur Windows** : page basique d'une colonne (jeu ; profil, ×N, mode,
+**limite d'images du jeu** — nouvelle sous Windows, appliquée par la couche
+en injection —, compteur ; en cours ; Démarrer) et case « Mode avancé » qui
+rouvre la fenêtre complète ; choix retenu.
+
+**Vérifié** : `panel_ui.py` pilote la vraie fenêtre et relit chaque
+changement dans le fichier de config (Arch GTK 4.24, Debian 12 GTK 4.8 ;
+avec et sans libadwaita ; fr et en), mode texte (Ubuntu 20.04), captures
+d'écran sous Xvfb en conteneur (rien sur l'écran de l'utilisateur, aucun
+fichier de l'utilisateur touché) ; lanceur Windows : MinGW x64 + i686, puis
+exécuté sous Wine (les deux pages, la bascule, une limite lue dans la
+config). Bug trouvé en route : sans libadwaita, une ligne réglée sur sa
+propre valeur depuis son signal bloquait la fenêtre (corrigé).
+**Non vérifié** : le panneau sur le bureau de l'utilisateur avec un vrai jeu
+(volontairement : jamais de fenêtre de test sur son écran), le lanceur sur
+un vrai Windows.
