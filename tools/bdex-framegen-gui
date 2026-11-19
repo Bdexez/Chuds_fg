@@ -2132,6 +2132,217 @@ def expected_summary(opt, hz):
     return tr(f"Chaque image du jeu en devient {m} : 60 i/s → {60 * m} i/s affichées") + screen
 
 
+# -- settings: one model for every option the window shows --------------------
+
+class Setting:
+    """An option as the window shows it: its value as a canonical string, read
+    from and written into Options, its default, kind and texts. `auto`: the
+    option has an « Auto » state (that string), the spin shows `on_value`
+    when one leaves it."""
+
+    def __init__(self, key, title, help="", kind="switch", default="0", get=None, put=None, choices=None,
+                 lower=0.0, upper=1.0, step=1.0, digits=0, auto=None, on_value=None, enabled=None):
+        self.key, self.title, self.help, self.kind, self.default = key, title, help, kind, default
+        self.get, self.put = get, put
+        self.choices = list(choices or [])
+        self.lower, self.upper, self.step, self.digits = lower, upper, step, digits
+        self.auto, self.on_value, self.enabled = auto, on_value, enabled
+
+    def modified(self):
+        return self.get() != self.default
+
+    def value_label(self, v):
+        if self.kind == "switch":
+            return tr("activé") if v == "1" else tr("désactivé")
+        if self.auto is not None and v == self.auto:
+            return "Auto"
+        for lab, val in self.choices:
+            if val == v:
+                return lab
+        return v if v else tr("vide")
+
+
+# Strengths whose « Auto » turns them fully on: the value a spin starts at
+# when one leaves « Auto » (hud_mask: the stable frames the help advises).
+AUTO_ON = {"mosaic_blur": "1", "hud_layer": "1", "static_soft": "1", "interp_accel": "1", "false_detail": "1",
+           "rot_weight": "1", "hud_mask": "24"}
+
+
+def option_setting(o, opt):
+    """A Setting for an option of options_ui.json (its value in opt.values)."""
+    key = o["key"]
+    get = lambda: opt.values[key]
+    put = lambda v: opt.values.__setitem__(key, v)
+    if o.get("auto") and o["kind"] == "switch":
+        return Setting(key, o["title"], o["sub"], "choice", "auto", get, put,
+                       [(tr("Auto — selon le GPU"), "auto"), (tr("Activé"), "1"), (tr("Désactivé"), "0")])
+    if o["kind"] == "spin":
+        auto = "auto" if o.get("auto") or o["lower"] < 0 else None
+        on = AUTO_ON.get(key) or (o.get("registry_default") if o.get("auto") else None) or o["default"]
+        if on == "auto":
+            on = _fmt_num(max(0.0, o["lower"]), o["digits"])
+        return Setting(key, o["title"], o["sub"], "spin", o["default"], get, put, lower=max(0.0, o["lower"])
+                       if auto else o["lower"], upper=o["upper"], step=o["step"], digits=o["digits"], auto=auto,
+                       on_value=on)
+    if o["kind"] == "choice":
+        return Setting(key, o["title"], o["sub"], "choice", o["default"], get, put, o["choices"])
+    return Setting(key, o["title"], o["sub"], o["kind"], o["default"], get, put)
+
+
+def dropdown(labels, short=26):
+    """A menu of `labels`, its button ellipsized past `short` characters (the
+    list shows them whole): long choices do not squeeze the row's texts."""
+    dd = Gtk.DropDown(model=Gtk.StringList.new(labels), valign=Gtk.Align.CENTER)
+
+    def setup(_f, item, width):
+        lab = Gtk.Label(xalign=0)
+        if width:
+            lab.set_ellipsize(Pango.EllipsizeMode.END)
+            lab.set_max_width_chars(width)
+        item.set_child(lab)
+
+    def bind(_f, item):
+        item.get_child().set_text(item.get_item().get_string())
+    if hasattr(dd, "set_list_factory"):   # (GTK 4.6+)
+        button, full = Gtk.SignalListItemFactory(), Gtk.SignalListItemFactory()
+        button.connect("setup", setup, short)
+        full.connect("setup", setup, 0)
+        for f in (button, full):
+            f.connect("bind", bind)
+        dd.set_factory(button)
+        dd.set_list_factory(full)
+    return dd
+
+
+class SettingRow:
+    """The control of a Setting in a row: its title and help, then at its
+    right « back to the default » (once it differs), the full help behind (i),
+    and the control — a switch, a menu, a number (with « Auto » where the
+    option has one) or a text."""
+
+    def __init__(self, win, s):
+        self.win, self.s = win, s
+        self._spin = self._dd = self._switch = self._entry = None
+        if s.kind == "choice" and s.get() not in [c[1] for c in s.choices]:
+            s.choices.append((s.get(), s.get()))   # (a value set by hand: a preset none of the choices is)
+        row = Adw.ActionRow(title=s.title, subtitle=s.help)
+        try:
+            row.set_subtitle_lines(2)
+        except AttributeError:
+            pass
+        self.reset = Gtk.Button(icon_name="edit-undo-symbolic", valign=Gtk.Align.CENTER)
+        self.reset.add_css_class("flat")
+        self.reset.add_css_class("circular")
+        self.reset.connect("clicked", self._on_reset)
+        row.add_suffix(self.reset)
+        info = Gtk.MenuButton(icon_name="help-about-symbolic", valign=Gtk.Align.CENTER,
+                              tooltip_text=tr("Aide sur cette option"))
+        info.add_css_class("flat")
+        info.add_css_class("circular")
+        info.set_popover(self._help_popover())
+        row.add_suffix(info)
+        if s.kind == "switch":
+            self._switch = Gtk.Switch(valign=Gtk.Align.CENTER)
+            self._switch.connect("notify::active", self._on_widget)
+            row.add_suffix(self._switch)
+            row.set_activatable_widget(self._switch)
+        elif s.kind == "choice":
+            self._dd = dropdown([c[0] for c in s.choices])
+            self._dd.connect("notify::selected", self._on_widget)
+            row.add_suffix(self._dd)
+        elif s.kind == "spin":
+            if s.auto is not None:
+                self._auto = Gtk.DropDown(model=Gtk.StringList.new(["Auto", tr("Valeur")]), valign=Gtk.Align.CENTER)
+                self._auto.connect("notify::selected", self._on_widget)
+                row.add_suffix(self._auto)
+            adj = Gtk.Adjustment(lower=s.lower, upper=s.upper, step_increment=s.step, page_increment=s.step * 10)
+            self._spin = Gtk.SpinButton(adjustment=adj, digits=s.digits, numeric=True, valign=Gtk.Align.CENTER,
+                                        width_chars=6)
+            self._spin.connect("value-changed", self._on_widget)
+            row.add_suffix(self._spin)
+        else:
+            self._entry = Gtk.Entry(valign=Gtk.Align.CENTER, width_chars=22, placeholder_text=tr("vide : désactivé"))
+            self._entry.connect("activate", self._on_widget)
+            leave = Gtk.EventControllerFocus()
+            leave.connect("leave", self._on_widget)
+            self._entry.add_controller(leave)
+            row.add_suffix(self._entry)
+        self.row = row
+        self.text = " ".join([s.title, s.help, s.key] + [c[0] for c in s.choices]).lower()
+
+    def _help_popover(self):
+        s = self.s
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin_start=6, margin_end=6,
+                      margin_top=6, margin_bottom=6)
+        box.append(label(s.title, ("heading",), wrap=True, max_width_chars=56))
+        if s.help:
+            box.append(label(s.help, ("bdex-help",), wrap=True, max_width_chars=56))
+        box.append(label(tr(f"Clé : {s.key} · par défaut : {s.value_label(s.default)}"), ("bdex-key",),
+                         wrap=True, max_width_chars=56, selectable=True))
+        return Gtk.Popover(child=box)
+
+    def value(self):
+        s = self.s
+        if self._switch is not None:
+            return "1" if self._switch.get_active() else "0"
+        if self._dd is not None:
+            i = self._dd.get_selected()
+            return s.choices[i][1] if 0 <= i < len(s.choices) else s.default
+        if self._spin is not None:
+            if s.auto is not None and self._auto.get_selected() == 0:
+                return s.auto
+            return _fmt_num(self._spin.get_value(), s.digits)
+        return self._entry.get_text().strip()
+
+    def load(self):
+        s, v = self.s, self.s.get()
+        if self._switch is not None:
+            self._switch.set_active(v == "1")
+        elif self._dd is not None:
+            values = [c[1] for c in s.choices]
+            self._dd.set_selected(values.index(v) if v in values else 0)
+        elif self._spin is not None:
+            is_auto = s.auto is not None and v == s.auto
+            if s.auto is not None:
+                self._auto.set_selected(0 if is_auto else 1)
+            self._spin.set_sensitive(not is_auto)
+            try:
+                self._spin.set_value(float(s.on_value if is_auto else v))
+            except (TypeError, ValueError):
+                pass
+        elif self._entry.get_text().strip() != v and not self._entry.get_state_flags() & FOCUS_WITHIN:
+            self._entry.set_text(v)
+        modified = v != s.default
+        (self.row.add_css_class if modified else self.row.remove_css_class)("bdex-modified")
+        self.reset.set_opacity(1.0 if modified else 0.0)
+        self.reset.set_sensitive(modified)
+        self.reset.set_tooltip_text(tr(f"Revenir à la valeur par défaut ({s.value_label(s.default)})")
+                                    if modified else None)
+        self.row.set_sensitive(s.enabled() if s.enabled else True)
+
+    def _on_widget(self, *_):
+        if self.win._loading:
+            return
+        v = self.value()
+        if v != self.s.get():
+            self.s.put(v)
+            self.win.changed()
+
+    def _on_reset(self, *_):
+        if self.s.get() != self.s.default:
+            self.s.put(self.s.default)
+            self.win.changed()
+
+
+class ExtraRow:
+    """A row of the advanced page that is not an option (an action, a state):
+    searchable all the same."""
+
+    def __init__(self, row, *texts):
+        self.row = row
+        self.text = " ".join(t for t in texts if t).lower()
+
+
 class Window(Adw.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app, title="bdex-framegen")
