@@ -21,6 +21,7 @@ gtk4 on most distributions). libadwaita 1.4+ is used when installed; without
 it (SteamOS, Debian 12, Ubuntu 22.04) the same widgets are built from plain
 GTK 4 (_Compat).
 """
+import contextlib
 import json
 import os
 import re
@@ -303,6 +304,11 @@ try:
     gi.require_version("Gtk", "4.0")
     from gi.repository import Gio, GObject, Gtk, Gdk, GLib, Pango  # noqa: E402
     HAVE_GTK = True
+    try:   # (positions in the advanced page: compute_point, GTK 4.10+)
+        gi.require_version("Graphene", "1.0")
+        from gi.repository import Graphene  # noqa: E402
+    except (ImportError, ValueError):
+        Graphene = None
 except (ImportError, ValueError):
     HAVE_GTK = False
 
@@ -320,6 +326,7 @@ except (ImportError, ValueError):
             pass
 
     Gio = GObject = Gtk = Gdk = GLib = Pango = _Stub
+    Graphene = None
 
 # libadwaita 1.4+ when installed; otherwise (SteamOS, Debian 12, Ubuntu 22.04:
 # none, or too old for SwitchRow / SpinRow) the same widgets in plain GTK 4.
@@ -752,14 +759,8 @@ def _combo_index(table, value, default=0):
     return default
 
 
-# Options with a control of their own in the main groups, not repeated in
-# « Réglages avancés » (their value still lives in Options.values).
-PROMOTED = {"fps_limit", "fps_limit_wait"}
+# The caps the text mode offers for « Limite d'images du jeu ».
 LIMIT_STEPS = (30, 36, 40, 45, 48, 50, 60, 72, 90, 120)
-# « Limite d'images du jeu »: a slider over 0 (none) .. LIMIT_MAX i/s, marks
-# at the usual rates (and, unlabelled, at the caps that fill the screen).
-LIMIT_MAX = 240
-LIMIT_MARKS = (30, 60, 90, 120, 180, 240)
 
 
 def limit_choices(current="0"):
@@ -1924,6 +1925,14 @@ def describe_entry(e):
     return "\n".join(lines)
 
 
+# ---------------------------------------------------------------------------
+# The window. « Simple »: the game, how many frames, the game's frame limit,
+# Démarrer — what most players touch. « Avancé »: every option, by category,
+# searchable, each with its default one click away. Both pages edit the same
+# Options: a change writes the file (the layer reloads it) and refreshes the
+# two pages from it.
+# ---------------------------------------------------------------------------
+
 # (being typed into: GTK 4.?+ says so of the entry, older ones of its text)
 FOCUS_WITHIN = getattr(Gtk.StateFlags, "FOCUS_WITHIN", None) or getattr(Gtk.StateFlags, "FOCUSED", 0) if HAVE_GTK else 0
 
@@ -2443,62 +2452,119 @@ class GameRow:
 class Window(Adw.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app, title="bdex-framegen")
-        self.set_default_size(600, 860)
+        self.set_default_size(1000, 780)
         self.cfg = ConfigFile.load()
         self.opt = Options()
         self.opt.load_from(self.cfg.glob)
-        self._loading = True   # suppress auto-save while building/populating
+        self._loading = True        # widgets being filled from Options: no save
+        self._save_timer = 0
+        self._spy_quiet = False
+        self.installed = find_layer()[0]
+        self.hz = display_hz()
+        self.gpus = generation_gpus()
+        if self.opt.gpu and not any(self.opt.gpu.lower() in n.lower() for n in self.gpus):
+            self.gpus.append(self.opt.gpu)   # (chosen before, not seen now)
+        self.target = None          # (pid, name) where « Démarrer » started the generation
+        self.target_how = None      # ("layer" | "capture", why) for the target
+        self.capture_proc = None    # bdex-capture, when the target is captured
+        self._target_key = None     # (method, GPU) the target was started with
+        self.selected = None        # (pid, name) chosen in « Choisis le jeu »
+        self.game_rows = {}         # pid -> GameRow
+        self.shown_names = {}       # pid -> the game's name as shown (display_name)
+        self.games = {}             # pid -> (name, status entries)
+        self.setting_rows = []
+        self._last_limit = None     # the cap before « Limiter » was switched off
+        self.radio_anchor = Gtk.CheckButton()   # (the radios' group; active: no game chosen)
 
         self.toasts = Adw.ToastOverlay()
         self.set_content(self.toasts)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.toasts.set_child(box)
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.toasts.set_child(outer)
 
+        self.stack = Adw.ViewStack() if HAVE_ADW else Gtk.Stack(
+            transition_type=Gtk.StackTransitionType.CROSSFADE)
         header = Adw.HeaderBar()
-        title = Adw.WindowTitle(title="bdex-framegen", subtitle=tr("Génération d'images"))
-        header.set_title_widget(title)
-        menu = Gtk.Button(icon_name="edit-copy-symbolic",
-                          tooltip_text=tr("Copier les options de lancement Steam équivalentes (par jeu)"))
-        menu.connect("clicked", self.on_copy)
-        header.pack_end(menu)
         if HAVE_ADW:
-            box.append(header)
+            header.set_title_widget(Adw.ViewSwitcher(stack=self.stack, policy=Adw.ViewSwitcherPolicy.WIDE))
+        else:
+            header.set_title_widget(Gtk.StackSwitcher(stack=self.stack))
+        header.pack_end(self._build_menu())
+        if HAVE_ADW:
+            outer.append(header)
         else:
             self.set_titlebar(header)
+        outer.append(self.stack)
+        self.stack.set_vexpand(True)
 
-        # No horizontal scrolling: long texts wrap to the window's width.
-        scroller = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
-        box.append(scroller)
-        page = Adw.PreferencesPage()
-        scroller.set_child(page)
-
-        self._build_session(page)
-        self._build_without_panel(page)
-        self._build_status(page)
-        self._build_running(page)
-        self._build_framegen(page)
-        self._build_hud(page)
-        self._build_upscale(page)
-        self._build_present(page)
-        self._build_advanced(page)
+        self._add_view(self._build_simple(), "simple", tr("Simple"), "starred-symbolic")
+        self._add_view(self._build_advanced(), "advanced", tr("Avancé"), "preferences-system-symbolic")
+        if read_ui_state().get("page") == "advanced":
+            self.stack.set_visible_child_name("advanced")
+        self.stack.connect("notify::visible-child-name", self._on_page)
+        self._shortcuts()
+        if HAVE_ADW and hasattr(Adw._adw, "Breakpoint"):
+            try:   # (narrow windows, Steam Deck in portrait: no sidebar, the search stays)
+                bp = Adw._adw.Breakpoint.new(Adw._adw.BreakpointCondition.parse("max-width: 640sp"))
+                bp.add_setter(self.adv_side, "visible", False)
+                self.add_breakpoint(bp)
+            except (TypeError, GLib.Error):
+                pass
 
         self._loading = False
-        self.refresh_sensitivity()
+        self.refresh()
         # Every game armed, the session decides (require_app): written once.
-        if self.cfg.glob.get("require_app") != "1" or self.cfg.glob.get("enabled") != "1":
+        if self.cfg.glob.get("require_app") not in ("0", "1") or self.cfg.glob.get("enabled") != "1":
             self.save()
-        self.target = None     # (pid, name) where « Démarrer » started the generation
-        self.target_how = None  # ("layer" | "capture", why) for the target
-        self.capture_proc = None  # bdex-capture, when the target is captured
-        self.selected = None   # (pid, name) chosen in « Jeux détectés »
         try:
             write_session(0)   # open: upscaling applies to games started from now
         except OSError as e:
             self.toast(tr(f"Session impossible : {e}"))
-        self._refresh_running()
+        self._refresh_games()
         GLib.timeout_add_seconds(1, self._beat)
+        GLib.timeout_add_seconds(2, self._poll_games)
         GLib.idle_add(self._refresh_sandboxes)
         self.connect("close-request", self._on_close)
+        if read_calibration() is None and calibrate_binary():
+            GLib.timeout_add(1500, lambda: self.calibrate() and False)
+
+    def _add_view(self, child, name, title, icon):
+        if HAVE_ADW:
+            self.stack.add_titled_with_icon(child, name, title, icon)
+        else:
+            self.stack.add_titled(child, name, title)
+
+    def _on_page(self, *_):
+        write_ui_state({"page": self.stack.get_visible_child_name()})
+
+    def _shortcuts(self):
+        ctl = Gtk.ShortcutController()
+        ctl.set_scope(Gtk.ShortcutScope.GLOBAL)
+
+        def add(trigger, cb):
+            ctl.add_shortcut(Gtk.Shortcut(trigger=Gtk.ShortcutTrigger.parse_string(trigger),
+                                          action=Gtk.CallbackAction.new(lambda *_: cb() or True)))
+        add("<Control>f", self.focus_search)
+        add("<Control>1", lambda: self.stack.set_visible_child_name("simple"))
+        add("<Control>2", lambda: self.stack.set_visible_child_name("advanced"))
+        self.add_controller(ctl)
+
+    def focus_search(self):
+        self.stack.set_visible_child_name("advanced")
+        self.search.grab_focus()
+
+    def _build_menu(self):
+        menu = Gio.Menu()
+        for text, name in ((tr("Copier les options de lancement Steam"), "copy-steam"),
+                           (tr("Ouvrir le fichier de configuration"), "open-config"),
+                           (tr("Signaler un problème…"), "report"),
+                           (tr("À propos de bdex-framegen"), "about")):
+            menu.append(text, "win." + name)
+        for name, cb in (("copy-steam", self.on_copy), ("open-config", self.on_open_config),
+                         ("report", self.on_report), ("about", self.on_about)):
+            action = Gio.SimpleAction.new(name, None)
+            action.connect("activate", lambda _a, _p, f=cb: f(None))
+            self.add_action(action)
+        return Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu, tooltip_text=tr("Menu"))
 
     def _refresh_sandboxes(self):
         apps = refresh_sandboxes()
@@ -2506,77 +2572,586 @@ class Window(Adw.ApplicationWindow):
             self.toast(tr("Couche mise à jour dans : ") + ", ".join(a.replace("snap:", "Snap ") for a in apps))
         return False
 
-    def _beat(self):
-        if self.capture_proc is not None and self.capture_proc.poll() is not None:
-            # the capture ended: the game closed, or it failed (capture.log)
-            self.capture_proc = None
-            self.target, self.target_how = None, None
-            self.toast(tr("Capture terminée (journal : ~/.cache/bdex-framegen/capture.log)"))
-            self._refresh_session()
-        try:
-            layer = self.target and self.target_how and self.target_how[0] == "layer"
-            write_session(self.target[0] if layer else 0)
-        except OSError:
-            pass
-        return True
+    # == « Simple » ==========================================================
 
-    def _on_close(self, *_):
-        stop_capture(self.capture_proc)
-        remove_session()       # the targeted game stops generating
-        return False
+    def _section(self, step, title, suffix=None):
+        head = Gtk.Box(spacing=10, margin_top=6)
+        num = label(step, ("bdex-step",), xalign=0.5, valign=Gtk.Align.CENTER)
+        head.append(num)
+        head.append(label(title, ("bdex-section-title",), hexpand=True, valign=Gtk.Align.CENTER))
+        if suffix is not None:
+            head.append(suffix)
+        return head
 
-    # -- sections ----------------------------------------------------------
+    def _custom_row(self, title, subtitle, *widgets):
+        row = Gtk.ListBoxRow(activatable=False, selectable=False)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, margin_start=12, margin_end=12,
+                      margin_top=10, margin_bottom=12)
+        box.append(label(title, wrap=True))
+        sub = label(subtitle, ("dim-label", "bdex-row-sub"), wrap=True, margin_bottom=6)
+        box.append(sub)
+        for w in widgets:
+            box.append(w)
+        row.set_child(box)
+        return row, sub
 
-    def _build_session(self, page):
-        g = Adw.PreferencesGroup()
-        page.add(g)
-        self.session_row = Adw.ActionRow()
-        self.session_icon = Gtk.Image(valign=Gtk.Align.CENTER)
-        self.session_row.add_prefix(self.session_icon)
-        self.session_btn = Gtk.Button(valign=Gtk.Align.CENTER)
-        self.session_btn.connect("clicked", self.on_session)
-        self.session_row.add_suffix(self.session_btn)
-        g.add(self.session_row)
+    def _build_simple(self):
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14, margin_start=20, margin_end=20,
+                       margin_top=20, margin_bottom=28)
+        page.append(self._build_hero())
 
-    def _build_without_panel(self, page):
-        """Steam's Game Mode (Steam Deck, SteamOS) runs one application at a time:
-        the panel cannot stay open beside the game there. These games generate
-        from their start, with the settings below, the panel closed."""
-        g = Adw.PreferencesGroup(
-            title=tr("Mode Jeu — sans le panneau"),
-            description=tr("Dans le mode Jeu de SteamOS (Steam Deck), ce panneau ne peut pas rester ouvert "
-                        "à côté du jeu : ces jeux génèrent dès leur lancement, avec les réglages ci-dessous. "
-                        "Steam, gamescope et les applications de bureau restent exclus. Autre voie, par jeu : "
-                        "les options de lancement Steam (bouton copier en haut)."))
-        page.add(g)
-        self.always_all_row = Adw.SwitchRow(title=tr("Tous les jeux"), active=self.opt.without_panel,
-                                            subtitle=tr("Chaque jeu Vulkan génère dès son lancement, panneau fermé"))
-        self.always_all_row.connect("notify::active", self.on_change)
-        g.add(self.always_all_row)
+        # 1. the game
+        refresh = Gtk.Button(icon_name="view-refresh-symbolic", valign=Gtk.Align.CENTER,
+                             tooltip_text=tr("Actualiser la liste (elle se met aussi à jour toute seule)"))
+        refresh.add_css_class("flat")
+        refresh.connect("clicked", lambda *_: self._refresh_games())
+        page.append(self._section("1", tr("Choisis le jeu"), refresh))
+        self.games_list = boxed_list()
+        self.games_empty = Adw.ActionRow(
+            title=tr("Aucun jeu détecté"),
+            subtitle=tr("Lance ton jeu (Steam, Heroic, Lutris…) : il apparaît ici tout seul. "
+                        "Jeux Vulkan natifs, et Direct3D via Proton."))
+        self.games_empty.add_prefix(Gtk.Image(icon_name="input-gaming-symbolic", pixel_size=24,
+                                              valign=Gtk.Align.CENTER))
+        self.games_list.append(self.games_empty)
+        self.capture_row = Adw.ActionRow(title=tr("Ton jeu n'est pas dans la liste ?"),
+                                         subtitle=tr("OpenGL, anti-triche… : génération par capture de sa fenêtre"))
+        pick = Gtk.Button(label=tr("Choisir une fenêtre…"), valign=Gtk.Align.CENTER,
+                          sensitive=capture_binary() is not None,
+                          tooltip_text=tr("Clique ensuite sur la fenêtre du jeu"))
+        pick.connect("clicked", self.on_capture_window)
+        self.capture_row.add_suffix(pick)
+        if capture_wayland_available():
+            way = Gtk.Button(label=tr("Fenêtre Wayland…"), valign=Gtk.Align.CENTER,
+                             tooltip_text=tr("Un jeu en fenêtre Wayland native : le bureau demande laquelle partager"))
+            way.connect("clicked", self.on_capture_wayland)
+            self.capture_row.add_suffix(way)
+        self.games_list.append(self.capture_row)
+        page.append(self.games_list)
+
+        # 2. how many frames, the game's limit, the priority
+        page.append(self._section("2", tr("Règle la génération")))
+        lst = boxed_list()
+        self.seg_mult = Segmented(
+            [("Auto", "auto", tr("×2 à ×4 selon les FPS du jeu, sous la fréquence de l'écran")),
+             ("×2", "2", None), ("×3", "3", None), ("×4", "4", None)],
+            self._pick_mult)
+        row, self.mult_sub = self._custom_row(tr("Images affichées par image du jeu"), "", self.seg_mult.box)
+        lst.append(row)
+
+        self.limit_switch = Adw.SwitchRow(
+            title=tr("Limiter les FPS du jeu"),
+            subtitle=tr("Une base stable donne une génération régulière : idéalement l'écran ÷ le multiplicateur"))
+        self.limit_switch.connect("notify::active", self._on_limit_switch)
+        lst.append(self.limit_switch)
+        self.seg_limit = Segmented([("30", "30", None), ("40", "40", None), ("45", "45", None), ("60", "60", None),
+                                    ("Auto", "auto", tr("Fréquence de l'écran ÷ multiplicateur (écran à fréquence "
+                                                        "fixe)"))],
+                                   self._pick_limit)
+        self.limit_adj = Gtk.Adjustment(lower=15, upper=500, step_increment=1, page_increment=10, value=60)
+        self.limit_spin = Gtk.SpinButton(adjustment=self.limit_adj, digits=0, numeric=True, width_chars=4,
+                                         valign=Gtk.Align.CENTER)
+        self.limit_spin.connect("value-changed", self._on_limit_spin)
+        limit_box = Gtk.Box(spacing=12)
+        limit_box.append(self.seg_limit.box)
+        other = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        other.append(label(tr("Autre :"), ("dim-label",), valign=Gtk.Align.CENTER))
+        other.append(self.limit_spin)
+        other.append(label(tr("i/s"), ("dim-label",), valign=Gtk.Align.CENTER))
+        limit_box.append(other)
+        self.limit_row, self.limit_sub = self._custom_row(tr("Limite"), "", limit_box)
+        lst.append(self.limit_row)
+
+        self.seg_mode = Segmented(
+            [(tr("Fluidité"), "interpolate", tr("Interpolation : la meilleure image, ½ image de latence en ×2")),
+             (tr("Réactivité"), "extrapolate", tr("Extrapolation : presque aucune latence ajoutée, plus d'artefacts"))],
+            self._pick_mode)
+        row, self.mode_sub = self._custom_row(tr("Priorité"), "", self.seg_mode.box)
+        lst.append(row)
+
+        self.hud_switch = Adw.SwitchRow(title=tr("Compteur de FPS dans le jeu"),
+                                        subtitle=tr("FPS du jeu et images affichées, en haut à gauche"))
+        self.hud_switch.connect("notify::active", self._on_hud_switch)
+        lst.append(self.hud_switch)
+        page.append(lst)
+
+        self.summary = label("", ("bdex-summary",), wrap=True)
+        page.append(self.summary)
+        hint = label(tr("Les réglages s'appliquent en direct au jeu en cours. Tout le reste est dans « Avancé »."),
+                     ("dim-label",), wrap=True, xalign=0.5, margin_top=4)
+        page.append(hint)
+
+        scroller = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
+        scroller.set_child(clamp(page, 760))
+        return scroller
+
+    def _build_hero(self):
+        self.hero = Gtk.Box(spacing=20)
+        self.hero.add_css_class("bdex-hero")
+        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, hexpand=True, valign=Gtk.Align.CENTER)
+        self.hero_eyebrow = label("", ("bdex-eyebrow",))
+        self.hero_title = label("", ("bdex-hero-title",), wrap=True)
+        self.hero_sub = label("", ("bdex-hero-sub",), wrap=True)
+        for w in (self.hero_eyebrow, self.hero_title, self.hero_sub):
+            left.append(w)
+        self.hero_stats = Gtk.Box(spacing=8, margin_top=8)
+        self.stat_values = []
+        for name in (tr("JEU"), tr("AFFICHÉ"), tr("MULTIPLICATEUR"), tr("LATENCE")):
+            tile = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            tile.add_css_class("bdex-stat")
+            value = label("—", ("bdex-stat-value",))
+            tile.append(value)
+            tile.append(label(name, ("bdex-stat-label",)))
+            self.hero_stats.append(tile)
+            self.stat_values.append(value)
+        left.append(self.hero_stats)
+        self.hero.append(left)
+        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, valign=Gtk.Align.CENTER)
+        self.hero_btn = Gtk.Button()
+        self.hero_btn.add_css_class("bdex-cta")
+        self.hero_btn.connect("clicked", self.on_hero_button)
+        right.append(self.hero_btn)
+        self.hero_pause = Gtk.Button(halign=Gtk.Align.CENTER)
+        self.hero_pause.add_css_class("bdex-ghost")
+        self.hero_pause.connect("clicked", self.on_pause)
+        right.append(self.hero_pause)
+        self.hero.append(right)
+        return self.hero
+
+    def shown(self, game):
+        """A (pid, name) game as the window names it."""
+        return self.shown_names.get(game[0], game[1])
+
+    def _hero_state(self):
+        """(style, eyebrow, title, subtitle, button label or None, button style)."""
+        if not self.installed and capture_binary() is None:
+            return ("warn", tr("À INSTALLER"), tr("La couche Vulkan n'est pas installée"),
+                    tr("Installe-la : elle se charge ensuite toute seule dans tes jeux, sans option Steam."),
+                    tr("Installer"), "")
+        if self.opt.without_panel:
+            return ("on", tr("MODE JEU"), tr("Actif dans tous les jeux"),
+                    tr("Chaque jeu génère dès son lancement, même panneau fermé (Avancé › Système)."),
+                    tr("Désactiver"), "stop")
+        name = self.shown(self.target) if self.target else None
+        if self.target:
+            eyebrow = tr("EN PAUSE") if self.opt.paused else tr("EN COURS")
+            sub = (self.target_how[1][:1].upper() + self.target_how[1][1:] if self.target_how else "") + \
+                tr(" · les réglages s'appliquent en direct")
+            if not self.opt.generate:
+                sub = tr("Multiplicateur désactivé : aucune image générée")
+            return "on", eyebrow, name, sub, tr("Arrêter"), "stop"
+        if self.selected:
+            return ("ready", tr("PRÊT"), self.shown(self.selected),
+                    tr("Appuie sur Démarrer : la génération s'applique au jeu en cours."), tr("Démarrer"), "")
+        if self.games:
+            return ("idle", tr("EN ATTENTE"), tr("Choisis ton jeu"),
+                    tr("Sélectionne-le dans la liste ci-dessous, puis Démarrer."), tr("Démarrer"), "")
+        return ("idle", tr("EN ATTENTE"), tr("Lance ton jeu"),
+                tr("Il apparaît ci-dessous dès qu'il tourne. Choisis-le, puis Démarrer."), tr("Démarrer"), "")
+
+    def _refresh_hero(self):
+        style, eyebrow, title, sub, btn, btn_style = self._hero_state()
+        for c in ("on", "idle", "warn"):
+            self.hero.remove_css_class(c)
+        if style != "ready":
+            self.hero.add_css_class(style)
+        self.hero_eyebrow.set_text(eyebrow)
+        self.hero_title.set_text(title)
+        self.hero_sub.set_text(sub)
+        self.hero_btn.set_label(btn)
+        (self.hero_btn.add_css_class if btn_style == "stop" else self.hero_btn.remove_css_class)("stop")
+        self.hero_btn.set_sensitive(style != "idle")
+        generating = self.target is not None and not self.opt.without_panel
+        self.hero_pause.set_visible(generating and self.opt.generate)
+        self.hero_pause.set_label(tr("Reprendre") if self.opt.paused else tr("Pause"))
+        self.hero_stats.set_visible(generating)
+        if generating:
+            self._refresh_stats()
+
+    def _refresh_stats(self):
+        if self.capture_proc is not None:
+            entries = read_status(self.capture_proc.pid)
+        else:
+            entries = read_status(self.target[0]) if self.target and self.target[0] else []
+        sw = next((e for e in entries if e.get("kind") in ("swapchain", "capture")
+                   and e.get("state") in ("generating", "paused")), None)
+        values = ["—"] * 4
+        if sw:
+            try:
+                values[0] = f"{float(sw.get('game_fps', 0)):.0f}"
+                values[1] = f"{float(sw.get('output_fps', 0)):.0f}"
+                values[2] = f"×{sw.get('multiplier', '?')}"
+                lat = float(sw.get("latency_ms", -1))
+                values[3] = f"{lat:.0f} ms" if lat >= 0 else "—"
+            except ValueError:
+                pass
+        for lab, v in zip(self.stat_values, values):
+            lab.set_text(v)
+
+    def _refresh_simple(self):
+        o = self.opt
+        v = mult_value(o)
+        self.seg_mult.set(v, mult_label(v))
+        self.mult_sub.set_text(mult_explain(v, self.hz))
+        limit = limit_value(o.values.get("fps_limit", "0"))
+        self.limit_switch.set_active(limit != "0")
+        self.limit_row.set_visible(limit != "0")
+        self.seg_limit.set(limit if limit in self.seg_limit.buttons else "", None)
+        self.limit_spin.set_sensitive(limit != "auto")
+        if limit not in ("0", "auto"):
+            self.limit_adj.set_value(float(limit))
+        self.limit_sub.set_text(limit_explain(limit, o, self.hz))
+        self.seg_mode.set(o.mode, tr("Hybride") if o.mode == "hybrid" else None)
+        self.mode_sub.set_text({
+            "interpolate": tr("Fluidité : images interpolées entre deux images du jeu — la meilleure qualité, "
+                              "un peu de latence en plus."),
+            "extrapolate": tr("Réactivité : images prédites après chaque image du jeu — presque aucune latence "
+                              "ajoutée, plus d'artefacts aux bords des objets."),
+            "hybrid": tr("Hybride (réglé dans Avancé) : interpolées et prédites, latence divisée par 2 à 3 en ×3/×4.")
+        }.get(o.mode, ""))
+        self.seg_mode.box.set_sensitive(o.generate)
+        self.hud_switch.set_active(o.hud > 0)
+        self.summary.set_text(expected_summary(o, self.hz))
+
+    # -- « Simple » handlers
+
+    def _pick_mult(self, v):
+        if self._loading:
+            return
+        set_mult(self.opt, v)
+        self.changed()
+
+    def _on_limit_switch(self, *_):
+        if self._loading:
+            return
+        cur = limit_value(self.opt.values.get("fps_limit", "0"))
+        if self.limit_switch.get_active() and cur == "0":
+            self.opt.values["fps_limit"] = self._last_limit or limit_suggestion(self.opt, self.hz)
+        elif not self.limit_switch.get_active() and cur != "0":
+            self._last_limit = cur
+            self.opt.values["fps_limit"] = "0"
+        self.changed()
+
+    def _pick_limit(self, v):
+        if self._loading:
+            return
+        self.opt.values["fps_limit"] = v
+        self.changed()
+
+    def _on_limit_spin(self, *_):
+        if self._loading:
+            return
+        v = str(int(round(self.limit_adj.get_value())))
+        if v != limit_value(self.opt.values.get("fps_limit", "0")):
+            self.opt.values["fps_limit"] = v
+            self.changed()
+
+    def _pick_mode(self, v):
+        if self._loading:
+            return
+        self.opt.mode = v
+        self.changed()
+
+    def _on_hud_switch(self, *_):
+        if self._loading:
+            return
+        on = self.hud_switch.get_active()
+        if on != (self.opt.hud > 0):
+            self.opt.hud = 2 if on else 0
+            self.changed()
+
+    # == « Avancé » ==========================================================
+
+    def _panel_settings(self):
+        """The settings the panel writes itself (Options' own fields), by category."""
+        o = self.opt
+        gen = lambda: o.generate
+        up = lambda: o.upscale
+        hud_choices = [(lab, str(v)) for lab, v in HUD_MODES]
+        mult_choices = [(tr("Désactivé (×1)"), "1"), (tr("Auto — selon l'écran"), "auto"),
+                        (tr("Adaptatif — toute la fréquence de l'écran"), "adaptive")] + \
+            [(f"×{n}", str(n)) for n in range(2, 9)]
+        gpu_get = lambda: next((n for n in self.gpus if o.gpu and o.gpu.lower() in n.lower()), "")
+
+        def attr(name):
+            return lambda v: setattr(o, name, v)
+
+        def flag(name):
+            return lambda v: setattr(o, name, v == "1")
+        return {
+            "generation": [
+                Setting("multiplier", tr("Images affichées par image rendue"),
+                        tr("Auto : le plus grand multiple entier sous la fréquence de l'écran (×2 à 60 i/s sur 144 Hz). "
+                           "Adaptatif : toute la fréquence de l'écran, même en ratio fractionnaire (50 i/s → 144 i/s), "
+                           "une image par rafraîchissement."),
+                        "choice", "auto", lambda: mult_value(o), lambda v: set_mult(o, v), mult_choices),
+                Setting("mode", tr("Mode"), tr("Interpolation : la meilleure image. Hybride : ×3/×4 avec 2 à 3 fois "
+                                               "moins de latence. Extrapolation : la latence la plus basse."),
+                        "choice", "interpolate", lambda: o.mode, attr("mode"), MODES, enabled=gen),
+                Setting("preset", tr("Profil de qualité"), tr("Auto s'adapte à la puissance du GPU ; Performance pour "
+                                                              "les petits GPU, Qualité pour les plus gros."),
+                        "choice", "auto", lambda: o.preset, attr("preset"), PRESETS, enabled=gen),
+                Setting("method", tr("Méthode"),
+                        tr("Injection : dans la présentation du jeu, la latence la plus basse (jeux Vulkan, Proton). "
+                           "Capture : tout jeu, une image de latence en plus, sur le GPU de son choix."),
+                        "choice", "auto", lambda: o.method, attr("method"), METHODS),
+                Setting("gpu", tr("GPU de génération"),
+                        tr("Un autre GPU que celui du jeu : capture sur ce GPU (le jeu rend sur le sien)."),
+                        "choice", "", gpu_get, attr("gpu"), [(tr("Automatique — celui du jeu"), "")] +
+                        [(n, n) for n in self.gpus]),
+                Setting("paused", tr("En pause"),
+                        tr("Suspend la génération dans les jeux en cours (en moins d'une seconde ; raccourci : "
+                           "bdex-framegen --toggle)."),
+                        "switch", "0", lambda: "1" if o.paused else "0", flag("paused"), enabled=gen),
+            ],
+            "display": [
+                Setting("hud", tr("Compteur de FPS"),
+                        tr("Affiche les FPS en surimpression dans le jeu (coin haut-gauche). Les 1 % / 0,1 % low sont "
+                           "les FPS aux 99e / 99,9e centiles."),
+                        "choice", "0", lambda: str(o.hud), lambda v: setattr(o, "hud", int(v)), hud_choices),
+                Setting("present_mode", tr("Mode de présentation"),
+                        tr("Auto transforme le vsync (FIFO) du jeu en mailbox : moins de latence sans déchirement."),
+                        "choice", "auto", lambda: o.present, attr("present"), PRESENT),
+                Setting("low_latency", tr("Faible latence"), tr("Empêche le jeu de prendre de l'avance (utile en FIFO)."),
+                        "switch", "0", lambda: "1" if o.low_latency else "0", flag("low_latency")),
+            ],
+            "upscale": [
+                Setting("upscale", tr("Activer l'upscaling"),
+                        tr("Le jeu rend en résolution réduite, agrandie à l'affichage. S'applique aux jeux lancés "
+                           "pendant que ce panneau est ouvert."),
+                        "switch", "0", lambda: "1" if o.upscale else "0", flag("upscale")),
+                Setting("render_scale", tr("Résolution de rendu (%)"), tr("Pourcentage de la résolution d'affichage."),
+                        "spin", "67", lambda: str(o.render_scale), lambda v: setattr(o, "render_scale", int(float(v))),
+                        lower=50, upper=100, step=1, enabled=up),
+                Setting("upscale_filter", tr("Filtre d'agrandissement"), "", "choice", "lanczos", lambda: o.filter,
+                        attr("filter"), FILTERS, enabled=up),
+                Setting("sharpness", tr("Netteté (CAS, %)"), tr("0 = désactivé."), "spin", "0",
+                        lambda: str(o.sharpness), lambda v: setattr(o, "sharpness", int(float(v))),
+                        lower=0, upper=100, step=1, enabled=up),
+            ],
+            "system": [
+                Setting("require_app", tr("Tous les jeux, sans le panneau (mode Jeu)"),
+                        tr("Dans le mode Jeu de SteamOS (Steam Deck), ce panneau ne peut pas rester ouvert à côté du "
+                           "jeu : chaque jeu Vulkan génère alors dès son lancement, avec ces réglages. Steam, "
+                           "gamescope et les applications de bureau restent exclus."),
+                        "switch", "0", lambda: "1" if o.without_panel else "0", flag("without_panel")),
+            ],
+        }
+
+    def _categories(self):
+        """[(id, title, description, icon, [Setting])] in the sidebar's order."""
+        own = self._panel_settings()
+        json_sections = {sid: (title, sub, opts) for sid, title, sub, _exp, opts in SECTIONS}
+        icons = {"cadence": "power-profile-performance-symbolic", "motion": "find-location-symbolic",
+                 "flow": "view-grid-symbolic", "experimental": "applications-science-symbolic",
+                 "compat": "emblem-system-symbolic", "diagnostic": "utilities-terminal-symbolic"}
+
+        def opts(sid):
+            return [option_setting(o, self.opt) for o in json_sections.get(sid, ("", "", []))[2]]
+
+        def section(sid):
+            title, sub, _ = json_sections[sid]
+            return sid, title, sub, icons.get(sid, "preferences-other-symbolic"), opts(sid)
+        cats = [("generation", tr("Génération"), tr("Combien d'images, comment, et sur quel GPU."),
+                 "media-playback-start-symbolic", own["generation"])]
+        order = ["cadence", "motion", "flow", "experimental", "compat", "diagnostic"]
+        order += [sid for sid in json_sections if sid not in order]
+        for sid in order:
+            if sid not in json_sections:
+                continue
+            cats.append(section(sid))
+            if sid == "cadence":
+                cats.append(("display", tr("Affichage"), tr("Compteur de FPS, mode de présentation, latence."),
+                             "video-display-symbolic", own["display"]))
+                cats.append(("upscale", "Upscaling", tr("Le jeu rend en résolution réduite, agrandie à l'affichage "
+                                                        "(X11, Xwayland et Wayland natif)."),
+                             "zoom-in-symbolic", own["upscale"]))
+        cats.append(("system", tr("Système"), tr("Couche Vulkan, GPU, calibration, mode Jeu, diagnostic."),
+                     "computer-symbolic", own["system"]))
+        return cats
+
+    def _build_advanced(self):
+        root = Gtk.Box()
+        side = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, width_request=262)
+        side.add_css_class("bdex-sidebar")
+        self.nav = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, vexpand=True)
+        self.nav.add_css_class("navigation-sidebar")
+        self.nav.connect("row-selected", self._on_nav)
+        nav_scroll = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER, child=self.nav)
+        side.append(nav_scroll)
+        foot = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_start=12, margin_end=12,
+                       margin_top=8, margin_bottom=12)
+        self.modified_label = label("", ("dim-label",), wrap=True)
+        foot.append(self.modified_label)
+        self.reset_all_btn = Gtk.Button(label=tr("Tout réinitialiser"))
+        self.reset_all_btn.connect("clicked", self.on_reset_all)
+        foot.append(self.reset_all_btn)
+        side.append(foot)
+        root.append(side)
+        root.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
+
+        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        bar = Gtk.Box(margin_start=20, margin_end=20, margin_top=12, margin_bottom=6)
+        self.search = Gtk.SearchEntry(hexpand=True,
+                                      placeholder_text=tr("Rechercher une option (nom, description, clé)…"))
+        self.search.connect("search-changed", self._on_search)
+        bar.append(clamp(self.search, 860))
+        right.append(bar)
+        self.adv_scroll = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
+        self.adv_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin_start=20,
+                                   margin_end=20, margin_top=6, margin_bottom=40)
+        self.adv_scroll.set_child(clamp(self.adv_content, 860))
+        self.adv_scroll.get_vadjustment().connect("value-changed", self._on_adv_scroll)
+        right.append(self.adv_scroll)
+        self.no_match = label(tr("Aucune option ne correspond."), ("dim-label",), xalign=0.5, margin_top=40,
+                              visible=False)
+        self.adv_content.append(self.no_match)
+        root.append(right)
+
+        self.cats = {}
+        for i, (cid, title, desc, icon, settings) in enumerate(self._categories()):
+            head = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, margin_top=8 if i == 0 else 28)
+            line = Gtk.Box(spacing=10)
+            line.append(Gtk.Image(icon_name=icon, pixel_size=22, valign=Gtk.Align.CENTER))
+            line.append(label(title, ("bdex-cat-title",), valign=Gtk.Align.CENTER))
+            head.append(line)
+            if desc:
+                head.append(label(desc, ("dim-label",), wrap=True))
+            self.adv_content.append(head)
+            groups = []
+            if settings:
+                g = Adw.PreferencesGroup()
+                rows = []
+                for s in settings:
+                    r = SettingRow(self, s)
+                    g.add(r.row)
+                    rows.append(r)
+                    self.setting_rows.append(r)
+                self.adv_content.append(g)
+                groups.append((g, rows))
+            if cid == "system":
+                groups += self._build_system()
+            nav_row = Gtk.ListBoxRow()
+            nb = Gtk.Box(spacing=10, margin_start=6, margin_end=6, margin_top=4, margin_bottom=4)
+            nb.append(Gtk.Image(icon_name=icon))
+            nb.append(label(title, hexpand=True, ellipsize=Pango.EllipsizeMode.END))
+            badge = label("", ("bdex-badge",), visible=False, valign=Gtk.Align.CENTER)
+            nb.append(badge)
+            nav_row.set_child(nb)
+            nav_row.cat = cid
+            self.nav.append(nav_row)
+            self.cats[cid] = dict(head=head, groups=groups, nav=nav_row, badge=badge)
+        self._spy_quiet = True
+        self.nav.select_row(self.nav.get_row_at_index(0))
+        self._spy_quiet = False
+        self.adv_side = side
+        return root
+
+    def _build_system(self):
+        """The « Système » groups that are not options: [(group, [ExtraRow])]."""
+        out = []
+        # the layer and the GPU
+        g = Adw.PreferencesGroup(title=tr("Couche et GPU"))
+        self.status_row = Adw.ActionRow(title=tr("Couche Vulkan"))
+        self.status_icon = Gtk.Image(valign=Gtk.Align.CENTER)
+        self.status_row.add_prefix(self.status_icon)
+        self.install_btn = Gtk.Button(label=tr("Installer"), valign=Gtk.Align.CENTER)
+        self.install_btn.add_css_class("suggested-action")
+        self.install_btn.connect("clicked", self.on_install)
+        self.status_row.add_suffix(self.install_btn)
+        g.add(self.status_row)
+        gpus = detect_gpus()
+        gpu_row = Adw.ActionRow(title=tr("Carte graphique"),
+                                subtitle=(" · ".join(gpus) + tr(" — le profil « Auto » se règle selon ce GPU"))
+                                if gpus else tr("non détectée"))
+        gpu_row.add_prefix(Gtk.Image(icon_name="video-display-symbolic", valign=Gtk.Align.CENTER))
+        g.add(gpu_row)
+        cal = read_calibration()
+        self.cal_row = Adw.ActionRow(
+            title=tr("Calibration du GPU"),
+            subtitle=calibration_summary(cal) if cal else
+            (tr("Pas encore mesurée") if calibrate_binary() else tr("bdex-calibrate absent")))
+        self.cal_row.add_prefix(Gtk.Image(icon_name="power-profile-performance-symbolic", valign=Gtk.Align.CENTER))
+        self.cal_btn = Gtk.Button(label=tr("Mesurer"), valign=Gtk.Align.CENTER, sensitive=calibrate_binary() is not None)
+        self.cal_btn.connect("clicked", lambda *_: self.calibrate())
+        self.cal_apply = Gtk.Button(label=tr("Appliquer"), valign=Gtk.Align.CENTER, sensitive=cal is not None)
+        self.cal_apply.connect("clicked", self.on_calibration_apply)
+        self.cal_row.add_suffix(self.cal_btn)
+        self.cal_row.add_suffix(self.cal_apply)
+        g.add(self.cal_row)
+        self.adv_content.append(g)
+        out.append((g, [ExtraRow(self.status_row, tr("Couche Vulkan"), tr("Installer"), "layer install"),
+                        ExtraRow(gpu_row, tr("Carte graphique"), "gpu", *gpus),
+                        ExtraRow(self.cal_row, tr("Calibration du GPU"), "calibrate bdex-calibrate")]))
+
+        # Steam's Game Mode: the selected game (or any) without the panel
+        g = Adw.PreferencesGroup(title=tr("Mode Jeu — par jeu"),
+                                 description=tr("Ces jeux génèrent dès leur lancement, panneau fermé, avec les "
+                                                "réglages de ce panneau."))
         self.always_row = Adw.SwitchRow(title=tr("Le jeu sélectionné"))
         self.always_row.connect("notify::active", self.on_always)
         g.add(self.always_row)
         self.always_group = g
         self.always_rows = []
+        self.adv_content.append(g)
+        out.append((g, [ExtraRow(self.always_row, tr("Mode Jeu — par jeu"), "require_app steam deck")]))
+
+        # tools
+        g = Adw.PreferencesGroup(title=tr("Outils"))
+        rows = []
+        for title, sub, icon, text, cb in (
+                (tr("Options de lancement Steam"), tr("L'équivalent de ces réglages pour un jeu, à coller dans ses "
+                                                      "propriétés Steam"), "edit-copy-symbolic", tr("Copier"),
+                 self.on_copy),
+                (tr("Fichier de configuration"), CONFIG_PATH, "folder-open-symbolic", tr("Ouvrir le dossier"),
+                 self.on_open_config),
+                (tr("Signaler un problème"), tr("Écrit le rapport de diagnostic et ouvre le formulaire pré-rempli (à "
+                                                "faire pendant que le jeu tourne)"), "dialog-question-symbolic",
+                 tr("Rapport…"), self.on_report),
+                (tr("Enregistrer le jeu sélectionné"), tr("Quelques secondes de ses images, pour le corpus "
+                                                          "d'évaluation (le jeu peut ralentir pendant ce temps)"),
+                 "media-record-symbolic", tr("Enregistrer"), self.on_record)):
+            row = Adw.ActionRow(title=title, subtitle=sub)
+            row.add_prefix(Gtk.Image(icon_name=icon, valign=Gtk.Align.CENTER))
+            btn = Gtk.Button(label=text, valign=Gtk.Align.CENTER)
+            btn.connect("clicked", cb)
+            row.add_suffix(btn)
+            if cb == self.on_record:
+                self.record_btn = btn
+            g.add(row)
+            rows.append(ExtraRow(row, title, sub, text))
+        self.adv_content.append(g)
+        out.append((g, rows))
+        return out
+
+    def _refresh_system(self):
+        self.status_row.set_subtitle(tr("Installée — chargée automatiquement dans tous les jeux Vulkan")
+                                     if self.installed else
+                                     tr("Non installée : sans elle, seule la capture de fenêtre fonctionne"))
+        self.status_icon.set_from_icon_name("object-select-symbolic" if self.installed else "dialog-warning-symbolic")
+        self.install_btn.set_visible(not self.installed)
+        armed = self.selected is not None and any(e.get("kind") == "swapchain"
+                                                  for e in self.games.get(self.selected[0], ("", []))[1])
+        self.record_btn.set_sensitive(armed and not layer_replaced(self.selected[0]))
+        self._refresh_always()
 
     def _refresh_always(self):
-        """The per-game rows: the selected game's switch, then the other games
-        already set to generate without the panel (each with « Retirer »)."""
+        """The selected game's « without the panel » switch, then the other
+        games set so (each with « Retirer »)."""
         always = self.cfg.always_games()
         name = self.selected[1] if self.selected else None
-        self._always_loading = True
-        self.always_row.set_title(tr(f"Ce jeu : {name}") if name else tr("Le jeu sélectionné"))
+        self.always_row.set_title(tr(f"Ce jeu : {self.shown(self.selected)}") if name else tr("Le jeu sélectionné"))
         self.always_row.set_subtitle(tr("Génère dès son lancement, panneau fermé") if name else
-                                     tr("Sélectionne un jeu dans « Jeux détectés » (lancé une fois ici)"))
+                                     tr("Choisis un jeu dans « Simple » (lancé une fois ici)"))
         self.always_row.set_active(name is not None and name.lower() in (a.lower() for a in always))
         self.always_row.set_sensitive(name is not None and not self.opt.without_panel)
-        self._always_loading = False
+        others = [g for g in always if name is None or g.lower() != name.lower()]
+        if others == [r.get_title() for r in self.always_rows]:
+            return
         for row in self.always_rows:
             self.always_group.remove(row)
         self.always_rows = []
-        for game in always:
-            if name is not None and game.lower() == name.lower():
-                continue
+        for game in others:
             row = Adw.ActionRow(title=game, subtitle=tr("Génère sans le panneau"))
             btn = Gtk.Button(label=tr("Retirer"), valign=Gtk.Align.CENTER)
             btn.connect("clicked", lambda _b, gname=game: self._set_always(gname, False))
@@ -2584,54 +3159,243 @@ class Window(Adw.ApplicationWindow):
             self.always_group.add(row)
             self.always_rows.append(row)
 
-    def on_always(self, row, _param):
-        if getattr(self, "_always_loading", False) or not self.selected:
-            return
-        self._set_always(self.selected[1], row.get_active())
+    def _refresh_counts(self):
+        total = 0
+        for cid, c in self.cats.items():
+            n = sum(1 for _g, rows in c["groups"] for r in rows if isinstance(r, SettingRow) and r.s.modified())
+            total += n
+            c["badge"].set_text(str(n))
+            c["badge"].set_visible(n > 0)
+        self.modified_label.set_text(tr(f"{total} réglage(s) modifié(s)") if total else
+                                     tr("Tous les réglages sont par défaut"))
+        self.reset_all_btn.set_sensitive(total > 0)
 
-    def _set_always(self, name, on):
-        self.save()                    # (re-reads the file: hand edits survive)
-        self.cfg.set_always(name, on)
+    def _on_search(self, entry):
+        q = entry.get_text().strip().lower()
+        words = q.split()
+        any_match = False
+        for c in self.cats.values():
+            cat_match = False
+            for g, rows in c["groups"]:
+                g_match = False
+                for r in rows:
+                    ok = all(w in r.text for w in words)
+                    r.row.set_visible(ok)
+                    g_match |= ok
+                if g is getattr(self, "always_group", None):
+                    for row in self.always_rows:
+                        row.set_visible(not words)
+                g.set_visible(g_match)
+                cat_match |= g_match
+            c["head"].set_visible(cat_match)
+            c["nav"].set_visible(cat_match)
+            any_match |= cat_match
+        self.no_match.set_visible(not any_match)
+        if words:
+            self.adv_scroll.get_vadjustment().set_value(0)
+
+    def _y_of(self, widget):
+        """The widget's vertical position in the advanced page's content."""
+        if Graphene is not None and hasattr(widget, "compute_point"):
+            ok, p = widget.compute_point(self.adv_content, Graphene.Point())
+            return p.y if ok else None
+        res = widget.translate_coordinates(self.adv_content, 0, 0)
+        return res[-1] if res and res[0] else None
+
+    def _on_nav(self, _list, row):
+        if row is None or self._spy_quiet:
+            return
+        y = self._y_of(self.cats[row.cat]["head"])
+        if y is not None:
+            self._spy_quiet = True
+            self.adv_scroll.get_vadjustment().set_value(max(0, y - 8))
+            self._spy_quiet = False
+
+    def _on_adv_scroll(self, adj):
+        """The category being read, selected in the sidebar."""
+        if self._spy_quiet:
+            return
+        top, current = adj.get_value() + 40, None
+        if adj.get_value() + adj.get_page_size() >= adj.get_upper() - 2:
+            current = next((cid for cid in reversed(list(self.cats)) if self.cats[cid]["head"].get_visible()), None)
+        else:
+            for cid, c in self.cats.items():
+                if not c["head"].get_visible():
+                    continue
+                y = self._y_of(c["head"])
+                if y is not None and y <= top:
+                    current = cid
+        if current and self.nav.get_selected_row() is not self.cats[current]["nav"]:
+            self._spy_quiet = True
+            self.nav.select_row(self.cats[current]["nav"])
+            self._spy_quiet = False
+
+    def on_reset_all(self, _btn):
+        before = [(r.s, r.s.get()) for r in self.setting_rows if r.s.modified()]
+        if not before:
+            return
+        for s, _v in before:
+            s.put(s.default)
+        self.changed()
+
+        def undo():
+            for s, v in before:
+                s.put(v)
+            self.changed()
+        self.toast(tr(f"{len(before)} réglage(s) remis par défaut."), tr("Annuler"), undo)
+
+    # == state <-> widgets ===================================================
+
+    @contextlib.contextmanager
+    def quiet(self):
+        """Widgets set from the state, not by the user: their signals change nothing."""
+        loading, self._loading = self._loading, True
+        try:
+            yield
+        finally:
+            self._loading = loading
+
+    def refresh(self):
+        """Every widget from Options."""
+        with self.quiet():
+            for r in self.setting_rows:
+                r.load()
+            self._refresh_simple()
+            self._refresh_counts()
+            self._refresh_system()
+            self._refresh_hero()
+
+    def changed(self):
+        """An option changed in Options: written soon, both pages refreshed."""
+        if self._loading:
+            return
+        self.refresh()
+        if self.target and self.target[0] and (self.opt.method, self.opt.gpu) != self._target_key:
+            GLib.idle_add(lambda: self._set_target(self.target) and False)   # (by the new method / GPU)
+        self.save_soon()
+
+    def save_soon(self):
+        """A burst of changes (a spin held down) is one write: the games reload
+        the file at each one."""
+        if self._save_timer:
+            GLib.source_remove(self._save_timer)
+        self._save_timer = GLib.timeout_add(250, self._save_now)
+
+    def _save_now(self):
+        self._save_timer = 0
+        self.save()
+        return False
+
+    def save(self):
+        if self._save_timer:
+            GLib.source_remove(self._save_timer)
+            self._save_timer = 0
+        # Re-read first: lines edited by hand while the panel is open
+        # ([game] sections, unmanaged keys) must survive its next save.
+        self.cfg = ConfigFile.load()
+        self.opt.write_into(self.cfg.glob)
         try:
             self.cfg.write()
         except OSError as e:
             self.toast(tr(f"Échec de l'enregistrement : {e}"))
             return
-        mirror_config()
-        self.toast(tr(f"{name} : génère sans le panneau.") if on else tr(f"{name} : seulement avec « Démarrer »."))
-        self._refresh_always()
+        mirror_config()   # sandboxed games (Flatpak Steam...) read their own copy
 
-    def _refresh_session(self):
-        on = self.target is not None
-        if self.opt.without_panel:
-            self.session_row.set_title(tr("Actif dans tous les jeux, sans le panneau"))
-            self.session_row.set_subtitle(tr("Chaque jeu génère dès son lancement ; les réglages s'appliquent en "
-                                          "direct, « En pause » suspend la génération."))
-            self.session_icon.set_from_icon_name("media-playback-start-symbolic")
-            self.session_btn.set_visible(False)
-            if hasattr(self, "always_row"):
-                self._refresh_always()
+    def toast(self, text, action=None, on_action=None):
+        if HAVE_ADW and action:
+            t = Adw._adw.Toast(title=text, use_markup=False, button_label=action)
+            t.connect("button-clicked", lambda *_: on_action())
+            self.toasts.add_toast(t)
             return
-        self.session_btn.set_visible(True)
-        if hasattr(self, "always_row"):
-            self._refresh_always()
-        if on:
-            self.session_row.set_title(tr(f"Génération en cours : {self.target[1]}") +
-                                       (f" — {self.target_how[1]}" if self.target_how else ""))
-            self.session_row.set_subtitle(tr("Les réglages s'appliquent en direct. « Arrêter » ou fermer "
-                                          "cette fenêtre coupe la génération."))
-        else:
-            self.session_row.set_title(tr("Framegen arrêté"))
-            self.session_row.set_subtitle(
-                tr(f"Jeu sélectionné : {self.selected[1]} — clique « Démarrer ».") if self.selected else
-                tr("Lance ton jeu, sélectionne-le dans « Jeux détectés », puis « Démarrer »."))
-        self.session_icon.set_from_icon_name("media-playback-start-symbolic" if on
-                                             else "media-playback-stop-symbolic")
-        self.session_btn.set_label(tr("Arrêter") if on else tr("Démarrer"))
-        self.session_btn.set_sensitive(on or self.selected is not None)
-        for c in ("suggested-action", "destructive-action"):
-            self.session_btn.remove_css_class(c)
-        self.session_btn.add_css_class("destructive-action" if on else "suggested-action")
+        self.toasts.add_toast(Adw.Toast.new(text))
+
+    def warn(self, text):
+        """A warning that stays until read (a dialog where GTK has one), the
+        action going ahead behind it."""
+        try:
+            d = Gtk.AlertDialog(message=tr("Attention"), detail=text)
+            d.show(self)
+        except (AttributeError, TypeError):
+            t = Adw.Toast.new(text)
+            try:
+                t.set_timeout(0)
+            except AttributeError:
+                pass
+            self.toasts.add_toast(t)
+
+    # == games, session ======================================================
+
+    def _poll_games(self):
+        self._refresh_games()
+        return True
+
+    def _refresh_games(self):
+        detected = detect_games()
+        read_running(keep={inner_pid(pid) for pid, _ in detected})   # drops what crashed games left
+        games, seen = {}, set()
+        for pid, name in sorted(detected, key=lambda g: g[1]):
+            if name not in seen:
+                seen.add(name)
+                games[pid] = (name, read_status(pid))
+        self.games = games
+        if self.target and self.target[0] and self.target[0] not in games:   # the game has exited
+            self._set_target(None)   # (a window picked for capture: its own end, see _beat)
+        if self.selected and self.selected[0] not in games:
+            self.selected = None
+        if not self.selected and len(games) == 1:
+            pid = next(iter(games))
+            self.selected = (pid, games[pid][0])
+        for pid in [p for p in self.game_rows if p not in games]:
+            self.games_list.remove(self.game_rows.pop(pid).row)
+        for pid, (name, entries) in games.items():
+            row = self.game_rows.get(pid)
+            if row is None:
+                row = self.game_rows[pid] = GameRow(self, pid, name)
+                self.shown_names[pid] = row.row.get_title()
+                self.games_list.insert(row.row, len(self.game_rows) - 1)
+            how = plan(entries, self.opt, capture_binary() is not None)
+            row.update(entries, how, layer_replaced(pid), self.target is not None and self.target[0] == pid)
+        self.games_empty.set_visible(not games)
+        with self.quiet():
+            for pid, row in self.game_rows.items():
+                row.radio.set_active(self.selected is not None and self.selected[0] == pid)
+            if self.selected is None:
+                self.radio_anchor.set_active(True)
+            self._refresh_system()
+            self._refresh_hero()
+
+    def on_pick(self, radio, game):
+        if self._loading or not radio.get_active():
+            return
+        self.selected = game
+        if self.target and self.target != game:
+            self._set_target(game)   # generating: move it to the chosen game
+        with self.quiet():
+            self._refresh_system()
+            self._refresh_hero()
+
+    def _beat(self):
+        if self.capture_proc is not None and self.capture_proc.poll() is not None:
+            # the capture ended: the game closed, or it failed (capture.log)
+            self.capture_proc = None
+            self.target, self.target_how = None, None
+            self.toast(tr("Capture terminée (journal : ~/.cache/bdex-framegen/capture.log)"))
+            self._refresh_hero()
+        try:
+            layer = self.target and self.target_how and self.target_how[0] == "layer"
+            write_session(self.target[0] if layer else 0)
+        except OSError:
+            pass
+        if self.target:
+            self._refresh_stats()
+        return True
+
+    def _on_close(self, *_):
+        if self._save_timer:
+            self.save()
+        stop_capture(self.capture_proc)
+        remove_session()       # the targeted game stops generating
+        return False
 
     def _set_target(self, target, pick=False, wayland=False):
         """Generation for `target` (pid, name), or none: injection through the
@@ -2658,70 +3422,53 @@ class Window(Adw.ApplicationWindow):
             target, how = None, None
         self.target = target
         self.target_how = how
-        self._refresh_session()
+        self._target_key = (self.opt.method, self.opt.gpu)
+        self._refresh_hero()
 
-    def on_session(self, _btn):
+    def on_hero_button(self, _btn):
+        if not self.installed and capture_binary() is None:
+            self.on_install(self.hero_btn)
+            return
+        if self.opt.without_panel:
+            self.opt.without_panel = False
+            self.changed()
+            return
         self._set_target(None if self.target else self.selected)
-        GLib.timeout_add(1500, self._refresh_after_switch)
+        GLib.timeout_add(1500, lambda: self._refresh_games() and False)   # (the game's status follows)
 
-    def _refresh_after_switch(self):
-        self._refresh_running()   # the game's status follows within ~0.5 s
-        return False
+    def on_pause(self, _btn):
+        self.opt.paused = not self.opt.paused
+        self.changed()
 
-    def _build_status(self, page):
-        g = Adw.PreferencesGroup(title=tr("État"))
-        page.add(g)
-        installed, path = find_layer()
-        self.installed = installed
-        self.status_row = Adw.ActionRow(
-            title=tr("Couche Vulkan"),
-            subtitle=(tr("Installée — chargée automatiquement dans tous les jeux Vulkan")
-                      if installed else
-                      tr("Non installée : lance tools/install.sh pour qu'elle s'active sans options Steam")))
-        self.status_row.add_prefix(Gtk.Image(
-            icon_name="emblem-ok-symbolic" if installed else "dialog-warning-symbolic",
-            valign=Gtk.Align.CENTER))
-        if not installed:
-            btn = Gtk.Button(label=tr("Installer"), valign=Gtk.Align.CENTER)
-            btn.add_css_class("suggested-action")
-            btn.connect("clicked", self.on_install)
-            self.status_row.add_suffix(btn)
-        g.add(self.status_row)
+    def on_capture_wayland(self, _btn):
+        self._set_target((0, tr("fenêtre Wayland")), pick=True, wayland=True)
+        if self.capture_proc is not None:
+            self.toast(tr("Choisis la fenêtre du jeu dans la fenêtre du bureau"))
 
-        gpus = detect_gpus()
-        gpu_row = Adw.ActionRow(
-            title=tr("Carte graphique"),
-            subtitle=(" · ".join(gpus) + tr("\nProfil « Auto » : réglé selon ce GPU") if gpus else tr("non détectée")))
-        gpu_row.add_prefix(Gtk.Image(icon_name="video-display-symbolic", valign=Gtk.Align.CENTER))
-        g.add(gpu_row)
+    def on_capture_window(self, _btn):
+        self._set_target((0, tr("fenêtre choisie")), pick=True)
+        if self.capture_proc is not None:
+            self.toast(tr("Clique sur la fenêtre du jeu"))
 
-        # What generation costs on this GPU (bdex-calibrate): measured once by
-        # itself at the first start, again on demand; « Appliquer » takes its
-        # preset and multiplier (« Auto » follows it anyway).
-        cal = read_calibration()
-        self.cal_row = Adw.ActionRow(
-            title=tr("Calibration du GPU"),
-            subtitle=calibration_summary(cal) if cal else
-            (tr("Pas encore mesurée") if calibrate_binary() else tr("bdex-calibrate absent")))
-        self.cal_row.add_prefix(Gtk.Image(icon_name="utilities-system-monitor-symbolic", valign=Gtk.Align.CENTER))
-        self.cal_btn = Gtk.Button(label=tr("Mesurer"), valign=Gtk.Align.CENTER, sensitive=calibrate_binary() is not None)
-        self.cal_btn.connect("clicked", lambda *_: self.calibrate())
-        self.cal_apply = Gtk.Button(label=tr("Appliquer"), valign=Gtk.Align.CENTER, sensitive=cal is not None)
-        self.cal_apply.connect("clicked", self.on_calibration_apply)
-        self.cal_row.add_suffix(self.cal_btn)
-        self.cal_row.add_suffix(self.cal_apply)
-        g.add(self.cal_row)
-        if cal is None and calibrate_binary():
-            GLib.timeout_add(1500, lambda: self.calibrate() and False)
+    def on_always(self, row, _param):
+        if self._loading or not self.selected:
+            return
+        self._set_always(self.selected[1], row.get_active())
 
-        report_row = Adw.ActionRow(title=tr("Signaler un problème"),
-                                   subtitle=tr("Écrit le rapport de diagnostic et ouvre le formulaire pré-rempli "
-                                            "(à faire pendant que le jeu tourne)"))
-        report_row.add_prefix(Gtk.Image(icon_name="dialog-question-symbolic", valign=Gtk.Align.CENTER))
-        btn = Gtk.Button(label=tr("Rapport…"), valign=Gtk.Align.CENTER)
-        btn.connect("clicked", self.on_report)
-        report_row.add_suffix(btn)
-        g.add(report_row)
+    def _set_always(self, name, on):
+        self.save()                    # (re-reads the file: hand edits survive)
+        self.cfg.set_always(name, on)
+        try:
+            self.cfg.write()
+        except OSError as e:
+            self.toast(tr(f"Échec de l'enregistrement : {e}"))
+            return
+        mirror_config()
+        self.toast(tr(f"{name} : génère sans le panneau.") if on else tr(f"{name} : seulement avec « Démarrer »."))
+        with self.quiet():
+            self._refresh_always()
+
+    # == tools ===============================================================
 
     def calibrate(self):
         self.cal_btn.set_sensitive(False)
@@ -2747,123 +3494,19 @@ class Window(Adw.ApplicationWindow):
         self.opt.generate = True
         if not (self.opt.auto_mult or self.opt.adaptive):
             self.opt.multiplier = int(r["multiplier"])
-        self.save()
+        self.changed()
         self.toast(tr(f"Calibration appliquée : profil {r['preset']}, jusqu'à ×{r['multiplier']}"))
 
-    def on_report(self, _btn):
-        path, url = write_report()
-        if not path:
-            self.toast(tr("Rapport impossible : bdex-framegen introuvable"))
+    def on_record(self, _btn):
+        if not self.selected:
             return
-        self.toast(tr(f"Rapport écrit dans {path} — à joindre au formulaire"))
-        if url:
-            try:
-                Gio.AppInfo.launch_default_for_uri(url, None)
-            except GLib.Error:
-                self.toast(tr("Ouvre le lien affiché par « bdex-framegen --issue-url »"))
-
-    def _build_running(self, page):
-        """The games running now (Vulkan programs the layer is loaded into), like
-        the Windows launcher's window list: pick one, then « Démarrer »."""
-        self.running_group = Adw.PreferencesGroup(
-            title=tr("Jeux détectés"),
-            description=tr("Jeux Vulkan en cours (natifs ou via Proton). Sélectionne celui où "
-                        "générer des images, puis « Démarrer » en haut."))
-        page.add(self.running_group)
-        refresh = Gtk.Button(label=tr("Actualiser la liste"), valign=Gtk.Align.CENTER)
-        refresh.connect("clicked", lambda *_: self._refresh_running())
-        pick = Gtk.Button(label=tr("Capturer une autre fenêtre…"), valign=Gtk.Align.CENTER,
-                          tooltip_text=tr("Un jeu absent de la liste (OpenGL, anti-triche…) : clique ensuite sur sa fenêtre"))
-        pick.connect("clicked", self.on_capture_window)
-        pick.set_sensitive(capture_binary() is not None)
-        # Only « Actualiser » in the header: three buttons there squeezed the
-        # group's title and description into a column of single letters. The
-        # capture buttons get a row of their own, last, wrapping when narrow.
-        self.running_group.set_header_suffix(refresh)
-        buttons = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, column_spacing=6, row_spacing=6,
-                              max_children_per_line=2, homogeneous=False, halign=Gtk.Align.START)
-        buttons.append(pick)
-        if capture_wayland_available():
-            way = Gtk.Button(label=tr("Fenêtre Wayland (portail)…"), valign=Gtk.Align.CENTER,
-                             tooltip_text=tr("Un jeu en fenêtre Wayland native : le bureau demande laquelle partager"))
-            way.connect("clicked", self.on_capture_wayland)
-            buttons.append(way)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6,
-                      margin_start=12, margin_end=12, margin_top=8, margin_bottom=8)
-        hint = Gtk.Label(label=tr("Un jeu absent de la liste (OpenGL, anti-triche…) : génération par capture de sa fenêtre"),
-                         xalign=0, wrap=True)
-        hint.add_css_class("dim-label")
-        box.append(hint)
-        box.append(buttons)
-        self.capture_row = Gtk.ListBoxRow(activatable=False, child=box)
-        self.running_rows = []
-
-    def _refresh_running(self):
-        for row in self.running_rows:
-            self.running_group.remove(row)
-        self.running_rows = [self.capture_row]   # (added last, below the games)
-        detected = detect_games()
-        read_running(keep={inner_pid(pid) for pid, _ in detected})   # drops what crashed games left
-        games, seen = [], set()
-        for pid, name in sorted(detected, key=lambda g: g[1]):
-            if name not in seen:
-                seen.add(name)
-                games.append((pid, name, read_status(pid)))
-        pids = {g[0] for g in games}
-        if self.target and self.target[0] and self.target[0] not in pids:   # the game has exited
-            self._set_target(None)   # (a window picked for capture: its own end, see _beat)
-        if self.selected and self.selected[0] not in pids:
-            self.selected = None
-        if not self.selected and len(games) == 1:
-            self.selected = games[0][:2]
-        self._refresh_session()
-        if not games:
-            row = Adw.ActionRow(title=tr("Aucun jeu en cours"),
-                                subtitle=tr("Lance un jeu Vulkan (natif ou via Proton), puis « Actualiser la liste »"))
-            self.running_group.add(row)
-            self.running_rows.append(row)
-            self.running_group.add(self.capture_row)
-            return
-        group = None
-        for pid, name, entries in games:
-            lines = [d for d in (describe_entry(e) for e in entries) if d]
-            armed = any(e.get("kind") == "swapchain" for e in entries)
-            how = plan(entries, self.opt, capture_binary() is not None)
-            lines.append("→ " + how[1])
-            replaced = layer_replaced(pid)
-            if replaced:
-                lines.insert(0, "⚠ " + tr("Lancé avant l'installation de cette version — relance le jeu"))
-            row = Adw.ActionRow(title=name, subtitle="\n".join(lines))
-            radio = Gtk.CheckButton(valign=Gtk.Align.CENTER, sensitive=armed or how[0] == "capture")
-            if group is None:
-                group = radio
-            else:
-                radio.set_group(group)
-            radio.set_active(self.selected is not None and self.selected[0] == pid)
-            radio.connect("toggled", self.on_pick, (pid, name))
-            row.add_prefix(radio)
-            row.set_activatable_widget(radio)
-            if armed:
-                # A few seconds of this game for the evaluation corpus (the
-                # layer writes its real frames; packed when done).
-                rec = Gtk.Button(label=tr("● Enregistrer"), valign=Gtk.Align.CENTER,
-                                 tooltip_text=tr("Enregistrer quelques secondes de ce jeu (corpus d'évaluation)"))
-                rec.connect("clicked", self.on_record, (pid, name))
-                if replaced:   # an older layer may not record: the request would wait in vain
-                    rec.set_sensitive(False)
-                    rec.set_tooltip_text(tr("Lancé avant l'installation de cette version — relance le jeu"))
-                row.add_suffix(rec)
-            self.running_group.add(row)
-            self.running_rows.append(row)
-        self.running_group.add(self.capture_row)
-
-    def on_record(self, _btn, game):
+        game = self.selected
         try:
             src = request_recording(game[0], game[1])
         except OSError as e:
             self.toast(tr(f"Enregistrement impossible : {e}"))
             return
-        self.toast(tr(f"Enregistrement de {game[1]}… (le jeu peut ralentir quelques secondes)"))
+        self.toast(tr(f"Enregistrement de {self.shown(game)}… (le jeu peut ralentir quelques secondes)"))
         start = time.monotonic()
 
         def wait():
@@ -2879,337 +3522,38 @@ class Window(Adw.ApplicationWindow):
             return True
         GLib.timeout_add(1000, wait)
 
-    def on_capture_wayland(self, _btn):
-        self._set_target((0, tr("fenêtre Wayland")), pick=True, wayland=True)
-        if self.capture_proc is not None:
-            self.toast(tr("Choisis la fenêtre du jeu dans la fenêtre du bureau"))
-
-    def on_capture_window(self, _btn):
-        self._set_target((0, tr("fenêtre choisie")), pick=True)
-        if self.capture_proc is not None:
-            self.toast(tr("Clique sur la fenêtre du jeu"))
-
-    def on_pick(self, radio, game):
-        if not radio.get_active():
+    def on_report(self, _btn):
+        path, url = write_report()
+        if not path:
+            self.toast(tr("Rapport impossible : bdex-framegen introuvable"))
             return
-        self.selected = game
-        if self.target and self.target != game:
-            self._set_target(game)   # generating: move it to the chosen game
-        self._refresh_session()
-
-    def _build_framegen(self, page):
-        g = Adw.PreferencesGroup(title=tr("Génération d'images"),
-                                 description=tr("Insère des images de synthèse entre celles du jeu."))
-        page.add(g)
-        self.gen_row = Adw.SwitchRow(title=tr("Activer"), active=self.opt.generate)
-        self.gen_row.connect("notify::active", self.on_change)
-        g.add(self.gen_row)
-        self.preset_row = Adw.ComboRow(title=tr("Profil de qualité"),
-                                       subtitle=tr("Auto s'adapte à la puissance du GPU"),
-                                       model=Gtk.StringList.new([p[0] for p in PRESETS]))
-        self.preset_row.set_selected(_combo_index(PRESETS, self.opt.preset))
-        self.preset_row.connect("notify::selected", self.on_change)
-        g.add(self.preset_row)
-        self.mult_row = Adw.ComboRow(
-            title=tr("Images affichées par image rendue"),
-            subtitle=tr("Auto : le plus grand multiple entier sous la fréquence de l'écran (×2 à 60 i/s "
-                     "sur 144 Hz). Adaptatif : toute la fréquence de l'écran, même en ratio fractionnaire "
-                     "(50 i/s → 144 i/s), une image par rafraîchissement"),
-            model=Gtk.StringList.new([tr("Auto — selon l'écran"), tr("Adaptatif — toute la fréquence de l'écran"),
-                                      "×2", "×3", "×4", "×5", "×6", "×7", "×8"]))
-        self.mult_row.set_selected(1 if self.opt.adaptive else 0 if self.opt.auto_mult
-                                   else max(2, min(8, self.opt.multiplier)))
-        self.mult_row.connect("notify::selected", self.on_change)
-        g.add(self.mult_row)
-        # The game's own rate, capped before generation: an even base gives
-        # evenly spaced generated frames (fps_limit, applied live). A slider
-        # for any rate (0 = none) with a field for an exact one; « Auto »:
-        # screen ÷ multiplier. Its moves are written once it rests
-        # (_on_limit_moved): a game reloads the file at each write.
-        cur = limit_value(self.opt.values.get("fps_limit", "0"))
-        hz = display_hz()
-        hint = limit_hint(hz)
-        manual = 0 if cur == "auto" else int(cur)
-        self.limit_adj = Gtk.Adjustment(lower=0, upper=max(LIMIT_MAX, manual), step_increment=1, page_increment=10,
-                                        value=manual)
-        self.limit_scale = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL, adjustment=self.limit_adj, digits=0,
-                                     draw_value=False, hexpand=True, valign=Gtk.Align.CENTER)
-        self.limit_scale.set_round_digits(0)
-        for v in LIMIT_MARKS:
-            self.limit_scale.add_mark(v, Gtk.PositionType.BOTTOM, str(v))
-        for m in (2, 3, 4):   # (the caps that fill this screen, as the hint lists them)
-            if hz > 0 and 25 <= hz / m <= LIMIT_MAX and round(hz / m) not in LIMIT_MARKS:
-                self.limit_scale.add_mark(round(hz / m), Gtk.PositionType.TOP, None)
-        self.limit_spin = Gtk.SpinButton(adjustment=self.limit_adj, digits=0, numeric=True, valign=Gtk.Align.CENTER,
-                                         width_chars=4)
-        self.limit_label = Gtk.Label(valign=Gtk.Align.CENTER, width_chars=7, xalign=0)
-        self.limit_row = Adw.ActionRow(
-            title=tr("Limite d'images du jeu"),
-            subtitle=tr("Avant la génération : une base régulière donne une image fluide. "
-                        "Glisser pour choisir, 0 = aucune limite") + ("\n" + hint if hint else ""))
-        for w in (self.limit_spin, self.limit_label):
-            self.limit_row.add_suffix(w)
-        g.add(self.limit_row)
-        # (the slider on a line of its own, the row's whole width)
-        self.limit_slider_row = Gtk.ListBoxRow(activatable=False, selectable=False)
-        box = Gtk.Box(margin_start=12, margin_end=12, margin_top=4, margin_bottom=10)
-        box.append(self.limit_scale)
-        self.limit_slider_row.set_child(box)
-        g.add(self.limit_slider_row)
-        self._limit_timer = 0
-        self._show_limit()
-        self.limit_adj.connect("value-changed", self._on_limit_moved)
-        self.limit_auto_row = Adw.SwitchRow(
-            title=tr("Limite automatique : écran ÷ multiplicateur"),
-            subtitle=tr("Une image du jeu tous les N rafraîchissements (écran à fréquence fixe) ; "
-                        "le curseur ne sert plus"),
-            active=cur == "auto")
-        self.limit_auto_row.connect("notify::active", self.on_change)
-        g.add(self.limit_auto_row)
-        # fps_limit_wait: where the limit holds a Direct3D game under Proton
-        # (DXVK, VKD3D-Proton) — its wait for its earlier frames, not their
-        # present thread (frames queued behind it).
-        self.limit_wait_row = Adw.SwitchRow(
-            title=tr("Limite sans latence ajoutée (jeux Direct3D sous Proton)"),
-            subtitle=tr("Retient le jeu là où il attend ses images précédentes, avant qu'il lise ses entrées, "
-                        "au lieu du fil de présentation de DXVK / VKD3D-Proton : 1 à 2 images de latence en moins. "
-                        "Pris en compte au lancement du jeu"),
-            active=self.opt.values.get("fps_limit_wait", "1") == "1")
-        self.limit_wait_row.connect("notify::active", self.on_change)
-        g.add(self.limit_wait_row)
-        self.mode_row = Adw.ComboRow(title="Mode",
-                                     subtitle=tr("L'extrapolation supprime la latence ajoutée"),
-                                     model=Gtk.StringList.new([m[0] for m in MODES]))
-        self.mode_row.set_selected(_combo_index(MODES, self.opt.mode))
-        self.mode_row.connect("notify::selected", self.on_change)
-        g.add(self.mode_row)
-        self.pause_row = Adw.SwitchRow(
-            title=tr("En pause"),
-            subtitle=tr("Suspend la génération dans les jeux en cours (s'applique en moins d'une seconde ; "
-                     "raccourci : bdex-framegen --toggle)"),
-            active=self.opt.paused)
-        self.pause_row.connect("notify::active", self.on_change)
-        g.add(self.pause_row)
-        self.method_row = Adw.ComboRow(
-            title=tr("Méthode"),
-            subtitle=tr("Injection : dans la présentation du jeu, la latence la plus basse (jeux Vulkan, Proton). "
-                        "Capture : tout jeu, une image de latence en plus, sur le GPU de son choix"),
-            model=Gtk.StringList.new([m[0] for m in METHODS]))
-        self.method_row.set_selected(_combo_index(METHODS, self.opt.method))
-        self.method_row.connect("notify::selected", self.on_change)
-        g.add(self.method_row)
-        self.gpus = generation_gpus()
-        if self.opt.gpu and not any(self.opt.gpu.lower() in n.lower() for n in self.gpus):
-            self.gpus.append(self.opt.gpu)   # (chosen before, not seen now)
-        self.gpu_row = Adw.ComboRow(
-            title=tr("GPU de génération"),
-            subtitle=tr("Un autre GPU que celui du jeu : capture sur ce GPU (le jeu rend sur le sien)"),
-            model=Gtk.StringList.new([tr("Automatique — celui du jeu")] + self.gpus))
-        sel = next((i + 1 for i, n in enumerate(self.gpus) if self.opt.gpu and self.opt.gpu.lower() in n.lower()), 0)
-        self.gpu_row.set_selected(sel)
-        self.gpu_row.connect("notify::selected", self.on_change)
-        g.add(self.gpu_row)
-
-    def _build_hud(self, page):
-        g = Adw.PreferencesGroup(
-            title=tr("Compteur de FPS"),
-            description=tr("Affiche les FPS en surimpression dans le jeu (coin haut-gauche)."))
-        page.add(g)
-        self.hud_row = Adw.ComboRow(
-            title=tr("Affichage"),
-            subtitle=tr("Les 1% / 0.1% low sont les FPS aux 99e / 99,9e centiles du jeu"),
-            model=Gtk.StringList.new([m[0] for m in HUD_MODES]))
-        self.hud_row.set_selected(self.opt.hud if 0 <= self.opt.hud < len(HUD_MODES) else 0)
-        self.hud_row.connect("notify::selected", self.on_change)
-        g.add(self.hud_row)
-
-    def _build_upscale(self, page):
-        g = Adw.PreferencesGroup(title="Upscaling",
-                                 description=tr("Le jeu rend en résolution réduite, agrandie à l'affichage (X11, Xwayland et Wayland natif)."))
-        page.add(g)
-        self.up_row = Adw.SwitchRow(title=tr("Activer"), active=self.opt.upscale)
-        self.up_row.connect("notify::active", self.on_change)
-        g.add(self.up_row)
-        adj = Gtk.Adjustment(lower=50, upper=100, step_increment=1, page_increment=5, value=self.opt.render_scale)
-        self.scale_row = Adw.SpinRow(title=tr("Résolution de rendu"),
-                                     subtitle=tr("pourcentage de la résolution d'affichage"), adjustment=adj)
-        self.scale_row.connect("notify::value", self.on_change)
-        g.add(self.scale_row)
-        self.filter_row = Adw.ComboRow(title=tr("Filtre d'agrandissement"),
-                                       model=Gtk.StringList.new([f[0] for f in FILTERS]))
-        self.filter_row.set_selected(_combo_index(FILTERS, self.opt.filter))
-        self.filter_row.connect("notify::selected", self.on_change)
-        g.add(self.filter_row)
-        adj2 = Gtk.Adjustment(lower=0, upper=100, step_increment=1, page_increment=10, value=self.opt.sharpness)
-        self.sharp_row = Adw.SpinRow(title=tr("Netteté (CAS)"), subtitle=tr("0 = désactivé"), adjustment=adj2)
-        self.sharp_row.connect("notify::value", self.on_change)
-        g.add(self.sharp_row)
-
-    def _build_present(self, page):
-        g = Adw.PreferencesGroup(title=tr("Présentation"))
-        page.add(g)
-        self.present_row = Adw.ComboRow(title=tr("Mode de présentation"),
-                                        model=Gtk.StringList.new([p[0] for p in PRESENT]))
-        self.present_row.set_selected(_combo_index(PRESENT, self.opt.present))
-        self.present_row.connect("notify::selected", self.on_change)
-        g.add(self.present_row)
-        self.ll_row = Adw.SwitchRow(title=tr("Faible latence"),
-                                    subtitle=tr("Empêche le jeu de prendre de l'avance (utile en FIFO)"))
-        self.ll_row.set_active(self.opt.low_latency)
-        self.ll_row.connect("notify::active", self.on_change)
-        g.add(self.ll_row)
-
-    def _build_advanced(self, page):
-        g = Adw.PreferencesGroup(
-            title=tr("Réglages avancés"),
-            description=tr("Toutes les autres options du layer. Les valeurs par défaut conviennent à "
-                        "la plupart des jeux ; seules les valeurs modifiées sont écrites. La plupart "
-                        "s'appliquent aussi aux jeux déjà lancés."))
-        page.add(g)
-        self.opt_rows = {}
-        self.section_rows = {}
-        for sid, title, subtitle, needs_gen, opts in SECTIONS:
-            exp = Adw.ExpanderRow(title=title, subtitle=subtitle)
-            g.add(exp)
-            self.section_rows[sid] = (exp, needs_gen)
-            for o in opts:
-                if o["key"] in PROMOTED:
-                    continue
-                value = self.opt.values[o["key"]]
-                if o["kind"] == "spin":
-                    adj = Gtk.Adjustment(lower=o["lower"], upper=o["upper"], step_increment=o["step"],
-                                         page_increment=o["step"] * 10, value=-1.0 if value == "auto" else float(value))
-                    row = Adw.SpinRow(title=o["title"], subtitle=o["sub"], adjustment=adj, digits=o["digits"])
-                    row.connect("notify::value", self.on_change)
-                elif o["kind"] == "switch":
-                    row = Adw.SwitchRow(title=o["title"], subtitle=o["sub"], active=value == "1")
-                    row.connect("notify::active", self.on_change)
-                elif o["kind"] == "choice":
-                    row = Adw.ComboRow(title=o["title"], subtitle=o["sub"],
-                                       model=Gtk.StringList.new([c[0] for c in o["choices"]]))
-                    row.set_selected(_combo_index(o["choices"], value))
-                    row.connect("notify::selected", self.on_change)
-                else:
-                    row = Adw.EntryRow(title=o["title"], text=value, show_apply_button=True)
-                    row.set_tooltip_text(o["sub"])
-                    row.connect("apply", self.on_change)
-                exp.add_row(row)
-                self.opt_rows[o["key"]] = (o, row)
-
-    # -- state <-> UI ------------------------------------------------------
-
-    def sync(self):
-        o = self.opt
-        o.generate = self.gen_row.get_active()
-        o.preset = PRESETS[self.preset_row.get_selected()][1]
-        o.auto_mult = self.mult_row.get_selected() == 0
-        o.adaptive = self.mult_row.get_selected() == 1
-        if not o.auto_mult and not o.adaptive:
-            o.multiplier = self.mult_row.get_selected()
-        o.mode = MODES[self.mode_row.get_selected()][1]
-        o.upscale = self.up_row.get_active()
-        o.render_scale = int(self.scale_row.get_value())
-        o.filter = FILTERS[self.filter_row.get_selected()][1]
-        o.sharpness = int(self.sharp_row.get_value())
-        o.present = PRESENT[self.present_row.get_selected()][1]
-        o.low_latency = self.ll_row.get_active()
-        o.hud = HUD_MODES[self.hud_row.get_selected()][1]
-        o.paused = self.pause_row.get_active()
-        o.without_panel = self.always_all_row.get_active()
-        o.method = METHODS[self.method_row.get_selected()][1]
-        i = self.gpu_row.get_selected()
-        o.gpu = self.gpus[i - 1] if 0 < i <= len(self.gpus) else ""
-        if "fps_limit" in o.values:
-            o.values["fps_limit"] = "auto" if self.limit_auto_row.get_active() else \
-                str(int(round(self.limit_adj.get_value())))
-        if "fps_limit_wait" in o.values:
-            o.values["fps_limit_wait"] = "1" if self.limit_wait_row.get_active() else "0"
-        for key, (spec, row) in self.opt_rows.items():
-            if spec["kind"] == "spin":
-                v = row.get_value()
-                o.values[key] = "auto" if spec["lower"] < 0 and v < 0 else _fmt_num(v, spec["digits"])
-            elif spec["kind"] == "switch":
-                o.values[key] = "1" if row.get_active() else "0"
-            elif spec["kind"] == "choice":
-                o.values[key] = spec["choices"][row.get_selected()][1]
-            else:
-                o.values[key] = row.get_text().strip()
-
-    def _show_limit(self):
-        n = int(round(self.limit_adj.get_value()))
-        self.limit_label.set_text(tr("aucune") if n == 0 else tr("i/s"))
-
-    def _on_limit_moved(self, *_):
-        self._show_limit()
-        if self._loading:
-            return
-        if self._limit_timer:
-            GLib.source_remove(self._limit_timer)
-        self._limit_timer = GLib.timeout_add(300, self._limit_settled)
-
-    def _limit_settled(self):
-        self._limit_timer = 0
-        self.on_change()
-        return False
-
-    def refresh_sensitivity(self):
-        o = self.opt
-        for r in (self.limit_scale, self.limit_spin, self.limit_label):
-            r.set_sensitive(not self.limit_auto_row.get_active())
-        for r in (self.preset_row, self.mult_row, self.mode_row):
-            r.set_sensitive(o.generate)
-        for r in (self.scale_row, self.filter_row, self.sharp_row):
-            r.set_sensitive(o.upscale)
-        for exp, needs_gen in self.section_rows.values():
-            exp.set_sensitive(o.generate or not needs_gen)
-        self.pause_row.set_sensitive(o.generate)
-
-    def on_change(self, *_):
-        if self._loading:
-            return
-        before = (self.opt.method, self.opt.gpu)
-        self.sync()
-        if self.target and (self.opt.method, self.opt.gpu) != before and self.target[0]:
-            GLib.idle_add(lambda: self._set_target(self.target) and False)  # (again, by the new choice)
-        self.refresh_sensitivity()
-        self.save()
-        self._refresh_session()   # « Tous les jeux » (sans le panneau) changes what « Démarrer » means
-
-    def save(self):
-        # Re-read first: lines edited by hand while the panel is open
-        # ([game] sections, unmanaged keys) must survive its next save.
-        self.cfg = ConfigFile.load()
-        self.opt.write_into(self.cfg.glob)
-        try:
-            self.cfg.write()
-        except OSError as e:
-            self.toast(tr(f"Échec de l'enregistrement : {e}"))
-            return
-        mirror_config()   # sandboxed games (Flatpak Steam...) read their own copy
-
-    def toast(self, text):
-        self.toasts.add_toast(Adw.Toast.new(text))
-
-    def warn(self, text):
-        """A warning that stays until read (a dialog where GTK has one), the
-        action going ahead behind it."""
-        try:
-            d = Gtk.AlertDialog(message=tr("Attention"), detail=text)
-            d.show(self)
-        except (AttributeError, TypeError):
-            t = Adw.Toast.new(text)
+        self.toast(tr(f"Rapport écrit dans {path} — à joindre au formulaire"))
+        if url:
             try:
-                t.set_timeout(0)
-            except AttributeError:
-                pass
-            self.toasts.add_toast(t)
-
-    # -- header actions ----------------------------------------------------
+                Gio.AppInfo.launch_default_for_uri(url, None)
+            except GLib.Error:
+                self.toast(tr("Ouvre le lien affiché par « bdex-framegen --issue-url »"))
 
     def on_copy(self, _btn):
-        self.sync()
         Gdk.Display.get_default().get_clipboard().set(self.opt.steam_string())
         self.toast(tr("Options Steam (équivalent par jeu) copiées."))
+
+    def on_open_config(self, _btn):
+        if self._save_timer:
+            self.save()
+        try:
+            Gio.AppInfo.launch_default_for_uri(GLib.filename_to_uri(os.path.dirname(CONFIG_PATH), None), None)
+        except GLib.Error:
+            self.toast(CONFIG_PATH)
+
+    def on_about(self, _btn):
+        texts = dict(application_name="bdex-framegen", developer_name="Bdexez", application_icon="input-gaming-symbolic",
+                     comments=tr("Génération d'images par flux optique pour les jeux Vulkan et Proton."))
+        if HAVE_ADW and hasattr(Adw._adw, "AboutDialog"):
+            Adw._adw.AboutDialog(**texts).present(self)
+            return
+        Gtk.AboutDialog(transient_for=self, modal=True, program_name="bdex-framegen", authors=["Bdexez"],
+                        logo_icon_name="input-gaming-symbolic", comments=texts["comments"]).present()
 
     def on_install(self, btn):
         here = os.path.dirname(os.path.abspath(__file__))
@@ -3232,14 +3576,14 @@ class Window(Adw.ApplicationWindow):
         threading.Thread(target=run, daemon=True).start()
 
     def _install_done(self, btn, ok, msg):
+        btn.set_sensitive(True)
         if ok:
-            self.status_row.set_subtitle(tr("Installée — chargée automatiquement dans tous les jeux Vulkan"))
-            self.status_row.remove(btn)
+            self.installed = True
             self.toast(tr("Couche installée. Lance ton jeu — c'est actif."))
         else:
-            btn.set_sensitive(True)
             btn.set_label(tr("Réessayer"))
             self.toast(tr(f"Échec de l'installation : {msg}"))
+        self.refresh()
         return False
 
 
@@ -3247,6 +3591,11 @@ class App(Adw.Application):
     def __init__(self):
         # One window: the session file has a single owner.
         super().__init__(application_id="dev.bdex.framegen.Gui")
+
+    def do_startup(self):
+        Adw.Application.do_startup(self)
+        prefer_dark()
+        install_css()
 
     def do_activate(self):
         (self.get_active_window() or Window(self)).present()
