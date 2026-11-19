@@ -24,10 +24,10 @@ Capture avoids loading the Vulkan layer into the target process. Compatibility w
 
 1. Obtain the `bdex-framegen-windows-x64` package from the repository's [Actions artifacts](https://github.com/Bdexez/bdex_frame_gen/actions/workflows/windows.yml) or [release assets](https://github.com/Bdexez/bdex_frame_gen/releases).
 2. Start the game in windowed or borderless mode if using capture.
-3. Run `bdex_capture.exe`, select the game window, choose **Auto**, **Injection** or **Capture**, and start with ×2 interpolation.
-4. Compare generation on/off, then adjust the preset, multiplier and optional GPU calibration result.
+3. Run `bdex_capture.exe`, select the game window, pick the multiplier (start with ×2), the mode and, if you want one, the **game frame limit** (applied by the layer: injection), then **Démarrer** / **Start**.
+4. Compare generation on/off, then adjust the preset and multiplier.
 
-The launcher supports per-game profiles, advanced engine settings, GPU selection and a diagnostic report. A different generation GPU uses the capture path.
+The launcher opens on its **basic page** — the game, the frame-generation settings (preset, frames per frame, mode, game frame limit, FPS counter) and what is running. Tick **Mode avancé** / **Advanced mode** for every option: the method (**Auto**, **Injection** or **Capture**), the generation GPU, display and presentation, the flow tuning, the engine options of the advanced column, GPU calibration, removing the DXVK injections and the diagnostic report; the choice is remembered (`%LOCALAPPDATA%\bdex-framegen\launcher-mode`). Per-game profiles work on both pages. A different generation GPU uses the capture path.
 
 | Shortcut | Action |
 | :--- | :--- |
