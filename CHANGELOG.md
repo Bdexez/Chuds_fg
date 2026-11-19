@@ -27,6 +27,17 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   réinitialiser* with *Annuler*. The system tools (layer install, GPU,
   calibration, Game Mode per game, Steam launch options, configuration
   file, report, recording) are its *Système* category and the header menu.
+- **The Windows launcher (`bdex_capture.exe`) gets the same split**: it
+  opens on a **basic page** of one column — the game, then the preset, the
+  frames per frame, the mode, the new **game frame limit** (`fps_limit`:
+  none, 30 to 90 fps, *Auto* = screen ÷ multiplier, or a rate set elsewhere;
+  applied by the layer in the game, the default injection path) and the FPS
+  counter, what is running, *Démarrer*. **Mode avancé** shows every control
+  (the previous two-column window: method, GPU, display, presentation, flow
+  tuning, the engine options' column, calibration, report); the choice is
+  remembered in `%LOCALAPPDATA%\bdex-framegen\launcher-mode`. Checked with
+  MinGW (x64 and i686) and run under Wine (both pages, the switch between
+  them, a cap read from the config file).
 - **Every engine option is in the panel**: 16 were missing from
   `layer/options_ui.conf` and are now there (French and English):
   `content_clock`, `pace_plan`, `virtual_grid`, `precise_wake`,
