@@ -8,6 +8,30 @@ import os
 import sys
 import tempfile
 
+# Every text the panel passes to tr() has its English (_EN), and _EN keeps
+# no text the panel no longer shows. Read from the source: no GTK needed.
+import ast  # noqa: E402
+
+_src = ast.parse(open(sys.argv[1], encoding="utf-8").read())
+_en = next(ast.literal_eval(n.value) for n in ast.walk(_src) if isinstance(n, ast.Assign)
+           and any(isinstance(t, ast.Name) and t.id == "_EN" for t in n.targets))
+_texts = {}
+for n in ast.walk(_src):
+    if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "tr" and n.args:
+        a = n.args[0]
+        if isinstance(a, ast.Constant) and isinstance(a.value, str):
+            _texts[a.value] = n.lineno
+        elif isinstance(a, ast.JoinedStr):   # f-string: its fields are "{}" in _EN
+            _texts["".join(v.value if isinstance(v, ast.Constant) else "{}" for v in a.values)] = n.lineno
+_missing = sorted((line, t) for t, line in _texts.items() if t not in _en)
+_unused = sorted(t for t in _en if t not in _texts)
+for line, t in _missing:
+    print(f"line {line}: no English for {t!r} (add it to _EN)")
+for t in _unused:
+    print(f"_EN: {t!r} is no longer shown (remove it)")
+assert not _missing and not _unused, "panel translations out of date"
+print(f"panel translations OK ({len(_texts)} texts)")
+
 home = tempfile.mkdtemp()
 os.environ["HOME"] = home
 os.environ["XDG_CONFIG_HOME"] = os.path.join(home, ".config")
