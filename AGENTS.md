@@ -1499,8 +1499,14 @@ factices, `-static -mwindows`) lancé par Wine sous Xvfb.
 
 - Le README principal présente le projet, la démo réelle et les compromis de génération avant les détails d'exploitation. La table exhaustive des options reste dans `README.md` pour `test_option_keys.py`.
 - `docs/REFERENCE.md` conserve le guide technique complet ; ses liens relatifs sont adaptés à son emplacement. Les nouveaux liens de documentation devraient viser ce guide pour les sous-sections détaillées.
-- `docs/visuals/framegen-cover.webp` est une illustration conceptuelle, pas une capture de jeu ni un résultat mesuré. `docs/visuals/interpolation.svg` est un schéma exact de l'ordre des images en interpolation ×4. `docs/demo.gif`, `comparison.png` et `flow.png` restent les sorties réelles de la démo.
+- `docs/visuals/framegen-cover.webp` est une illustration conceptuelle, pas une capture de jeu ni un résultat mesuré. `docs/visuals/interpolation.svg` est un schéma exact de l'ordre des images en interpolation ×4. `comparison.png` et `flow.png` restent les sorties réelles de la démo.
 - Documentation seule : aucune modification du moteur, des shaders, des options ni des workflows. Les mesures historiques sont présentées avec leur périmètre hors ligne.
+
+### Session 2026-11-21 — GIF animés du README
+
+- Six GIF dans `docs/visuals/` (`hero-x4`, `crossfade-vs-flow`, `optical-flow`, `multipliers`, `modes`, `game-scene-x4`), **sorties réelles du moteur** (`chuds_fg_offline`, défauts) ; seuls libellés, bandes d'images et cartes d'erreur sont dessinés autour. `docs/demo.gif` (ancien nom du projet) retiré.
+- Regénérer : `tools/readme_gifs.py build /tmp/chuds-fg-gifs` (gamescope sans tête, ffmpeg, numpy, Pillow, GPU) ; déterministe octet pour octet. Changer un libellé ou une légende = relancer le script, pas retoucher les GIF. Les chiffres PSNR du README (« Measured on these clips ») viennent de ces séquences : les remesurer si le moteur change.
+- Le GIF de coupure de scène est écarté (fondu sur la paire coupée, seconde scène de la démo mal suivie) : MEMOIRE 21/11.
 
 ---
 
