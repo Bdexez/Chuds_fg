@@ -30,7 +30,7 @@
 #include <string>
 #include <thread>
 
-namespace bdex {
+namespace chuds_fg {
 
 // Pure logic (tests/test_x11_present_clock.cpp): the completion events of
 // one window's presents, in order, each with the MSC and UST (ms) it was
@@ -101,4 +101,4 @@ private:
     std::deque<Sent> sent_;     // mutex_
 };
 
-} // namespace bdex
+} // namespace chuds_fg

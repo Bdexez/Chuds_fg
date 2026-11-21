@@ -5,7 +5,7 @@
 
 #include <cmath>
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace depth {
 
@@ -68,4 +68,4 @@ bool readLayout(VkImageLayout current, VkImageLayout& read) {
 
 } // namespace depth
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -1,4 +1,4 @@
-# Mémoire du projet bdex-framegen
+# Mémoire du projet chuds-fg
 
 État du code au **29 octobre 2026** (axes d'amélioration relevés le 10/11, §7) — dernière version publiée **0.5.6** (05/10), qui
 regroupe tout depuis la 0.5.5 : parité Lossless Scaling, compatibilité
@@ -31,7 +31,7 @@ détail : [`README.md`](../README.md) (usage, toutes les options),
 
 ## 1. En bref
 
-bdex-framegen **génère des images intermédiaires** entre celles d'un jeu, par
+chuds-fg **génère des images intermédiaires** entre celles d'un jeu, par
 flux optique calculé sur le GPU — le principe de Lossless Scaling (LSFG) ou
 d'AMD Fluid Motion Frames. Le jeu rend 30 i/s, l'écran en montre 60, 90,
 jusqu'à ×8, ou de façon **adaptative** tout ce que permet la fréquence de
@@ -44,7 +44,7 @@ tous les shaders de `layer/shaders/`) :
 
 | | Couche Vulkan (« mode 1 ») | Application de capture (« mode 2 ») |
 |---|---|---|
-| Fichier | `libVkLayer_bdex_framegen.so` / `VkLayer_bdex_framegen.dll` | `bdex_capture.exe` |
+| Fichier | `libVkLayer_chuds_fg.so` / `VkLayer_chuds_fg.dll` | `chuds_fg_capture.exe` |
 | Principe | couche Vulkan implicite qui prend la main sur la présentation du jeu | capture la fenêtre du jeu (WGC), génère, réaffiche dans une surcouche |
 | Systèmes | **Linux** (produit principal), Windows (compilée, jamais validée sur matériel) | Windows x64 |
 | Jeux | Vulkan natifs, Direct3D via Proton (DXVK, VKD3D-Proton), OpenGL via Zink | tous (D3D9 à 12, OpenGL, Vulkan), en fenêtré ou sans bordure |
@@ -174,7 +174,7 @@ les images répétées (`dedup`) et commande des passes en dispatch indirect,
     cadence irrégulière. Bornée à un rafraîchissement d'écart (`displayHz`) :
     sans borne, 0,5 n'affichait que 116 images sur 120 et 0,25, 95 (deux
     images dans le même rafraîchissement). Seulement dans la couche
-    (`FrameOrder::of(…, withHold)`) : la capture et `bdex_offline` restent à
+    (`FrameOrder::of(…, withHold)`) : la capture et `chuds_fg_offline` restent à
     l'espacement régulier ; hors adaptatif. Les temps d'affichage passent au
     tampon d'état pour que `frame_timing` suive. **`auto` (−1)** : 1,25
     rafraîchissement d'écart (exactement un : 1,2 image/s perdue sur 80), et
@@ -216,7 +216,7 @@ les images répétées (`dedup`) et commande des passes en dispatch indirect,
     limite Steam n'a jamais été active sur ce device (sinon il peut rester
     celui de la limite levée : un jeu à 30 i/s restait sans génération,
     attrapé par `gamescope_limit`), ailleurs le max mesurée / panneau ;
-  - **Mesure réelle** (02/10) : `bdex_demo --latency-test [auto]` (flash blanc
+  - **Mesure réelle** (02/10) : `chuds_fg_demo --latency-test [auto]` (flash blanc
     par entrée, journal `--latency-log`) + `latency_log` côté couche (chaque
     image affichée, retour d'affichage) → `tools/latency_report.py` (entrée
     → premier photon / image réelle) ; `tools/latency_bench.sh` compare des
@@ -230,8 +230,8 @@ les images répétées (`dedup`) et commande des passes en dispatch indirect,
   `present_id`/`present_wait` (1 et 2), qui visent une swapchain que la
   couche virtualise. VKD3D-Proton se bloquait sinon.
 - **Statut en direct** : un fichier par processus, lu par le panneau et
-  `bdex-framegen --report`. Emplacement : `~/.cache/bdex-framegen/run/<pid>.status`
-  sous Linux, `%TEMP%\bdex-framegen\` sous Windows. Il contient i/s du jeu
+  `chuds-fg --report`. Emplacement : `~/.cache/chuds-fg/run/<pid>.status`
+  sous Linux, `%TEMP%\chuds-fg\` sous Windows. Il contient i/s du jeu
   et en sortie, fréquence, latence, limite Steam, passes actives.
 
 ---
@@ -246,7 +246,7 @@ les images répétées (`dedup`) et commande des passes en dispatch indirect,
 - Contenu installé :
   - `lib/` (64 bits), `lib32/` (jeux 32 bits) ;
   - manifestes dans `share/vulkan/implicit_layer.d/` ;
-  - `bin/bdex-framegen` (lanceur, diagnostic) et `bin/bdex-framegen-gui`
+  - `bin/chuds-fg` (lanceur, diagnostic) et `bin/chuds-fg-gui`
     (panneau) ;
   - profils, description des options, raccourci d'application.
 - Depuis les sources : `tools/install.sh`.
@@ -259,18 +259,18 @@ les images répétées (`dedup`) et commande des passes en dispatch indirect,
     no` (sinon la couche 32 bits tirerait une glibc 32 bits), dépendances
     riches `(vulkan-loader or libvulkan1)` pour Fedora et openSUSE ;
     `rpm-ostree install` sur Bazzite / Silverblue ;
-  - Arch : `packaging/arch/bdex-framegen-bin` (l'archive) et `-git`
+  - Arch : `packaging/arch/chuds-fg-bin` (l'archive) et `-git`
     (sources, couche 32 bits, runtime C++ statique), avec `.SRCINFO` —
     **prêts pour l'AUR, non publiés** (dépôt privé : l'URL des sources
     renvoie 404) ;
   - NixOS : `flake.nix` (paquet, `layer32`, module
-    `programs.bdex-framegen.enable` qui lie `share/vulkan` dans le profil
+    `programs.chuds-fg.enable` qui lie `share/vulkan` dans le profil
     système). Nix sur une autre distribution : non recommandé (couche liée à
     la glibc du store, chargée dans des jeux à glibc plus ancienne).
   - La couche trouve ses profils à `../share` **ou `../../share`** de son
-    dossier (`platformBundledProfilesPath`) ; `BDEX_INSTALL_LIBDIR` règle le
+    dossier (`platformBundledProfilesPath`) ; `CHUDS_FG_INSTALL_LIBDIR` règle le
     dossier au build.
-  - Un paquet n'écrit pas dans le home : `bdex-framegen --sandboxes` copie
+  - Un paquet n'écrit pas dans le home : `chuds-fg --sandboxes` copie
     la couche dans les lanceurs Flatpak/Snap (le postinst le rappelle). Après
     une mise à jour, le panneau recopie à son ouverture les copies périmées
     (`flatpak.sh --check`), `--check` sort en 2 et `--report` les signale.
@@ -281,7 +281,7 @@ les images répétées (`dedup`) et commande des passes en dispatch indirect,
     fichier ouvert intact).
   - **Paquets source** (02/10, job CI `source-packages`, chacun construit
     depuis le checkout dans le conteneur de la distribution puis installé) :
-    `packaging/rpm/bdex-framegen.spec` (COPR, OBS ; Fedora 44, Tumbleweed),
+    `packaging/rpm/chuds-fg.spec` (COPR, OBS ; Fedora 44, Tumbleweed),
     `packaging/debian/` (PPA, OBS ; Ubuntu 24.04/22.04, Debian 12), overlay
     Gentoo `packaging/gentoo` (`ABI_X86="64 32"`), template Void (glibc,
     musl). Pièges : dnf satisfait `libstdc++-devel` de gcc-c++ par le seul
@@ -297,7 +297,7 @@ les images répétées (`dedup`) et commande des passes en dispatch indirect,
     couche 32 bits sous Debian/Ubuntu/Fedora ; il teste maintenant la
     liaison d'une bibliothèque C++ 32 bits. Fedora : `glibc-devel.i686
     libstdc++-devel.i686 libatomic.i686`.
-- **Panneau** (`bdex-framegen-gui`, depuis le 19/11) : deux pages. *Simple* —
+- **Panneau** (`chuds-fg-gui`, depuis le 19/11) : deux pages. *Simple* —
   le jeu (détecté tout seul), Auto/×2/×3/×4, la limite d'i/s du jeu, la
   priorité (fluidité = interpolation, réactivité = extrapolation), le
   compteur, et un seul bouton Démarrer/Arrêter avec les chiffres du jeu en
@@ -317,8 +317,8 @@ les images répétées (`dedup`) et commande des passes en dispatch indirect,
   `tests/panel_logic.py` tourne sans GTK).
 - **MangoHud** : chargé seul, il se place *au-dessus* de la couche (côté
   jeu) — mesuré : 330 i/s comptées pour 660 affichées, dessin sur les
-  réelles seulement. `bdex-framegen --mangohud` (= `VK_INSTANCE_LAYERS=
-  VK_LAYER_BDEX_framegen:VK_LAYER_MANGOHUD_overlay_x86_64:…_x86`) le met
+  réelles seulement. `chuds-fg --mangohud` (= `VK_INSTANCE_LAYERS=
+  VK_LAYER_CHUDS_fg:VK_LAYER_MANGOHUD_overlay_x86_64:…_x86`) le met
   dessous. `VK_LOADER_LAYERS_ENABLE` ne change pas l'ordre.
 
 **Principe** : la couche est **implicite**. Elle se charge dans chaque
@@ -341,14 +341,14 @@ programme Vulkan et reste **transparente** tant qu'elle n'est pas activée
 - AMD et Intel sous Mesa (RADV, ANV) ; Radeon Vega 8 testée pour la qualité.
 - NVK ; lavapipe (logiciel, pour les tests).
 - Portables hybrides : le jeu doit tourner sur le GPU relié à l'écran (le
-  rapport le signale). `bdex-framegen --gpu screen|discrete|integrated|
+  rapport le signale). `chuds-fg --gpu screen|discrete|integrated|
   nvidia|amd|intel|list -- jeu` (02/10) : `MESA_VK_DEVICE_SELECT` (+
   `_FORCE_DEFAULT_DEVICE`), `DRI_PRIME`, PRIME offload NVIDIA
   (`__NV_PRIME_RENDER_OFFLOAD`, `__VK_LAYER_NV_optimus`), et
   `DXVK_FILTER_DEVICE_NAME` / `VKD3D_FILTER_DEVICE_NAME` (Proton choisit son
   GPU lui-même). Liste par vulkaninfo, écrans par `/sys/class/drm`.
 
-**OpenGL** : `bdex-framegen --gl -- jeu` fait passer le jeu par Zink
+**OpenGL** : `chuds-fg --gl -- jeu` fait passer le jeu par Zink
 (OpenGL sur Vulkan, en forçant le GL de Mesa).
 
 **Exclusions automatiques**
@@ -359,8 +359,8 @@ programme Vulkan et reste **transparente** tant qu'elle n'est pas activée
   PunkBuster, miHoYo) ou compétitifs (CS2, Dota 2…) : la couche s'y retire.
 
 **Outils**
-- `bdex-framegen-gui` : le panneau.
-- `bdex-framegen` :
+- `chuds-fg-gui` : le panneau.
+- `chuds-fg` :
   - `-- jeu` : lancer un jeu avec la couche ;
   - `--toggle` : pause à chaud ;
   - `--report` : diagnostic en français ;
@@ -398,21 +398,21 @@ programme Vulkan et reste **transparente** tant qu'elle n'est pas activée
   Wine 9 d'Ubuntu n'a pas de Vulkan dans son pilote Wayland.
 
 **Points propres au runtime Steam**
-- Dossier de session et de statut dans `~/.cache/bdex-framegen/run`, pas
+- Dossier de session et de statut dans `~/.cache/chuds-fg/run`, pas
   dans `$XDG_RUNTIME_DIR` : le conteneur Steam ne le partage pas (PRAGMATA ne
   démarrait pas).
 - Couche 32 bits pour les jeux 32 bits (DXVK 32 bits).
 - L'archive embarque son runtime C++ : celui de Steam peut être plus ancien.
 
-**Diagnostic** : `BDEX_FG_LOG_FILE` et `PROTON_LOG=1`. **Journal de plantage** (02/10, `crash_log`, `crash.cpp`) : une faute
+**Diagnostic** : `CHUDS_FG_LOG_FILE` et `PROTON_LOG=1`. **Journal de plantage** (02/10, `crash_log`, `crash.cpp`) : une faute
 dont l'instruction (ou l'un des 4 premiers appelants) est dans la couche
-écrit `~/.cache/bdex-framegen/crash-<jeu>-<pid>.txt` (décalages pour
+écrit `~/.cache/chuds-fg/crash-<jeu>-<pid>.txt` (décalages pour
 addr2line, réglages), puis chaîne vers le gestionnaire précédent : Wine se
 sert de SIGSEGV, on ne garde jamais une faute. Installé seulement si la
 couche est active et hors anti-triche ; `--report` les reprend. Les couches de
 validation ne se chargent pas dans pressure-vessel.
 
-**Réglage par jeu** : option de lancement Steam `BDEX_FG=1 %command%`, ou
+**Réglage par jeu** : option de lancement Steam `CHUDS_FG=1 %command%`, ou
 section `[exe]` dans la configuration.
 
 ### 4.3 Lanceurs Flatpak (Steam, Heroic, Lutris, Bottles)
@@ -426,24 +426,24 @@ section `[exe]` dans la configuration.
   les jeux (PID interne `NSpid`, fichiers vus par `/proc/<pid>/root`) et leur
   écrit la session. `--report` et `--toggle` suivent.
 - **Installer les lanceurs d'abord**, ou relancer `install.sh` après (ou
-  `bdex-framegen --sandboxes`).
+  `chuds-fg --sandboxes`).
 - **Extension Flatpak** (02/10, `packaging/flatpak`,
-  `org.freedesktop.Platform.VulkanLayer.BdexFramegen`, runtime 25.08, prête
+  `org.freedesktop.Platform.VulkanLayer.ChudsFg`, runtime 25.08, prête
   pour Flathub, comme MangoHud/vkBasalt) : toute appli Flatpak sur ce
   runtime charge la couche (64 et 32 bits, `/usr/lib/extensions/vulkan/
-  BdexFramegen/lib/<triplet>`), `flatpak update` la met à jour.
+  ChudsFg/lib/<triplet>`), `flatpak update` la met à jour.
   `flatpak.sh` ne copie alors plus la couche dans l'appli (copies retirées :
   une copie périmée serait chargée d'abord), seulement la config, plus une
-  marque `data/bdex-framegen/extension` lue par le CLI ; le panneau détecte
+  marque `data/chuds-fg/extension` lue par le CLI ; le panneau détecte
   lui-même la branche du runtime de l'appli (`metadata`). Vérifiée par
   `tools/ci/flatpak-check.sh` (conteneur, SDK en volume Docker) : chargée
-  par le loader 64 bits du runtime, listée (`VK_LAYER_BDEX_framegen_32`) par
+  par le loader 64 bits du runtime, listée (`VK_LAYER_CHUDS_fg_32`) par
   le loader i386. Pièges : pas de `vulkaninfo` dans le SDK (sonde C
   `tools/ci/vk_layer_probe.c`) ; sans `--allow=multiarch`, seccomp tue un
   programme 32 bits (SIGSYS, code 159) ; aucun pilote 32 bits monté dans le
   SDK (GL32 est pour les applis qui le déclarent, comme Steam).
 - **Snap** (Steam d'Ubuntu, depuis le 30/09) : bibliothèque dans
-  `~/snap/steam/common/bdex-framegen` (gardée d'une révision à l'autre),
+  `~/snap/steam/common/chuds-fg` (gardée d'une révision à l'autre),
   manifeste, configuration et session dans le HOME du snap
   (`~/snap/steam/current/.local/share`, `.config`, `.cache`). Pas d'espace
   de PID propre aux snaps. Écrit d'après l'organisation de snapd et simulé
@@ -465,8 +465,8 @@ fonctionne.
 fois**. Le panneau ne peut donc pas rester ouvert à côté du jeu. Trois voies :
 - dans le panneau, **« Mode Jeu — sans le panneau »** : tous les jeux, ou le
   jeu sélectionné, génèrent dès leur lancement ;
-- en terminal, `bdex-framegen --always-on [JEU]` / `--always-off` ;
-- option de lancement Steam `BDEX_FG=1 %command%`.
+- en terminal, `chuds-fg --always-on [JEU]` / `--always-off` ;
+- option de lancement Steam `CHUDS_FG=1 %command%`.
 
 Même activée partout, la couche épargne gamescope (le compositeur charge la
 couche lui aussi), Steam et les applications de bureau.
@@ -555,7 +555,7 @@ l'étage de sortie du jeu en cours (avant : seules les options « live »), et
 **Depuis les sources**
 - Prérequis : GCC ≥ 10 ou Clang, en-têtes Vulkan ≥ 1.3.204, glslc ou
   glslangValidator. Le loader n'est pas nécessaire pour la couche seule.
-  Options utiles : `-DBDEX_VULKAN_INCLUDE_DIR`, `-DBDEX_SPIRV_DIR`.
+  Options utiles : `-DCHUDS_FG_VULKAN_INCLUDE_DIR`, `-DCHUDS_FG_SPIRV_DIR`.
 - Vérifié à chaque CI (`tools/ci/distro-check.sh`), build `-Werror` + démo à
   travers la couche : Ubuntu 22.04, Debian 12, Fedora, Arch, openSUSE
   Tumbleweed, Alpine.
@@ -576,7 +576,7 @@ l'étage de sortie du jeu en cours (avant : seules les options « live »), et
   installer l'archive x86_64 à côté ne marche pas non plus (même nom de
   manifeste, `library_arch` ne distingue que 32/64). Non couvert.
 
-### 4.5 bis Linux, génération par capture (`bdex-capture`)
+### 4.5 bis Linux, génération par capture (`chuds-fg-capture`)
 
 Depuis le 03/10 (`capture/linux`). Pour les jeux où la couche se retire
 (anti-triche), les programmes qui ne présentent pas en Vulkan, et **deux
@@ -592,7 +592,7 @@ Xlib d'une fenêtre override-redirect **sans région d'entrée** (clics et
 touches vont au jeu), relevée toutes les 250 ms, qui suit la fenêtre.
 Cadencement repris de la capture Windows (images prédites abandonnées dès
 qu'une nouvelle image du jeu arrive). Réglages : fichier de config avec la
-section du jeu (processus de la fenêtre, `.exe` sous Proton), `BDEX_FG_*`,
+section du jeu (processus de la fenêtre, `.exe` sous Proton), `CHUDS_FG_*`,
 puis `-m/--mode/--preset/--hud`. Ctrl+Alt+G / Ctrl+Alt+Q.
 
 **Mesures** (RTX 3060 Ti, gamescope headless sans sa couche WSI, jeu à
@@ -621,17 +621,17 @@ dialogue du portail et l'overlay au-dessus d'un jeu plein écran).
 ### 4.6 Windows, mode 1 — la couche Vulkan
 
 **Installation et configuration**
-- `VkLayer_bdex_framegen.dll` (x64 et Win32). Installation :
+- `VkLayer_chuds_fg.dll` (x64 et Win32). Installation :
   `register-layer.ps1 -Dll …` (registre des couches implicites ; `-Wow6432`
   pour les jeux 32 bits). `unregister-layer.ps1` pour retirer.
-- Configuration : `%APPDATA%\bdex-framegen\bdex-framegen.conf`, mêmes clés
-  que sous Linux. `log_file=%TEMP%\bdex-fg.log` est conseillé (les `%VAR%`
+- Configuration : `%APPDATA%\chuds-fg\chuds-fg.conf`, mêmes clés
+  que sous Linux. `log_file=%TEMP%\chuds-fg.log` est conseillé (les `%VAR%`
   sont développés), car la sortie d'erreur d'un jeu ne va nulle part.
 
 **Jeux concernés** : Vulkan natifs et émulateurs **uniquement**. Un jeu
 Direct3D natif ne passe pas par Vulkan : c'est le mode 2.
 
-**Option de lancement Steam** : `cmd /c "set BDEX_FG=1 && %command%"` (la
+**Option de lancement Steam** : `cmd /c "set CHUDS_FG=1 && %command%"` (la
 syntaxe Linux n'y vaut pas).
 
 **Limites**
@@ -685,13 +685,13 @@ sinon capture (surtout sur Windows), pour maximiser le gain de latence ; avec
 deux GPU, pouvoir générer sur l'un ou l'autre ». La couche est dans la
 présentation du jeu (0 image de latence), la capture ajoute ~1 image.
 
-- **Décision** (`plan()` du panneau, `chooseInjection` de `bdex_capture`,
+- **Décision** (`plan()` du panneau, `chooseInjection` de `chuds_fg_capture`,
   même règle) : `method = layer` → couche ; `capture` → capture ; `auto` :
   capture si le GPU choisi n'est pas celui du jeu (`device=` du statut),
   si anti-triche, si aucune swapchain armée (`ready`/`generating`/`paused`)
   dans `<pid>.status` ; couche sinon.
-- **Linux** : le panneau lance/arrête `bdex-capture --pid N [--gpu NOM]`
-  (sortie dans `~/.cache/bdex-framegen/capture.log`), « Capturer une autre
+- **Linux** : le panneau lance/arrête `chuds-fg-capture --pid N [--gpu NOM]`
+  (sortie dans `~/.cache/chuds-fg/capture.log`), « Capturer une autre
   fenêtre… » (clic sur la fenêtre). Méthode et GPU dans le panneau et le mode
   texte (`c`, `g`, `w`, `a`).
 - **Windows** : le launcher a « Méthode » et « GPU de génération » en tête
@@ -703,12 +703,12 @@ présentation du jeu (0 image de latence), la capture ajoute ~1 image.
   icône de notification ; non vérifié sur Windows (MinGW seulement).
 - **Piège corrigé** : sous `require_app = 1`, les applis de capture
   chargeaient leur config comme un jeu non ciblé (en pause, HUD coupé) ; elles
-  posent `BDEX_FG=1` avant `Config::load` (Windows : `_putenv_s`, que
+  posent `CHUDS_FG=1` avant `Config::load` (Windows : `_putenv_s`, que
   `getenv` voit — pas `SetEnvironmentVariable`). Cas « armed » de
   `tests/capture_linux.sh`.
 - Vérifié (gamescope headless, HOME isolé) : méthode injection → le jeu
   « 30 → 60 i/s (×2) » par la couche ; capture → couche ×1,00 et
-  bdex-capture ×2,00.
+  chuds-fg-capture ×2,00.
 
 - **`zero_bias = 0` sur GPU dédié** (même jour, accord de l'utilisateur) :
   le bonus gratuit du candidat « immobile » gagnait sur les contenus doux en
@@ -740,10 +740,10 @@ mais le lancement continue ».
   modules → API, en-tête PE → 32/64 bits, anti-triche : jeu compétitif,
   dossiers `EasyAntiCheat*`/`BattlEye` jusqu'à 3 parents, modules
   `easyanticheat*`/`beclient*`, processus), `installTranslation` (jamais
-  par-dessus un fichier existant ; marqueur `bdex-framegen-injection.txt`,
-  liste `%LOCALAPPDATA%\bdex-framegen\injections.txt`), `removeTranslation`,
+  par-dessus un fichier existant ; marqueur `chuds-fg-injection.txt`,
+  liste `%LOCALAPPDATA%\chuds-fg\injections.txt`), `removeTranslation`,
   `registerLayerForUser` (comme `register-layer.ps1` : DLL + profils copiés
-  dans `%LOCALAPPDATA%\bdex-framegen[32]`, manifeste, HKCU ; recopie si le
+  dans `%LOCALAPPDATA%\chuds-fg[32]`, manifeste, HKCU ; recopie si le
   paquet a changé), `antiCheatWarning`. `armLayer` n'écrase plus un
   `enabled`/`require_app` déjà présent.
 - **Rocket League** : `platformAntiCheatException` (Windows seulement) — la
@@ -756,14 +756,14 @@ mais le lancement continue ».
   (`game_anticheat` + `anticheat_warning`, mode texte compris), ligne
   « ⚠ Anti-triche détecté » dans `statusDescribe` et l'icône.
 - **Paquet** : `tools/fetch_translation_layers.py` (mêmes versions et SHA256
-  que `proton-check.sh`), artefact CI `bdex-framegen-windows-complete`
+  que `proton-check.sh`), artefact CI `chuds-fg-windows-complete`
   (x64 + couche 32 bits dans `x86\`). VKD3D-Proton est LGPL-2.1 : DLL
   séparées non modifiées, remplaçables, source indiquée (notices).
 - **Non vérifié sur Windows** (compilé MinGW x64/i686 seulement) : à
   valider sur une vraie machine — injection DXVK d'un jeu D3D11, D3D12 via
   VKD3D-Proton (moins éprouvé sous Windows que sous Proton), 32 bits.
 
-### 4.7 Windows, mode 2 — `bdex_capture.exe`
+### 4.7 Windows, mode 2 — `chuds_fg_capture.exe`
 
 **Chaîne de traitement**
 1. Capture WGC de la fenêtre du jeu.
@@ -813,12 +813,12 @@ seulement, pas le plein écran exclusif (comme Lossless Scaling).
 
 ## 5. Activation et configuration
 
-**Fichier** : `~/.config/bdex-framegen.conf` (Windows : `%APPDATA%\…`), INI.
+**Fichier** : `~/.config/chuds-fg.conf` (Windows : `%APPDATA%\…`), INI.
 `[*]` vaut pour tous les jeux, `[nom]` pour l'exécutable `nom` (sans `.exe`).
 
 **Priorité**
 - Couche : défauts < profils fournis (`profiles.conf`, qui n'activent jamais
-  rien) < fichier < variables `BDEX_FG_*`.
+  rien) < fichier < variables `CHUDS_FG_*`.
 - Capture : s'y ajoutent ensuite le preset en ligne de commande, les options
   en ligne de commande, puis le lanceur.
 
@@ -826,7 +826,7 @@ seulement, pas le plein écran exclusif (comme Lossless Scaling).
 |---|---|---|
 | Panneau, « Démarrer » (`enabled = 1`, `require_app = 1`) | chaque jeu est armé (images passées telles quelles) ; seul le jeu ciblé génère, réglages en direct ; panneau fermé = arrêt | bureau Linux (comme le lanceur Windows) |
 | « Mode Jeu — sans le panneau » (`require_app = 0` dans `[*]` ou `[jeu]`) | génère dès le lancement, panneau fermé ; programmes de bureau exclus | SteamOS en mode Jeu, ou au choix |
-| `BDEX_FG=1` (option de lancement Steam, `bdex-framegen -- jeu`) | active ce processus, en contournant `require_app` | partout ; Windows : `cmd /c "set BDEX_FG=1 && %command%"` |
+| `CHUDS_FG=1` (option de lancement Steam, `chuds-fg -- jeu`) | active ce processus, en contournant `require_app` | partout ; Windows : `cmd /c "set CHUDS_FG=1 && %command%"` |
 | `[jeu] enabled = 1` à la main | active ce jeu | fichier |
 
 **Réglages**
@@ -852,7 +852,7 @@ l'impose.
 
 **Langue des interfaces** (03/10) : panneau GTK, mode texte et lanceur
 Windows en anglais quand la langue du système n'est pas le français
-(`BDEX_LANG=fr|en` force). Une option ajoutée demande sa ligne dans
+(`CHUDS_FG_LANG=fr|en` force). Une option ajoutée demande sa ligne dans
 `layer/options_ui.en.conf` (le build échoue sinon) ; un texte du panneau
 passe par `tr()` et la table `_EN`. Le rapport `--report` reste en français.
 
@@ -861,7 +861,7 @@ passe par `tr()` et la table `_EN`. Le rapport `--report` reste en français.
 ## 6. Outils, tests et CI
 
 **Outils d'évaluation**
-- `bdex_offline` : le moteur sans fenêtre, sur une séquence PPM. Il
+- `chuds_fg_offline` : le moteur sans fenêtre, sur une séquence PPM. Il
   reproduit exactement les images de la couche.
 - `tools/eval_sequence.py` : PSNR global, mouvement, arêtes, SSIM,
   scintillement ; A/B avec `--variant`.
@@ -873,7 +873,7 @@ passe par `tr()` et la table `_EN`. Le rapport `--report` reste en français.
 | Groupe | Tests |
 |---|---|
 | Sans fenêtre | `fuzz_config`, `fuzz_status`, `fuzz_options_ui`, `fuzz_online_tune` (03/10 : rejouent le corpus de `tests/fuzz/corpus/`, graines et entrées qui ont échoué ; `tools/ci/fuzz.sh` = libFuzzer + ASan + UBSan, job CI `fuzz` ; propriétés : options dans leurs bornes, profil qui n'active jamais la couche, cache relu à l'identique ; a trouvé `debug = confidence` lu hors du tableau de `describe()`), `unit`, `matcher` (vrai shader contre modèle C++ du départage), `eval_quality`, `offline`, `corpus`, `formats`, `min_limits`, `determinism` (chaque option deux fois), `option_keys`, `panel_logic` |
-| Avec affichage | `integration` (×2 à travers la couche), `validation` (couches Khronos + synchronisation, toutes les options), `acquire_timeout`, `multithread_config`, `swapchain_stress` (03/10 : `bdex_demo --stress` — redimensionnements, recréations avec autre mode et nombre d'images, surfaces et fenêtres refaites, plein écran, minimisation — sous validation, puis ×N retrouvé ; a trouvé `FIFO_LATEST_READY` transmis tel quel) |
+| Avec affichage | `integration` (×2 à travers la couche), `validation` (couches Khronos + synchronisation, toutes les options), `acquire_timeout`, `multithread_config`, `swapchain_stress` (03/10 : `chuds_fg_demo --stress` — redimensionnements, recréations avec autre mode et nombre d'images, surfaces et fenêtres refaites, plein écran, minimisation — sous validation, puis ×N retrouvé ; a trouvé `FIFO_LATEST_READY` transmis tel quel) |
 | Hors écran, sautés s'ils ne peuvent pas tourner | `gamescope_limit` (limite Steam rejouée dans un gamescope headless) |
 
 **Règle** : jamais de fenêtre sur l'écran de l'utilisateur. Les tests
@@ -912,7 +912,7 @@ les minutes d'actions utilisées à chaque push » ; dépôt privé : runners à
 
 **Rejouer localement, avant de pousser**
 - `tools/ci/run.sh build` (et `asan`, `tsan`, `mingw`) : la CI Linux dans
-  Docker, toutes les voies ; `BDEX_CI_CPUS=2` pour un runner (jeu de CPU,
+  Docker, toutes les voies ; `CHUDS_FG_CI_CPUS=2` pour un runner (jeu de CPU,
   pas `--cpus`) ; `rhysd/actionlint:1.7.7` pour les workflows.
 - `tools/ci/distro-check.sh`, `archive-check.sh`, `panel-check.sh`,
   `package-release.sh`.
@@ -991,7 +991,7 @@ les minutes d'actions utilisées à chaque push » ; dépôt privé : runners à
   validation, fuzzing des analyseurs (deux bogues trouvés et corrigés :
   `FIFO_LATEST_READY`, `debug = confidence`), couche 32 bits exécutée.
 - **Produit** : panneau, mode texte et lanceur Windows en anglais hors
-  locale française ; plugin Decky (Steam Deck) ; `bdex-capture` Linux
+  locale française ; plugin Decky (Steam Deck) ; `chuds-fg-capture` Linux
   (capture X11/Xwayland, deux GPU, jeux anti-triche).
 - **Coût GPU** : génération 1440p ×2 1,63 → 0,92 ms, 4K ×2 2,96 → 1,84 ms
   (défauts dGPU) — carte de splat en tampon, synthèse compilée par jeu
@@ -1053,7 +1053,7 @@ dépendances…), appliquée seulement là où un logiciel local a un équivalen
   analysé ; `AdwEntryRow` ignore `use_markup` pour son titre flottant :
   échappé). L'ancien `_m()` affichait `&lt;` dans le panneau GTK simple.
 - **`/tmp`** : sans `HOME`, `platformStatusDir` (et le panneau) n'utilisent
-  `/tmp/bdex-framegen-<uid>` que s'il est à nous en 0700 (sinon "").
+  `/tmp/chuds-fg-<uid>` que s'il est à nous en 0700 (sinon "").
 - **Windows** : « Retirer les injections » ne supprime que les noms de DLL
   de traduction connus (le marqueur est dans le dossier du jeu). Contenu
   non comparé exprès : après une mise à jour de DXVK, les DLL de
@@ -1089,7 +1089,7 @@ dépendances…), appliquée seulement là où un logiciel local a un équivalen
 | Entrée → écran, démo 40 i/s, 144 Hz (02/10, `tools/latency_bench.sh`, médianes premier photon / image réelle) | ×1 6,8 / 6,8 ms ; interpolation ×2 10,0 / 19,9 ; `interp_hold=auto` 9,2 / 16,2 ; extrapolation ×2 6,7 / 6,7 |
 | `interp_hold = 0,5`, gamescope 144 Hz (02/10) | 40 i/s ×2 : image→écran 43,4 → 37,6 ms (79,3/80 affichées) ; 40 i/s ×3 : 47,7 → 45,0 ; 60 i/s ×2 : 30,3 → 29,8 |
 | Coût GPU, variantes allégées (1440p, quality) | 2,7 → 1,35 ms |
-| Coût GPU de la génération, défauts GPU dédié, ×2 (03/10, RTX 3060 Ti, `bdex_offline` + `BDEX_FG_PROFILE=1`) | 1440p 1,63 → 0,92 ms ; 4K 2,96 → 1,84 ms (analyse + flux + synthèse). Synthèse 1440p 1,20 → 0,49 ms : carte de splat en tampon (−0,25), variante compilée par jeu d'options (−0,33), `interp_splat` à demi-résolution (−0,18). Préréglage explicite `balanced` (sans les options auto) : synthèse 0,21 ms |
+| Coût GPU de la génération, défauts GPU dédié, ×2 (03/10, RTX 3060 Ti, `chuds_fg_offline` + `CHUDS_FG_PROFILE=1`) | 1440p 1,63 → 0,92 ms ; 4K 2,96 → 1,84 ms (analyse + flux + synthèse). Synthèse 1440p 1,20 → 0,49 ms : carte de splat en tampon (−0,25), variante compilée par jeu d'options (−0,33), `interp_splat` à demi-résolution (−0,18). Préréglage explicite `balanced` (sans les options auto) : synthèse 0,21 ms |
 | Jeu limité par le GPU, 4K lourd, avant/après le cadencement GPU | 66 → 132 images affichées/s |
 | `latency_limiter`, 4K lourd | image → écran 26,8 → 18,3 ms, 97 → 101 i/s |
 | Hybride ×3, jeu limité par le GPU | 116 → 283 images affichées/s, jeu 58 → 94 i/s |
@@ -1223,7 +1223,7 @@ corrige chaque vecteur du flux le plus fin (≤ 1,5 px de niveau) d'après les
 fractionnaire. Entraîné en numpy (`tools/train_flow.py`) sur des
 mouvements de synthèse au flux vrai connu (panoramiques 1 à 27 px/image,
 sous-pixel, balancement, zoom ; autres graines que le corpus) via
-`bdex_offline --dump-flow` (flux + luminances du niveau 0) : EPE tenue à
+`chuds_fg_offline --dump-flow` (flux + luminances du niveau 0) : EPE tenue à
 part 0,52 → 0,21. Corpus : zoom +1,0 à +2,6, sous-pixel +0,5 à +2,2, fondu
 +1,4, démo ±0,03, rotation −0,13 (interp) ; +0,3 ms/image générée en 1440p
 (la synthèse coûte plus aussi : vecteurs fractionnaires → plus de tests de
@@ -1235,7 +1235,7 @@ px : il passe rarement le test, et rot_weight + pixel_vectors suivent déjà).
 
 **Correction apprise** (02/10, `learned_correction`, expérimental) : réseau
 63 → 8 → 1 entraîné en numpy (`tools/train_correction.py`, données =
-sorties de `bdex_offline`), tête « mix » bornée (déplace le pixel vers le
+sorties de `chuds_fg_offline`), tête « mix » bornée (déplace le pixel vers le
 fondu, jamais au-delà) ; passe `learned_correction.comp` après la synthèse,
 avant le HUD (le HUD est désormais ajouté en dernier dans le registre).
 Mesuré sur des séquences jamais vues : démo +0,49 dB, autres démos +0,10 /
@@ -1371,7 +1371,7 @@ sont lents, lavapipe y dispute le CPU au jeu et le rattrapage retire des
 images générées (×1,7) — les tests comptent donc sortie = 2 × jeu −
 rattrapages.
 
-**Paquets, suite** : publier `bdex-framegen-bin` / `-git` sur l'AUR, le
+**Paquets, suite** : publier `chuds-fg-bin` / `-git` sur l'AUR, le
 `.spec` sur COPR / OBS, `packaging/debian` sur un PPA, l'extension sur
 Flathub (tous prêts et vérifiés en conteneur ; dépôt public et comptes
 requis) ; Flatpak du panneau **impossible
@@ -1401,7 +1401,7 @@ un vrai écran.
 - **Commits** sur `main`, au nom de Bdexez, sans ligne d'attribution à
   Claude. **Pousser seulement sur demande.**
 - **Tests** : jamais de fenêtre sur l'écran de l'utilisateur.
-  - Sans fenêtre : les tests `bdex_offline` et unitaires, directement.
+  - Sans fenêtre : les tests `chuds_fg_offline` et unitaires, directement.
   - Affichage : dans `gamescope --backend headless` ou Docker.
   - Mesures sous gamescope : charger la build par un `XDG_DATA_HOME` privé.
     L'environnement de l'hôte charge la couche **installée** ;
@@ -1427,7 +1427,7 @@ un vrai écran.
 Vécu : réinstallation (`install.sh`) pendant que PRAGMATA tournait → le
 panneau affichait « Aucun jeu en cours ». Le jeu garde l'ancienne couche
 (fichier supprimé) et, dans le conteneur Steam, `/proc/<pid>/maps` la nomme
-`/ (deleted)` : la recherche de `libVkLayer_bdex_framegen` échouait. Le
+`/ (deleted)` : la recherche de `libVkLayer_chuds_fg` échouait. Le
 panneau prend aussi un processus dont le `<pid>.status` a moins de 10 s
 (`fresh_status_pids`) et, si sa couche a été remplacée (`layer_replaced`),
 affiche « Lancé avant l'installation de cette version — relance le jeu ».
@@ -1461,7 +1461,7 @@ acceptés) et la limite d'images du jeu dans le panneau.
   séquences `edge_bench` en ×4 +0,4 à +1,1 dB ; ~+1 ms de synthèse par
   image du jeu en 1440p ×4. Désormais : tout préréglage sauf `performance`
   (`Config::presetName`).
-- **Gain n° 2 : la cadence de l'écran.** `bdex_offline --refresh` (piège :
+- **Gain n° 2 : la cadence de l'écran.** `chuds_fg_offline --refresh` (piège :
   le jeu y tourne **toujours à 60 i/s**, `--spacing` = images d'entrée par
   image du jeu ; 30 i/s sur 144 Hz = `--spacing 8 --refresh 288`) :
   grille inconnue → connue, ×2 40,6 → 43,2 dB, ×3 36,3 → 38,5, ×4 33,0 →
@@ -1491,7 +1491,7 @@ acceptés) et la limite d'images du jeu dans le panneau.
     `synth_bicubic` +0,14 sur le jeu mais −0,01 à −0,02 ailleurs ;
     `learned_correction` +0,16 sur le jeu, −0,6 à −2,3 ailleurs.
 - **Pièges de banc** : `tests/test_corpus.py` et `test_offline.py` lisaient
-  la config de l'utilisateur (corrigé : `BDEX_FG_CONFIG=/dev/null`) ;
+  la config de l'utilisateur (corrigé : `CHUDS_FG_CONFIG=/dev/null`) ;
   `eval_sequence.py` fixe `balanced`, qui sur un GPU dédié inclut
   désormais les options automatiques (les références du corpus restent
   celles de lavapipe : le test les coupe sur un GPU dédié). Mesure par
@@ -1515,7 +1515,7 @@ avec la limite du jeu) ; nouveaux enregistrements des deux jeux.
   `max_frame_latency` / `latency_limiter` : ×1 4,5 ms, ×2 19,9 ms, 40,0 i/s
   tenus. Piège du banc : la couche horodate le present quand elle le prend
   en main ; avec l'ancien limiteur la jointure (2 ms) ne trouvait aucun
-  flash → `BDEX_LATENCY_JOIN_MS`. `latency_probe` vérifie désormais le
+  flash → `CHUDS_FG_LATENCY_JOIN_MS`. `latency_probe` vérifie désormais le
   plafond (≤ limite du jeu + 4 ms).
 - **Observations** : `display_grid=0` confirmé sous Hyprland (pas de grille
   de rafraîchissement). PRAGMATA : rotations de 150–190 px par image à
@@ -1671,7 +1671,7 @@ RTX 3060 Ti, pilote 615.
   px : plus de gain mais `eb_fast` −0,07. Coût : la carte des entrées
   (une fois par image du jeu, un fil par pixel : un fil par cellule
   lisant 6×6 coûtait 1,3 ms) ; tuile 22×22 en mémoire partagée ; recopie
-  seulement des tuiles changées. Le banc `bdex_offline --bench` varie de
+  seulement des tuiles changées. Le banc `chuds_fg_offline --bench` varie de
   ±1 ms d'un lancement à l'autre au début (fréquence du GPU) : comparer les
   2e et 3e lancements. `test_offline.py` coupe `false_detail` pour juger
   `scene_cut_local` seul (il relève les deux côtés). Étendu à
@@ -2050,7 +2050,7 @@ installation contient les changements préparatoires à la 0.6.
   identiques aux fichiers construits ; chemins des deux manifestes valides.
   Configuration utilisateur conservée (SHA256 identique avant/après).
 - Sauvegarde temporaire de l'installation précédente et de la configuration :
-  `/tmp/bdex-framegen-avant-install-25t17b3z/installation.tar.gz`
+  `/tmp/chuds-fg-avant-install-25t17b3z/installation.tar.gz`
   (non persistante après nettoyage de `/tmp`). Relancer le panneau et les
   jeux déjà ouverts pour charger les fichiers installés.
 
@@ -2081,7 +2081,7 @@ Simulateur : écart RMS du pas de mouvement **1,277 → 0,625 ms**, pire
 réussis ; builds Release x86_64 et i386 réussis. L'effet ressenti sur le vrai
 écran reste à mesurer. Prochaine étape : horodatages dans les enregistrements,
 puis plans manqués et variations du nombre de sorties. Original pré-correction
-pour A/B : `/tmp/bdex-before-phase/` (temporaire).
+pour A/B : `/tmp/chuds-fg-before-phase/` (temporaire).
 
 Correction installée ensuite par `bash tools/install.sh` dans `~/.local`,
 64 et 32 bits ; bibliothèques installées comparées aux builds et identiques.
@@ -2136,8 +2136,8 @@ réelle 32,6 → 33,9 ms ; rattrapages sans génération 4 → 3 par essai.
 Ces mesures sont bruitées et n'établissent pas un gain matériel net.
 Le gain établi est celui du mouvement dans le modèle. Détails et limites
 dans `analyse-saccades-2026-10-16.md`, logs/script temporaires
-`/tmp/bdex-refresh-cap-bench/`, `/tmp/bdex_refresh_cap_bench.py` ;
-ancienne couche avant cette correction : `/tmp/bdex-before-refresh-cap/`.
+`/tmp/chuds-fg-refresh-cap-bench/`, `/tmp/chuds_fg_refresh_cap_bench.py` ;
+ancienne couche avant cette correction : `/tmp/chuds-fg-before-refresh-cap/`.
 
 Piste suivante : ces essais montrent encore des rattrapages qui remplacent
 une paire entière par sa seule image réelle, environ 3 fois en 8 s stables.
@@ -2172,9 +2172,9 @@ tenues 2,1 → 2,8/s (banc bruité). Le mécanisme ne jette plus toute la paire
 dans ce cas ; pas de gain global d'affichage établi. L'effet ressenti sur
 le jeu reste à vérifier. Opt-out : `catchup_smooth=0`.
 
-Logs/script temporaires : `/tmp/bdex-catchup-bench/`,
-`/tmp/bdex_catchup_bench.py`, diagnostic `/tmp/bdex-catchup-trace/` ;
-référence pré-correction `/tmp/bdex-before-catchup/`. Suite : rejeu aux
+Logs/script temporaires : `/tmp/chuds-fg-catchup-bench/`,
+`/tmp/chuds_fg_catchup_bench.py`, diagnostic `/tmp/chuds-fg-catchup-trace/` ;
+référence pré-correction `/tmp/chuds-fg-before-catchup/`. Suite : rejeu aux
 temps source, puis retards GPU et trajectoires des rotations très floues.
 L'accès complet de la session est désormais actif (plus de demandes
 d'approbation nécessaires pour ces commandes).
@@ -2188,7 +2188,7 @@ paires sans génération **3/4/0 → 0/0/0**, sorties retirées **0/0/0 → 0/0/
 médianes affichées **143,0 → 143,7/s**, tenues **1,5 → 1,5/s**, réelle
 **30,3 → 30,7 ms**. Conservation des intermédiaires vérifiée ; disparition
 de toutes les saccades non établie. Logs/script temporaires :
-`/tmp/bdex-catchup-x11-bench/`, `/tmp/bdex_catchup_x11_bench.py`.
+`/tmp/chuds-fg-catchup-x11-bench/`, `/tmp/chuds_fg_catchup_x11_bench.py`.
 
 Le banc gamescope termine par un signal au démontage après la fermeture
 de la démo, avant et après (déjà connu de `latency_bench.sh`) : seules les
@@ -2197,7 +2197,7 @@ installée en 64/32 bits. Aucun commit ni push effectué.
 
 ### 16/10 — rejeu des temps source et réaction aux changements de cadence
 
-Le rejeu `bdex_demo --replay SEQ --replay-timing` utilise maintenant
+Le rejeu `chuds_fg_demo --replay SEQ --replay-timing` utilise maintenant
 `timestamps.csv`, conserve les écarts avec `--replay-start/--replay-step`
 et s'arrête après la dernière source. Horloge manquante/incohérente :
 erreur explicite. `--replay-log FILE` (nouveau fichier) conserve source,
@@ -2237,9 +2237,9 @@ La baisse locale à la transition se répète dans les cinq paires. Le banc
 reste dépendant du compositeur et ne prouve pas que toutes les saccades du
 joueur ont disparu. Comme avant, gamescope termine par un signal après la
 fermeture de l'enfant ; seule sa partie active est mesurée. Référence avant
-correction `/tmp/bdex-before-interval-response/`, script
-`/tmp/bdex_interval_response_bench.py`, journaux et `summary.json` dans
-`/tmp/bdex-timed-transition-bench/`.
+correction `/tmp/chuds-fg-before-interval-response/`, script
+`/tmp/chuds_fg_interval_response_bench.py`, journaux et `summary.json` dans
+`/tmp/chuds-fg-timed-transition-bench/`.
 
 **Écarté** : remplacer simplement la moyenne par chaque `dt`. Un modèle de
 comptage montre une perte de sorties au plafond ×5 sur alternance court/long.
@@ -2275,9 +2275,9 @@ médian des quatre pas normalisés 0,0052 pour un pas nominal de 0,25 ;
 dernier pas. Le suivi exclut points occultés/illisibles : aucune conclusion
 sur toute l'image, ni sur les temps d'affichage absents des vieux fichiers.
 Inspection de la paire 95→96 : progression continue, flou déjà dans les
-sources. Artefacts temporaires : `/tmp/bdex-cp-pair96.png`,
-`/tmp/bdex-cp-motion.json`, script `/tmp/bdex_track_motion.py` ; OpenCV
-installé uniquement dans `/tmp/bdex-motion-deps`.
+sources. Artefacts temporaires : `/tmp/chuds-fg-cp-pair96.png`,
+`/tmp/chuds-fg-cp-motion.json`, script `/tmp/chuds_fg_track_motion.py` ; OpenCV
+installé uniquement dans `/tmp/chuds-fg-motion-deps`.
 
 **Sixième correction** : l'accélération comparait les déplacements de deux
 paires sans leurs durées. Pour r = durée courante / précédente, la courbure
@@ -2300,7 +2300,7 @@ même sans passe d'état GPU ; `recordAcquireSources` invalide une mesure
 manquante. `FgContext::flowIntervalRatio`, `SynthesisInputs::accelIntervalRatio`
 (associé à la paire gardée, aussi pour la sonde), `AccelMapPC` partagé avec
 le test ; shader `accel_map.comp` et extrapolation de `interpolate.comp`.
-Pas de nouvelle passe GPU. `bdex_offline` partage maintenant
+Pas de nouvelle passe GPU. `chuds_fg_offline` partage maintenant
 `pacing::IntervalFilter` avec les produits : il simulait encore l'ancien
 lissage après la cinquième correction.
 
@@ -2319,9 +2319,9 @@ Les scores comprennent les réelles (plafond 60 dB), comme le banc avec
 temps variables. Anciennes mesures +1,34/+4,15 dB : premiers essais avec
 une autre longueur et sans harmonisation du filtre, ne pas les citer comme
 chiffres de la version finale. Mesures finales :
-`/tmp/bdex-accel-timing-eval/aligned-final-results.log`, JSON par cas ;
-script `/tmp/bdex_accel_timing_final_eval.py`, référence compilée avec
-rapport forcé à 1 dans `/tmp/bdex-accel-final-baseline/build`.
+`/tmp/chuds-fg-accel-timing-eval/aligned-final-results.log`, JSON par cas ;
+script `/tmp/chuds_fg_accel_timing_final_eval.py`, référence compilée avec
+rapport forcé à 1 dans `/tmp/chuds-fg-accel-final-baseline/build`.
 
 **Cadence 1440p, cinq A/B alternés** : rejeu 30→60→30 i/s, quality ×4,
 gamescope 144 Hz sans WSI. Médianes affichées **143,7→143,7/s**, tenues
@@ -2330,8 +2330,8 @@ des périodes à 30 i/s : flux **1,96→1,95 ms**, synthèse de ses intermédiai
 **6,07→6,00 ms**. Coût comparable, aucun gain global de cadence revendiqué.
 La série sans tolérance aux écarts minimes était moins régulière ; les
 mesures ci-dessus concernent la version retenue. Logs et `summary.json` :
-`/tmp/bdex-accel-timing-cadence-deadband/`, script
-`/tmp/bdex_accel_timing_deadband_bench.py`. Toujours le signal connu de
+`/tmp/chuds-fg-accel-timing-cadence-deadband/`, script
+`/tmp/chuds_fg_accel_timing_deadband_bench.py`. Toujours le signal connu de
 gamescope au démontage, après fermeture de l'enfant ; mesures sur la partie
 active uniquement.
 
@@ -2378,8 +2378,8 @@ arêtes +0,495 dB. Les sorties interpolées sont inchangées. Sur les scènes
 12 sources par cas : écarts globaux en extrapolation **−0,015 à 0 dB** ;
 arêtes jusqu'à −0,107 dB, SSIM +0,0002 à +0,0008. L'amélioration concerne
 les zones révélées ; aucun gain de cadence ou de ressenti en jeu n'est
-déduit de ces scores. Logs : `/tmp/bdex-reveal-accel-pan.log`,
-`/tmp/bdex-reveal-accel-games.log`, JSON dans les dossiers correspondants.
+déduit de ces scores. Logs : `/tmp/chuds-fg-reveal-accel-pan.log`,
+`/tmp/chuds-fg-reveal-accel-games.log`, JSON dans les dossiers correspondants.
 
 **Écartés** : garder une copie du flux avant précédent pour vérifier son
 accord aller-retour, puis garder son coût de matching à la place. Les deux
@@ -2396,10 +2396,10 @@ complet et test GPU `frame_state` réussis sur RTX 3060 Ti.
 médiane des trois synthèses par entrée **2,20→2,21 ms**, analyse 0,09 ms
 et flux 1,42 ms des deux côtés. Ce profil local n'est pas une mesure de
 cadence affichée. Avec `reveal_fill=0`, 33 sorties avant/après identiques
-octet par octet. Journaux `/tmp/bdex-reveal-accel-perf/` et résumé JSON.
+octet par octet. Journaux `/tmp/chuds-fg-reveal-accel-perf/` et résumé JSON.
 Les quatre cas de vitesse constante sur image entière passent aussi sur
 lavapipe (LLVM 20.1.2, conteneur Ubuntu 24.04, quatre threads), journal
-`/tmp/bdex-reveal-accel-software.log`. Intégration de la couche et quatre
+`/tmp/chuds-fg-reveal-accel-software.log`. Intégration de la couche et quatre
 modes de capture Linux réussis sous gamescope headless sans WSI, avec
 `FRAME_TIMING=1`, `EXTRAPOLATE_ACCEL=1`, `REVEAL_FILL=1` explicites.
 Même signal 139 connu de gamescope au démontage après la réussite des
@@ -2457,14 +2457,14 @@ fréquence modifiée, pause et entrées invalides. **94 tests unitaires réussis
 figées/en mouvement, 30 i/s synthétiques : activation précoce dans une
 paire seulement ; les deux autres ne déclenchent pas la nouvelle voie.
 Les variations de gamescope ne permettent pas de conclure globalement.
-Logs `/tmp/bdex-plan-slip-motion-bench/`.
+Logs `/tmp/chuds-fg-plan-slip-motion-bench/`.
 
 **Essai contrôlé de récupération**, trois A/B alternés, source répétée,
 quality ×4, 2560×1440, gamescope 144 Hz sans WSI : deux bibliothèques de
 test reçoivent les mêmes réveils worker retardés de **9 ms** aux jobs
 90/180/270. La référence désactive seulement la nouvelle demande précoce ;
 le rattrapage progressif existant reste actif. Ces délais et ce commutateur
-existent uniquement dans `/tmp/bdex-plan-slip-controlled/source`, jamais
+existent uniquement dans `/tmp/chuds-fg-plan-slip-controlled/source`, jamais
 dans la source de production. Ce test isole la récupération d'un retard
 ponctuel ; il ne reproduit pas les temps des anciennes parties.
 
@@ -2482,10 +2482,10 @@ de cadence ou de ressenti n'est établi ; le nombre d'images tenues reste
 bruité sur ce banc et n'est pas amélioré dans cette série. Les trois
 perturbations ont bien été enregistrées dans chacun des six journaux.
 Les deux variantes terminent avec le signal 11 connu de gamescope après
-la fermeture de l'enfant. Scripts `/tmp/bdex_plan_slip_controlled_build.py`,
-`/tmp/bdex_plan_slip_delay_bench.py` ; journaux et `summary.json` dans
-`/tmp/bdex-plan-slip-delays/`. Premier essai par modifications de config
-écarté (`/tmp/bdex-plan-slip-bench/INVALID.txt`) : heartbeat fautif et
+la fermeture de l'enfant. Scripts `/tmp/chuds_fg_plan_slip_controlled_build.py`,
+`/tmp/chuds_fg_plan_slip_delay_bench.py` ; journaux et `summary.json` dans
+`/tmp/chuds-fg-plan-slip-delays/`. Premier essai par modifications de config
+écarté (`/tmp/chuds-fg-plan-slip-bench/INVALID.txt`) : heartbeat fautif et
 reconstruction de l'étage de sortie, donc stimulus invalide.
 
 **Vérifications finales et arrêt demandé** : 94 tests unitaires, clés des
@@ -2596,7 +2596,7 @@ rattrapages de `catchup_smooth` retirent des sorties). Piste : soumettre
 chaque intermédiaire à son heure (juste-à-temps) au lieu d'une rafale.
 
 **Bancs** : `kwin_wayland --virtual --xwayland` (60 Hz) et gamescope sans
-tête 144 Hz sans WSI, avec `BDEX_FG_STATUS_DIR` + `app.session` réécrit
+tête 144 Hz sans WSI, avec `CHUDS_FG_STATUS_DIR` + `app.session` réécrit
 chaque seconde avec le pid de la démo (lancée par `exec`, pas sous
 `timeout` : sinon le pid ne correspond pas et rien ne génère). Les
 compteurs de la couche ne valent que si `display_grid` vaut 1 ou 3.
@@ -2604,7 +2604,7 @@ Scripts dans le scratchpad de la session (`gsrun.sh`, `kwrun.sh`,
 `mscwatch.c`, `mscan.py`).
 
 **Suite du 17/10 — essais écartés (mesurés, à ne pas refaire tels quels) :**
-- **Jeu chargé (`bdex_demo --gpu-load 160`, 70 % du GPU à 30 i/s, 1440p)** :
+- **Jeu chargé (`chuds_fg_demo --gpu-load 160`, 70 % du GPU à 30 i/s, 1440p)** :
   gamescope sans tête n'affiche que ~50 images/s quoi qu'on fasse (son
   compositeur manque de GPU, déjà noté) ; sous KWin virtuel, les rappels de
   trame arrivent par paires sous charge et le compte des « tenues » passe de
@@ -2892,7 +2892,7 @@ l'UST. `cadence_report.py` : ligne « motion jumps/s ».
 
 **Bancs, pièges** : sous charge (`--gpu-load 160`, 86 % du GPU) gamescope
 sans tête n'affiche que ~43 i/s (compositeur affamé) : inutilisable, comme
-le 17/10. `bdex_demo --gpu-load` vaut désormais aussi en `--replay`.
+le 17/10. `chuds_fg_demo --gpu-load` vaut désormais aussi en `--replay`.
 
 **Reste à vérifier en jeu** (Hyprland, PRAGMATA chargé) : activer
 `latency_log = ~/fg-lat.log` dans la config, jouer une minute avec des
@@ -3024,7 +3024,7 @@ et ~1 écart de 3 tics/s — des rafraîchissements qu'Hyprland rate sous la
 charge GPU, sans phase privilégiée par rapport au job : le levier est notre
 coût GPU total.
 
-**Piège de mesure** : `bdex_offline` écrit des PPM de 11 Mo entre deux
+**Piège de mesure** : `chuds_fg_offline` écrit des PPM de 11 Mo entre deux
 entrées à 1440p ; le GPU au repos descend à 300–500 MHz (P5) et les mesures
 longues gonflent ×5 (interp 4,7 → 47 ms). Mesurer sur 5 entrées
 (`--max-inputs 5`, avant la baisse) : stable à ±0,05 ms.
@@ -3495,7 +3495,7 @@ Régressions ajoutées : matrice de 462 combinaisons stables (×2..×8,
 source sans limite **couplée à son worker** (pas seulement une source
 imposée à l'extérieur), marge de prêt sous pression ; vrai shader GPU
 `frame_state` comparé aux temps analytiques à plusieurs cadences.
-`bdex_demo --uncapped` ne dort pas pour limiter la source.
+`chuds_fg_demo --uncapped` ne dort pas pour limiter la source.
 `tools/framerate_bench.py --check` conserve les logs, les heures du rejeu
 variable et les synthèses JSON. Le banc traite séparément la fin de la démo
 et celle du compositeur ; gamescope peut se bloquer ou planter à sa propre
@@ -3578,7 +3578,7 @@ normaux ont une capacité de huit, y compris ×7 + `refresh_fill`.
 Test de capacité ajouté sur ×2..×8, trois modes, `even_motion` inactif ou
 actif sans remplissage, et cas remplissage qui atteint huit. Native :
 115 tests unitaires ; Docker WERROR : unit, frame_state, intégration,
-validation Vulkan du ×8 (`BDEX_VALIDATION_SHARD=13/17`), acquire passent ;
+validation Vulkan du ×8 (`CHUDS_FG_VALIDATION_SHARD=13/17`), acquire passent ;
 multithread sauté faute de deuxième file dans lavapipe. Même test Vulkan
 ×8 sur le GPU physique dans gamescope isolé : sortie démo 0, aucun message
 VUID/SYNC (`/tmp/fg-staging-vulkan` ; gamescope plante à sa fermeture après
@@ -3669,7 +3669,7 @@ répétitions, gigue, réglage en ligne, limites minimales et cas de repli.
 **800 images comparées octet par octet au calcul complet**, sur NVIDIA
 et lavapipe séparément ; 439 synthèses évitées dans ces cas. Les pixels GPU
 bruts incluent les bits FP16/HDR qu'un export PPM SDR masquerait.
-`bdex_offline --raw-dumps` les exporte ; `--no-output-reuse` force la
+`chuds_fg_offline --raw-dumps` les exporte ; `--no-output-reuse` force la
 référence complète. Sans grille et avec phases distinctes : zéro copie.
 
 A/B en ligne RTX 3060 Ti, 2560×1440 quality, Xwayland/gamescope headless
@@ -3873,7 +3873,7 @@ latence qu'elle ajoute, « diminuer drastiquement » cette latence.
   comptée par la sonde, la couche mesurait 30,0). Avec la couche WSI de
   gamescope (Proton 10, essais précédents), l'ancien chemin ne filait rien
   pour la sonde D3D12 : la couche WSI change le cadencement de VKD3D.
-  Sortie des sondes : `BDEX_PROBE_OUT` (sous Proton, stdout ne sort pas).
+  Sortie des sondes : `CHUDS_FG_PROBE_OUT` (sous Proton, stdout ne sort pas).
 - **Limites** : sans present_wait dans le pilote (lavapipe des conteneurs
   CI, vieux pilotes), le jeu ne peut pas l'activer : la limite reste au
   présent (message `fps_limit_wait: the game did not enable ...`) ;
@@ -3890,7 +3890,7 @@ latence qu'elle ajoute, « diminuer drastiquement » cette latence.
   `fps_limit_wait=0` ; 0/3 limite à l'attente, 0/2 sans limite. Piste :
   arrêter les workers au début de la sortie (un `atexit` enregistré après
   le chargement du pilote passe avant ses destructeurs), attente bornée.
-- **Outils** : `bdex_demo --present-thread L [--engine NAME]` (moteur
+- **Outils** : `chuds_fg_demo --present-thread L [--engine NAME]` (moteur
   « vkd3d » par défaut ; refait sa swapchain sur SUBOPTIMAL sauf
   `--ignore-resize`) ; `latency_probe` vérifie ce cas (≤ limiteur du jeu
   + 4 ms) ; `validation` : cas `interpolate:waitcap` (0 message) ;
@@ -3926,7 +3926,7 @@ x86 `53997536b48a43ea…`) : relancer le jeu et le panneau. Aucun push.
   par le même point d'attente.
 - **Incident** : un panneau lancé pour une capture (config et cache privés,
   gamescope sans tête) a vu le jeu en cours et `mirror_config()` a recopié
-  sa config de test sur la vraie `~/.config/bdex-framegen.conf` (aucune
+  sa config de test sur la vraie `~/.config/chuds-fg.conf` (aucune
   sauvegarde). Restaurée, avec l'accord de l'utilisateur, depuis le rapport
   du 20/10 (quality, ×4, overlay 2). Ne jamais lancer le panneau sur l'hôte
   pendant qu'un jeu tourne : tests du panneau par `panel-check.sh` seulement.
@@ -3980,12 +3980,12 @@ framegen le limiteur continue son application ».
   appliqué à la limite, au plafond de `gpu_headroom`, à `fifoOnly`
   (création de l'instance et `setFrameLimitHint` à chaque relecture), à la
   demande de nouvelle swapchain et au `fps_limit` / `cap_point` du statut.
-  Sans le panneau (mode Jeu, `[jeu]` avec `require_app = 0`, `BDEX_FG=1`) :
+  Sans le panneau (mode Jeu, `[jeu]` avec `require_app = 0`, `CHUDS_FG=1`) :
   inchangé. Un jeu ciblé mis en pause par le raccourci garde sa limite
   (choix laissé à l'utilisateur).
 - **Test** `limit_session` (et `limit_session_present_thread`, présenté
   comme DXVK / VKD3D) : panneau factice (un `sleep` nommé
-  `bdex-framegen-gui`, battement par `touch`), démo à 60 i/s, limite 20 :
+  `chuds-fg-gui`, battement par `touch`), démo à 60 i/s, limite 20 :
   avant 20/20/20/20 (armé, démarré, arrêté, panneau fermé), après
   60/20/60/60. Présenté comme VKD3D : au « Démarrer », demande de
   swapchain FIFO, retenu à l'attente ; libre ensuite (il reste en FIFO, la
@@ -4079,7 +4079,7 @@ L'utilisateur, après tout cela : « sur oblivion remastered j'ai encore un
   rendu le verrou : l'appel ne doit pas bloquer. Notre limite y dormait
   jusqu'à une image : le rendu et la présentation du jeu attendaient la fin
   de ce sommeil. La démo n'avait pas ce verrou, d'où des mesures égales.
-  `bdex_demo --reflex-lock` le reproduit : 20,9 ms contre 4,1 (48 i/s).
+  `chuds_fg_demo --reflex-lock` le reproduit : 20,9 ms contre 4,1 (48 i/s).
 - **Correctif** : plus de sommeil dans `vkLatencySleepNV` ; la limite est
   confiée au limiteur de Reflex lui-même, `minimumIntervalUs` = le plus
   long de celui du jeu et du nôtre, renvoyé par `vkSetLatencySleepModeNV`
@@ -4296,9 +4296,9 @@ minutes Windows comptées double, chaque job arrondi à la minute.
   (distributions, paquets source, Proton, panneau, Nix, archives).
 - **Tags et à la main** : Win32 MSVC, zips Windows, bundle, release.
 - Outils : `tools/ci/linux-tests.sh` (les voies, aussi rejoué par
-  `tools/ci/run.sh`), `BDEX_CI_CPUS=2 tools/ci/run.sh` (jeu de CPU),
-  `tools/ci/mingw/check.sh` en parallèle (`BDEX_MINGW_ARCHS`,
-  `BDEX_MINGW_GEN`), `rhysd/actionlint:1.7.7` dans Docker (workflows
+  `tools/ci/run.sh`), `CHUDS_FG_CI_CPUS=2 tools/ci/run.sh` (jeu de CPU),
+  `tools/ci/mingw/check.sh` en parallèle (`CHUDS_FG_MINGW_ARCHS`,
+  `CHUDS_FG_MINGW_GEN`), `rhysd/actionlint:1.7.7` dans Docker (workflows
   vérifiés : ni expression ni contexte faux).
 - Premier run (19bcb39, poussé le 01/11) : `linux / test` et
   `windows / build (x64)` verts, aucun autre job (ni Win32 ni bundle), selon
@@ -4318,9 +4318,9 @@ minutes Windows comptées double, chaque job arrondi à la minute.
 ### 10/11 — axes d'amélioration : ce que les données de l'utilisateur et les mesures montrent
 
 Demande (/goal) : « trouve des axes d'amélioration du projet ». Sources :
-les fichiers de statut restés dans `~/.cache/bdex-framegen/run` (parties du
+les fichiers de statut restés dans `~/.cache/chuds-fg/run` (parties du
 04 au 10/11), le rapport du 20/10, des mesures GPU sans fenêtre
-(`bdex_offline`, RTX 3060 Ti) et la réplique de la validation dans Docker.
+(`chuds_fg_offline`, RTX 3060 Ti) et la réplique de la validation dans Docker.
 Rien n'est changé dans le code ; chaque point dit ce qui est établi et ce qui
 reste à vérifier.
 
@@ -4328,7 +4328,7 @@ reste à vérifier.
   (Vulkan natif, Clausewitz), GTA IV et State of Decay 2 (DXVK), Civilization
   VI (VKD3D-Proton), en plus d'Oblivion. La détection marche ; la qualité
   n'est jugée nulle part, et les enregistrements du panneau ne gardent pas
-  la profondeur (images + `timestamps.csv`), alors que `bdex_offline --depth`
+  la profondeur (images + `timestamps.csv`), alors que `chuds_fg_offline --depth`
   la lit. **Axe : enregistrer la profondeur** (un `.f32` par image, comme
   `make_game.py`), puis mettre `depth` dans `pending_decisions.py`.
 - **Fréquence de l'écran mal lue pour les jeux à 60 i/s** : Civilization VI
@@ -4367,7 +4367,7 @@ reste à vérifier.
   de `fossilize_replay` (précompilation des shaders par Steam) en six jours,
   2,3 Mo, plus 12 de jeux fermés ; Steam tue ces processus, la couche ne
   retire pas leur statut. Le panneau efface les fichiers morts quand il lit,
-  mais `bdex-framegen --report` les recopie tous (« running games ») et sa
+  mais `chuds-fg --report` les recopie tous (« running games ») et sa
   lecture rapide liste des jeux fermés depuis des jours. Ce que la couche
   ajoute au périphérique (une file, `present_id`/`present_wait`, la
   priorité) ne change pas la compilation des pipelines : sortir
@@ -4395,7 +4395,7 @@ reste à vérifier.
   saturation, retirer d'abord les passes au plus faible gain par ms
   (`false_detail`, `rot_weight`, `hud_mask`…) avant de brider le jeu, ou
   les mettre au niveau 1 de `gpu_budget`. **Outil** : le profil par passe
-  (`BDEX_FG_PROFILE=2`, dans `bdex_offline` et les stats de la couche)
+  (`CHUDS_FG_PROFILE=2`, dans `chuds_fg_offline` et les stats de la couche)
   remplace les balayages par option — mesuré inutilisable : écarts de
   7 à 15 ms d'un run à l'autre, deltas cumulés plus grands que le total.
   Piège : un conteneur Docker sur 2 CPU en parallèle doublait les temps GPU
@@ -4410,7 +4410,7 @@ reste à vérifier.
   `PRESENT-AFTER-WRITE` 5 essais sur 10, toujours sur la barrière de la
   copie vers l'image réelle. Ce n'est pas `fps_limit_wait` : lavapipe n'a
   pas `present_wait`, la limite reste au `present`. Validation 1.4.363
-  (celle de l'hôte, montée dans le conteneur Arch `bdex-wayland`, lavapipe,
+  (celle de l'hôte, montée dans le conteneur Arch `chuds-fg-wayland`, lavapipe,
   2 CPU) : Wayland 0/10 ; X11 (Xwayland) **0/10 sans limite, 4/10 avec
   `fps_limit=40`**, en `WRITE-AFTER-PRESENT` (« image présentée alors
   qu'une présentation précédente n'y est pas ordonnée »), que
@@ -4478,7 +4478,7 @@ fps sur Civ 6 », qui tournait). Tout est sans fenêtre sur l'écran.
   `CreateDXGIFactory1` dans le `dxgi.dll` du système, refusé par
   `WINEDLLOVERRIDES=dxgi=n` ; `dxgi=n,b`. (pdb du runtime LunarG + winedbg.)
 - **Piège du banc** : la couche Linux de `~/.local` se chargeait sous
-  winevulkan via `XDG_DATA_DIRS` (même nom, `BDEX_FG=1`) : sous limite elle
+  winevulkan via `XDG_DATA_DIRS` (même nom, `CHUDS_FG=1`) : sous limite elle
   ne proposait que FIFO à la couche Windows (« presenting with fifo »), et
   masquait la grille (« display without fixed refresh »). Exclue et
   vérifiée par le script (`host-layers.txt`).
@@ -4571,7 +4571,7 @@ lui date du 01/11 : **ces correctifs et ceux du 10/11 ne sont pas installés**
    ses i/s (un MSC pour deux présentations) — cette forme-là n'est pas dans
    mes données (le jeu était caché pendant l'écoute) ; « présentations
    remplacées » y compterait comme preuve d'une grille à 40 Hz. À
-   enregistrer jeu visible : `bdex-x11-trace watch 20`.
+   enregistrer jeu visible : `chuds-fg-x11-trace watch 20`.
    Vu aussi : fenêtre cachée (autre espace de travail Hyprland) → 2 116
    complétions en 25 s, **MSC et UST figés** ; le statut dit alors
    `shown_fps=0`. Piste non faite : suspendre la génération tant que rien
@@ -4579,7 +4579,7 @@ lui date du 01/11 : **ces correctifs et ceux du 10/11 ne sont pas installés**
 2. **`profile = 2`** : temps GPU de chaque étape du moteur et de chaque
    passe optionnelle (`FrameGen::eachPass`, un horodatage après chaque
    crochet ; moyenne sur les images où l'entrée apparaît). Stats de la
-   couche et fin de `bdex_offline`. **Méthode de mesure qui marche** : GPU
+   couche et fin de `chuds_fg_offline`. **Méthode de mesure qui marche** : GPU
    au repos (aucun jeu), `--max-inputs 5` (au-delà le GPU baisse ses
    horloges : 4,2 ms devenaient 12 à 15) — trois essais identiques au
    centième. 1440p, défauts du GPU dédié, RTX 3060 Ti, par image du jeu :
@@ -4587,7 +4587,7 @@ lui date du 01/11 : **ces correctifs et ceux du 10/11 ne sont pas installés**
    0,33, `hud_layer` 0,22, `hud_mask` 0,19, splat 0,10) ; ×4 6,2 ms
    (synthèse 2,6, `false_detail` 1,15, `mosaic_blur` 0,6).
 3. **Les enregistrements du panneau gardent la profondeur** (`depth = 1`,
-   génération en cours) : `depth/fNNNN.f32`, format de `bdex_offline
+   génération en cours) : `depth/fNNNN.f32`, format de `chuds_fg_offline
    --depth` ; `eval_sequence.py --variant DEPTH=1` prend le dossier seul,
    `pending_decisions.py` note `depth` sur les séquences qui l'ont,
    `corpus_pack/fetch` la conservent. Vérifié sur la démo (image de
@@ -4605,7 +4605,7 @@ lui date du 01/11 : **ces correctifs et ceux du 10/11 ne sont pas installés**
    bornes tracés = faux positifs — `dev_.inst` toujours posé dans la couche,
    `acquireAhead_` ≥ 1). Un programme qui change son propre environnement
    avant `Config::load` appelle `platformEnvForget()`.
-5. **`bdex-x11-trace`** (`tools/x11_trace`, non installé) : `watch N` écoute
+5. **`chuds-fg-x11-trace`** (`tools/x11_trace`, non installé) : `watch N` écoute
    les complétions Present de toutes les fenêtres (lecture seule), `replay`
    les passe dans `PresentTimeline`. La méthode des correctifs du 10 et du
    11/11, gardée ; la trace de Civ VI est un test unitaire.
@@ -4613,7 +4613,7 @@ lui date du 01/11 : **ces correctifs et ceux du 10/11 ne sont pas installés**
    1440p ×3 : 4,24 → 3,85 ms avant (−9 %, les vecteurs par pixel), 2,59
    maintenant (−39 %) ; niveau 2 : 2,30. Qualité sur `make_game.py` ×4
    (turn, walk, fps, strafe) : niveau 1 −0,11 dB en moyenne (−0,31 à
-   +0,24), niveau 2 −0,27. `bdex_offline --quality-level 1|2`. L'option
+   +0,24), niveau 2 −0,27. `chuds_fg_offline --quality-level 1|2`. L'option
    reste à 0 par défaut ; **non fait, à décider par l'utilisateur** : le
    faire aussi par défaut avant que `gpu_headroom` ne bride le jeu (gain
    ~4 i/s à 62 i/s ×3 contre le retour de la mosaïque).
@@ -4631,7 +4631,7 @@ lui date du 01/11 : **ces correctifs et ceux du 10/11 ne sont pas installés**
 determinism, min_limits, formats…), tests d'affichage dans gamescope sans
 tête (10/10), validation Khronos 1.4.363 sur les essais touchés (0
 message), MinGW x64 + i686 (qui a attrapé un test compilé sans
-`BDEX_SOURCE_DIR`), **réplique complète de la CI Linux** dans Docker sous
+`CHUDS_FG_SOURCE_DIR`), **réplique complète de la CI Linux** dans Docker sous
 lavapipe (core 18/18, display 11/11, slow, stress, validation : toutes
 vertes, 882 s), et la **couche Windows sur le GPU sous Wine**
 (`wine-gpu-check.sh` : Vulkan 64/32 bits, extrapolation, hybride ×3,
@@ -4645,7 +4645,7 @@ construire **une interface moderne, simple et compréhensible** — un mode
 basique optimisé (choisir le jeu où appliquer la génération, limiter les
 FPS, choisir ×2, ×3…) et un mode avancé qui modifie toutes les options.
 
-**Panneau Linux** (`tools/bdex-framegen-gui`, réécrit autour de la logique
+**Panneau Linux** (`tools/chuds-fg-gui`, réécrit autour de la logique
 existante : config, détection, session, capture, mode texte inchangés) :
 - *Simple* : un bandeau d'état et son bouton (« Lance ton jeu » → « Prêt —
   Cyberpunk2077 » → « En cours » avec JEU 40 / AFFICHÉ 120 / ×3 / LATENCE

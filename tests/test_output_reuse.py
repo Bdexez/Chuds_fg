@@ -18,7 +18,7 @@ from test_offline import frames
 
 
 def main():
-    tool = Path(sys.argv[1]).resolve() / "tools/offline/bdex_offline"
+    tool = Path(sys.argv[1]).resolve() / "tools/offline/chuds_fg_offline"
     rich = dict(PIXEL_VECTORS="1", SYNTH_BICUBIC="1", INTERP_SPLAT="1", INTERP_ACCEL="1",
                 HUD_MASK="4", STATIC_SOFT="1", FALSE_DETAIL="1", MOSAIC_BLUR="1", HUD_LAYER="1",
                 HUD_AVOID="1", BORDER_FILL="1", SCENE_CUT_LOCAL="1")
@@ -64,14 +64,14 @@ def main():
             draw.rectangle((5, 5, 65, 24), fill=(30, 40, 50))
             draw.text((8, 8), "HUD 42" if index < 5 else "HUD 43", fill=(255, 255, 255))
             image.save(p)
-        base_env = {k: v for k, v in os.environ.items() if not k.startswith("BDEX_FG")}
-        base_env.update(BDEX_FG_CONFIG="/dev/null", BDEX_FG_PRESET="balanced", BDEX_FG_LOG="1",
+        base_env = {k: v for k, v in os.environ.items() if not k.startswith("CHUDS_FG")}
+        base_env.update(CHUDS_FG_CONFIG="/dev/null", CHUDS_FG_PRESET="balanced", CHUDS_FG_LOG="1",
                         XDG_CACHE_HOME=str(tmp / "cache"), XDG_CONFIG_HOME=str(tmp / "config"),
                         XDG_DATA_HOME=str(tmp / "data"))
         total_files = total_reused = 0
         for name, mode, mult, settings, extra, expected in cases:
-            env = dict(base_env, BDEX_FG_MODE=mode)
-            env.update({"BDEX_FG_" + k: v for k, v in settings.items()})
+            env = dict(base_env, CHUDS_FG_MODE=mode)
+            env.update({"CHUDS_FG_" + k: v for k, v in settings.items()})
             paths = []
             for reuse in (False, True):
                 out = tmp / ("reuse" if reuse else "full")
@@ -114,7 +114,7 @@ def main():
                 out.rmdir()
         # Without a display grid, even explicit content timing keeps the
         # normal distinct output phases. Reuse must stay inactive.
-        env = dict(base_env, BDEX_FG_FRAME_TIMING="1")
+        env = dict(base_env, CHUDS_FG_FRAME_TIMING="1")
         result = subprocess.run([str(tool), str(seq), str(tmp / "no-grid"), "--multiplier", "8",
                                  "--spacing", "1", "--max-inputs", "3", "--verbose"],
                                 env=env, capture_output=True, text=True, timeout=120)

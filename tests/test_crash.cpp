@@ -60,11 +60,11 @@ TEST(crash_journal_written_then_chained) {
         printf("  (under a sanitizer: skipped)\n");
         return;
     }
-    const std::string dir = test::tmpPath("bdex-crash-test");
+    const std::string dir = test::tmpPath("chuds-fg-crash-test");
     const pid_t child = forkChild();
     if (child == 0) {
-        if (!bdex::crashLogInstall(dir, "unit test", "context line")) _exit(3);
-        if (bdex::crashLogInstall(dir, "again", "")) _exit(4);  // once per process
+        if (!chuds_fg::crashLogInstall(dir, "unit test", "context line")) _exit(3);
+        if (chuds_fg::crashLogInstall(dir, "again", "")) _exit(4);  // once per process
         faultHere();
         _exit(5);  // not reached
     }
@@ -94,11 +94,11 @@ void previousHandler(int) {
 
 TEST(crash_journal_keeps_the_previous_handler) {
     if (kSanitizer) return;
-    const std::string dir = test::tmpPath("bdex-crash-test2");
+    const std::string dir = test::tmpPath("chuds-fg-crash-test2");
     const pid_t child = forkChild();
     if (child == 0) {
         signal(SIGSEGV, previousHandler);
-        if (!bdex::crashLogInstall(dir, "chain", "")) _exit(3);
+        if (!chuds_fg::crashLogInstall(dir, "chain", "")) _exit(3);
         faultHere();
         _exit(5);
     }

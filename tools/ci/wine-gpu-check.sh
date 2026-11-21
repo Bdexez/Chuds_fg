@@ -14,7 +14,7 @@
 # wine-layer-check.sh covers the same DLL on lavapipe in CI; this one needs a
 # GPU, so it is run by hand (after a change to the worker, the pacing, the
 # platform shims or the Windows paths).
-#   tools/ci/wine-gpu-check.sh [WORKDIR]   (default: $TMPDIR/bdex-wine-gpu-check, downloads kept there)
+#   tools/ci/wine-gpu-check.sh [WORKDIR]   (default: $TMPDIR/chuds-fg-wine-gpu-check, downloads kept there)
 # Needs: wine (Wine >= 9 in its WoW64 build for the 32-bit runs), gamescope,
 # docker, curl, python3.
 #
@@ -27,7 +27,7 @@
 #     loader calls a null pointer (loader_windows.c:389, measured 10/11):
 #     dxgi=n,b — DXVK's beside the game for it, Wine's for the loader.
 # The host's own (Linux) build of the layer, installed in ~/.local, would load
-# under winevulkan too (the same name, BDEX_FG=1 in the environment: with a
+# under winevulkan too (the same name, CHUDS_FG=1 in the environment: with a
 # frame limit it offered the Windows layer FIFO alone, 10/11): an empty
 # XDG_DATA_HOME and XDG_CONFIG_HOME, and XDG_DATA_DIRS without the home.
 set -euo pipefail
@@ -46,57 +46,57 @@ vkd3d_ver=3.0.1
 vkd3d_sha=3cf2315522af5e43605ef6d3c41dad91387040bf97199934f3f7ab76caaa2f0c
 
 if [ "${1:-}" = --inside ]; then
-  # In headless gamescope: one probe a run, the layer's log in C:\bdex\logs.
+  # In headless gamescope: one probe a run, the layer's log in C:\chuds-fg\logs.
   work="$2"
   export WINEPREFIX="$work/prefix" WINEDEBUG=-all
   isolate "$work"
   unset WAYLAND_DISPLAY
-  C="$WINEPREFIX/drive_c/bdex"
+  C="$WINEPREFIX/drive_c/chuds-fg"
   mkdir -p "$C/logs"
   run() {  # run NAME DIR OVERRIDES EXE ARGS... (environment: the layer's settings)
     local name="$1" dir="$2" ov="$3"; shift 3
     rm -f "$C/logs/$name.log"
-    (cd "$C/$dir" && WINEDLLOVERRIDES="$ov;mscoree,mshtml=" BDEX_FG=1 BDEX_FG_CONFIG=NUL BDEX_FG_LOG=2 \
-      BDEX_FG_STATS_INTERVAL=3 BDEX_FG_LOG_FILE="C:\\bdex\\logs\\$name.log" DXVK_LOG_LEVEL=none VKD3D_DEBUG=none \
+    (cd "$C/$dir" && WINEDLLOVERRIDES="$ov;mscoree,mshtml=" CHUDS_FG=1 CHUDS_FG_CONFIG=NUL CHUDS_FG_LOG=2 \
+      CHUDS_FG_STATS_INTERVAL=3 CHUDS_FG_LOG_FILE="C:\\chuds-fg\\logs\\$name.log" DXVK_LOG_LEVEL=none VKD3D_DEBUG=none \
       timeout 90 wine "$@" > "$C/logs/$name.out" 2>&1) || true
     wineserver -k 2>/dev/null || true  # (else gamescope waits for Wine's services)
   }
   vk="vulkan-1=n"
-  (cd "$C/x64" && VK_LOADER_DEBUG=layer WINEDLLOVERRIDES="$vk;mscoree,mshtml=" BDEX_FG_DISABLE=1 timeout 60 wine vkprobe.exe 1 2>&1 |
+  (cd "$C/x64" && VK_LOADER_DEBUG=layer WINEDLLOVERRIDES="$vk;mscoree,mshtml=" CHUDS_FG_DISABLE=1 timeout 60 wine vkprobe.exe 1 2>&1 |
     tr -d '\r' | grep -E 'Insert instance layer' | sort -u > "$C/logs/host-layers.txt") || true
   wineserver -k 2>/dev/null || true
-  BDEX_FG_MODE=interpolate run vk64 x64 "$vk" vkprobe.exe 12
-  BDEX_FG_MODE=extrapolate run vk64-extrapolate x64 "$vk" vkprobe.exe 12
-  BDEX_FG_MODE=hybrid BDEX_FG_MULTIPLIER=3 run vk64-hybrid x64 "$vk" vkprobe.exe 12
-  BDEX_FG_MODE=interpolate run vk32 x86 "$vk" vkprobe.exe 12
+  CHUDS_FG_MODE=interpolate run vk64 x64 "$vk" vkprobe.exe 12
+  CHUDS_FG_MODE=extrapolate run vk64-extrapolate x64 "$vk" vkprobe.exe 12
+  CHUDS_FG_MODE=hybrid CHUDS_FG_MULTIPLIER=3 run vk64-hybrid x64 "$vk" vkprobe.exe 12
+  CHUDS_FG_MODE=interpolate run vk32 x86 "$vk" vkprobe.exe 12
   run d3d11 d3d11 "d3d11,dxgi=n,b;$vk" d3d11.exe 12
   run d3d11-32 d3d11-32 "d3d11,dxgi=n,b;$vk" d3d11.exe 12
   run d3d12 d3d12 "d3d12,d3d12core=n;dxgi=n,b;$vk" d3d12.exe 12
-  BDEX_FG_DEPTH=1 run d3d11-depth d3d11 "d3d11,dxgi=n,b;$vk" d3d11.exe 8 depth
-  BDEX_FG_DEPTH=1 run d3d12-depth d3d12 "d3d12,d3d12core=n;dxgi=n,b;$vk" d3d12.exe 8 depth
-  BDEX_FG_FPS_LIMIT=30 run d3d11-limit d3d11 "d3d11,dxgi=n,b;$vk" d3d11.exe 10 uncapped
+  CHUDS_FG_DEPTH=1 run d3d11-depth d3d11 "d3d11,dxgi=n,b;$vk" d3d11.exe 8 depth
+  CHUDS_FG_DEPTH=1 run d3d12-depth d3d12 "d3d12,d3d12core=n;dxgi=n,b;$vk" d3d12.exe 8 depth
+  CHUDS_FG_FPS_LIMIT=30 run d3d11-limit d3d11 "d3d11,dxgi=n,b;$vk" d3d11.exe 10 uncapped
   : > "$work/inside.done"
   exit 0
 fi
 
-work="${1:-${TMPDIR:-/tmp}/bdex-wine-gpu-check}"
+work="${1:-${TMPDIR:-/tmp}/chuds-fg-wine-gpu-check}"
 mkdir -p "$work/dl" "$work/emptyxdg"
 for t in wine gamescope docker curl python3; do command -v "$t" >/dev/null || { echo "missing: $t"; exit 1; }; done
 echo "wine $(wine --version), gamescope $(gamescope --version 2>&1 | grep -o '[0-9][0-9.]*' | head -1), work: $work"
 
 # 1. The DLLs and the probes, cross-built (the MinGW image of tools/ci/run.sh mingw).
-docker build -q -t bdex-ci-mingw:24.04 "$ROOT/tools/ci/mingw" >/dev/null
+docker build -q -t chuds-fg-ci-mingw:24.04 "$ROOT/tools/ci/mingw" >/dev/null
 rm -rf "$work/src" && mkdir -p "$work/src"
 (cd "$ROOT" && git ls-files -co --exclude-standard | grep -v '^build\|^dist' | tar -cf - -T - | tar -xf - -C "$work/src")
 sed 's/x86_64/i686/g' "$ROOT/tools/ci/mingw/x86_64-w64-mingw32.cmake" > "$work/i686-w64-mingw32.cmake"
-docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$work:/work" bdex-ci-mingw:24.04 bash -euo pipefail -c '
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$work:/work" chuds-fg-ci-mingw:24.04 bash -euo pipefail -c '
 mkdir -p /tmp/vkinc && ln -sf /usr/include/vulkan /usr/include/vk_video /tmp/vkinc/
 for a in x86_64 i686; do
   tc=/work/src/tools/ci/mingw/x86_64-w64-mingw32.cmake; [ $a = i686 ] && tc=/work/i686-w64-mingw32.cmake
-  cmake -S /work/src -B /work/b-$a -DCMAKE_TOOLCHAIN_FILE=$tc -DCMAKE_BUILD_TYPE=Release -DBDEX_BUILD_TESTS=OFF \
-    -DBDEX_BUILD_DEMO=OFF -DBDEX_BUILD_OFFLINE=OFF -DBDEX_VULKAN_INCLUDE_DIR=/tmp/vkinc >/work/cfg-$a.log 2>&1 ||
+  cmake -S /work/src -B /work/b-$a -DCMAKE_TOOLCHAIN_FILE=$tc -DCMAKE_BUILD_TYPE=Release -DCHUDS_FG_BUILD_TESTS=OFF \
+    -DCHUDS_FG_BUILD_DEMO=OFF -DCHUDS_FG_BUILD_OFFLINE=OFF -DCHUDS_FG_VULKAN_INCLUDE_DIR=/tmp/vkinc >/work/cfg-$a.log 2>&1 ||
     { tail -20 /work/cfg-$a.log; exit 1; }
-  cmake --build /work/b-$a -j"$(nproc)" --target bdex_framegen >/work/build-$a.log 2>&1 ||
+  cmake --build /work/b-$a -j"$(nproc)" --target chuds_fg >/work/build-$a.log 2>&1 ||
     { grep -E -A5 " error|undefined reference" /work/build-$a.log | head -40; exit 1; }
   $a-w64-mingw32-g++-posix -O2 -static -I/tmp/vkinc /work/src/tests/proton/vulkan_probe.cpp -o /work/vkprobe-$a.exe
   $a-w64-mingw32-g++-posix -O2 -static /work/src/tests/proton/d3d11_probe.cpp -ld3d11 -ldxgi -o /work/d3d11-$a.exe
@@ -126,16 +126,16 @@ export WINEPREFIX="$work/prefix" WINEDEBUG=-all
 isolate "$work"
 rm -rf "$WINEPREFIX"
 (unset DISPLAY WAYLAND_DISPLAY; WINEDLLOVERRIDES="mscoree,mshtml=" timeout 180 wineboot -i >/dev/null 2>&1) || true
-C="$WINEPREFIX/drive_c/bdex"
+C="$WINEPREFIX/drive_c/chuds-fg"
 mkdir -p "$C"/{layer64,layer32,x64,x86,d3d11,d3d11-32,d3d12}
-cp "$work/b-x86_64/layer/VkLayer_bdex_framegen.dll" "$C/layer64/"
-cp "$work/b-i686/layer/VkLayer_bdex_framegen.dll" "$C/layer32/"
-manifest() { sed 's#"library_path": ".*"#"library_path": ".\\\\VkLayer_bdex_framegen.dll"#' "$1" > "$2"; }
-manifest "$work/b-x86_64/layer/VK_LAYER_BDEX_framegen.json" "$C/layer64/VK_LAYER_BDEX_framegen.json"
-manifest "$work/b-i686/layer/VK_LAYER_BDEX_framegen_32.json" "$C/layer32/VK_LAYER_BDEX_framegen.json"
+cp "$work/b-x86_64/layer/VkLayer_chuds_fg.dll" "$C/layer64/"
+cp "$work/b-i686/layer/VkLayer_chuds_fg.dll" "$C/layer32/"
+manifest() { sed 's#"library_path": ".*"#"library_path": ".\\\\VkLayer_chuds_fg.dll"#' "$1" > "$2"; }
+manifest "$work/b-x86_64/layer/VK_LAYER_CHUDS_fg.json" "$C/layer64/VK_LAYER_CHUDS_fg.json"
+manifest "$work/b-i686/layer/VK_LAYER_CHUDS_fg_32.json" "$C/layer32/VK_LAYER_CHUDS_fg.json"
 (unset DISPLAY WAYLAND_DISPLAY
- wine reg add 'HKLM\SOFTWARE\Khronos\Vulkan\ImplicitLayers' /v 'C:\bdex\layer64\VK_LAYER_BDEX_framegen.json' /t REG_DWORD /d 0 /f
- wine reg add 'HKLM\SOFTWARE\WOW6432Node\Khronos\Vulkan\ImplicitLayers' /v 'C:\bdex\layer32\VK_LAYER_BDEX_framegen.json' /t REG_DWORD /d 0 /f
+ wine reg add 'HKLM\SOFTWARE\Khronos\Vulkan\ImplicitLayers' /v 'C:\chuds-fg\layer64\VK_LAYER_CHUDS_fg.json' /t REG_DWORD /d 0 /f
+ wine reg add 'HKLM\SOFTWARE\WOW6432Node\Khronos\Vulkan\ImplicitLayers' /v 'C:\chuds-fg\layer32\VK_LAYER_CHUDS_fg.json' /t REG_DWORD /d 0 /f
  wineserver -k) >/dev/null 2>&1 || true
 cp "$rt/x64/vulkan-1.dll" "$C/x64/" && cp "$work/vkprobe-x86_64.exe" "$C/x64/vkprobe.exe"
 cp "$rt/x86/vulkan-1.dll" "$C/x86/" && cp "$work/vkprobe-i686.exe" "$C/x86/vkprobe.exe"
@@ -163,7 +163,7 @@ timeout -k 10 600 gamescope --backend headless -W 1280 -H 720 -r 144 -- "$self" 
 
 # 5. Verdicts.
 status=0
-if grep -q BDEX "$C/logs/host-layers.txt" 2>/dev/null; then
+if grep -q CHUDS FG "$C/logs/host-layers.txt" 2>/dev/null; then
   echo "FAIL the host's own layer loads under winevulkan (the runs measure both):"; cat "$C/logs/host-layers.txt"; status=1
 fi
 log() { tr -d '\r' < "$C/logs/$1.log" 2>/dev/null || true; }

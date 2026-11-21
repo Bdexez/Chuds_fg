@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 struct X11Window {
     Window id = 0;
@@ -102,4 +102,4 @@ private:
 // Proton command line, else the executable's base name.
 std::string processNameOf(long pid);
 
-} // namespace bdex
+} // namespace chuds_fg

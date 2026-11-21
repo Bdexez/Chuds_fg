@@ -19,7 +19,7 @@
 
 #include <unistd.h>
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace {
 
@@ -28,7 +28,7 @@ namespace {
 std::string cacheDir() {
     const char* x = std::getenv("XDG_CACHE_HOME");
     const char* h = std::getenv("HOME");
-    return (x && *x) ? std::string(x) + "/bdex-framegen" : h ? std::string(h) + "/.cache/bdex-framegen" : std::string();
+    return (x && *x) ? std::string(x) + "/chuds-fg" : h ? std::string(h) + "/.cache/chuds-fg" : std::string();
 }
 
 struct Response {
@@ -70,7 +70,7 @@ GVariant* request(GDBusConnection* bus, const char* method, GVariant* args, cons
                                                 "org.freedesktop.portal.ScreenCast", method, args, nullptr,
                                                 G_DBUS_CALL_FLAGS_NONE, -1, nullptr, &err);
     if (!ret) {
-        BDEX_ERR("portal %s: %s", method, err ? err->message : "failed");
+        CHUDS_FG_ERR("portal %s: %s", method, err ? err->message : "failed");
         if (err) g_error_free(err);
     } else {
         g_variant_unref(ret);
@@ -80,7 +80,7 @@ GVariant* request(GDBusConnection* bus, const char* method, GVariant* args, cons
         if (!r.done) g_main_loop_run(r.loop);
         g_source_destroy(t);
         g_source_unref(t);
-        if (!r.done) BDEX_ERR("portal %s: no answer", method);
+        if (!r.done) CHUDS_FG_ERR("portal %s: no answer", method);
     }
     g_dbus_connection_signal_unsubscribe(bus, sub);
     g_main_loop_unref(r.loop);
@@ -100,12 +100,12 @@ bool PwCapture::portal(bool monitor, int& fd, uint32_t& node) {
     GError* err = nullptr;
     GDBusConnection* bus = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &err);
     if (!bus) {
-        BDEX_ERR("no D-Bus session bus (%s): the screen-cast portal is unreachable", err ? err->message : "?");
+        CHUDS_FG_ERR("no D-Bus session bus (%s): the screen-cast portal is unreachable", err ? err->message : "?");
         if (err) g_error_free(err);
         return false;
     }
     static int counter = 0;
-    auto token = [&] { return "bdex" + std::to_string(getpid()) + "_" + std::to_string(++counter); };
+    auto token = [&] { return "chuds_fg" + std::to_string(getpid()) + "_" + std::to_string(++counter); };
     guint32 code = 2;
     bool ok = false;
     std::string session;
@@ -122,7 +122,7 @@ bool PwCapture::portal(bool monitor, int& fd, uint32_t& node) {
         g_variant_unref(res);
     }
     if (session.empty()) {
-        BDEX_ERR("screen-cast portal: no session (is xdg-desktop-portal running with a backend for this desktop?)");
+        CHUDS_FG_ERR("screen-cast portal: no session (is xdg-desktop-portal running with a backend for this desktop?)");
         g_object_unref(bus);
         return false;
     }
@@ -145,17 +145,17 @@ bool PwCapture::portal(bool monitor, int& fd, uint32_t& node) {
     if (!restore.empty()) g_variant_builder_add(&opts, "{sv}", "restore_token", g_variant_new_string(restore.c_str()));
     GVariant* res = request(bus, "SelectSources", g_variant_new("(oa{sv})", session.c_str(), &opts), t, 10, code);
     if (!res) {
-        BDEX_ERR("screen-cast portal: source selection refused (code %u)", code);
+        CHUDS_FG_ERR("screen-cast portal: source selection refused (code %u)", code);
     } else {
         g_variant_unref(res);
         // Start: the compositor's picker (or the kept choice).
         g_variant_builder_init(&opts, G_VARIANT_TYPE_VARDICT);
         t = token();
         g_variant_builder_add(&opts, "{sv}", "handle_token", g_variant_new_string(t.c_str()));
-        BDEX_INFO("screen-cast portal: choose the game's %s in the desktop's dialog", monitor ? "screen" : "window");
+        CHUDS_FG_INFO("screen-cast portal: choose the game's %s in the desktop's dialog", monitor ? "screen" : "window");
         res = request(bus, "Start", g_variant_new("(osa{sv})", session.c_str(), "", &opts), t, 180, code);
         if (!res) {
-            BDEX_ERR("screen-cast portal: %s", code == 1 ? "cancelled" : "start failed");
+            CHUDS_FG_ERR("screen-cast portal: %s", code == 1 ? "cancelled" : "start failed");
         } else {
             GVariant* streams = g_variant_lookup_value(res, "streams", G_VARIANT_TYPE("a(ua{sv})"));
             if (streams && g_variant_n_children(streams) > 0) {
@@ -164,7 +164,7 @@ bool PwCapture::portal(bool monitor, int& fd, uint32_t& node) {
                 if (props) {
                     gint32 x = 0, y = 0, w = 0, h = 0;
                     if (g_variant_lookup(props, "position", "(ii)", &x, &y) && monitor) {
-                        BDEX_INFO("screen-cast portal: the shared screen is at %d,%d", x, y);
+                        CHUDS_FG_INFO("screen-cast portal: the shared screen is at %d,%d", x, y);
                     }
                     if (g_variant_lookup(props, "size", "(ii)", &w, &h)) source_ = std::to_string(w) + "x" + std::to_string(h);
                     g_variant_unref(props);
@@ -195,7 +195,7 @@ bool PwCapture::portal(bool monitor, int& fd, uint32_t& node) {
             fd = g_unix_fd_list_get(fds, index, &err);
             ok = fd >= 0;
         }
-        if (!ok) BDEX_ERR("screen-cast portal: no PipeWire connection (%s)", err ? err->message : "?");
+        if (!ok) CHUDS_FG_ERR("screen-cast portal: no PipeWire connection (%s)", err ? err->message : "?");
         if (err) g_error_free(err);
         if (ret) g_variant_unref(ret);
         if (fds) g_object_unref(fds);
@@ -210,10 +210,10 @@ bool PwCapture::portal(bool monitor, int& fd, uint32_t& node) {
 
 void PwCapture::onStateChanged(void* self, int, int state, const char* error) {
     auto* c = static_cast<PwCapture*>(self);
-    BDEX_DBG("PipeWire stream state: %s", pw_stream_state_as_string(static_cast<pw_stream_state>(state)));
+    CHUDS_FG_DBG("PipeWire stream state: %s", pw_stream_state_as_string(static_cast<pw_stream_state>(state)));
     if ((state == PW_STREAM_STATE_ERROR || state == PW_STREAM_STATE_UNCONNECTED) && !c->stopping_) {
-        if (state == PW_STREAM_STATE_ERROR) BDEX_ERR("PipeWire stream: %s", error ? error : "error");
-        else BDEX_INFO("PipeWire stream: the shared window is gone");
+        if (state == PW_STREAM_STATE_ERROR) CHUDS_FG_ERR("PipeWire stream: %s", error ? error : "error");
+        else CHUDS_FG_INFO("PipeWire stream: the shared window is gone");
         c->gone_ = true;
     }
 }
@@ -229,7 +229,7 @@ void PwCapture::onParamChanged(void* self, uint32_t id, const struct spa_pod* pa
         c->height_ = info.size.height;
         c->swapRB_ = info.format == SPA_VIDEO_FORMAT_RGBx || info.format == SPA_VIDEO_FORMAT_RGBA;
     }
-    BDEX_INFO("PipeWire stream: %ux%u, %s", info.size.width, info.size.height,
+    CHUDS_FG_INFO("PipeWire stream: %ux%u, %s", info.size.width, info.size.height,
               info.format == SPA_VIDEO_FORMAT_BGRx || info.format == SPA_VIDEO_FORMAT_BGRA ? "BGRx" : "RGBx (swizzled)");
     // Mapped memory (no DMA-BUF: the frames are copied on the CPU), and the
     // crop region of a shared window.
@@ -252,7 +252,7 @@ void PwCapture::onProcess(void* self) {
     spa_buffer* sb = b->buffer;
     const spa_data& d = sb->datas[0];
     if (c->seq_ == 0)
-        BDEX_DBG("PipeWire: first buffer (type %u, data %p, size %u, stride %d)", d.type, d.data, d.chunk ? d.chunk->size : 0,
+        CHUDS_FG_DBG("PipeWire: first buffer (type %u, data %p, size %u, stride %d)", d.type, d.data, d.chunk ? d.chunk->size : 0,
                  d.chunk ? d.chunk->stride : 0);
     if (d.data && d.chunk && d.chunk->size) {
         std::lock_guard<std::mutex> lock(c->mutex_);
@@ -296,7 +296,7 @@ void PwCapture::onProcess(void* self) {
 
 bool PwCapture::connect(int fd, uint32_t node) {
     pw_init(nullptr, nullptr);
-    loop_ = pw_thread_loop_new("bdex-capture", nullptr);
+    loop_ = pw_thread_loop_new("chuds-fg-capture", nullptr);
     if (!loop_) return false;
     context_ = pw_context_new(pw_thread_loop_get_loop(loop_), nullptr, 0);
     if (!context_ || pw_thread_loop_start(loop_) < 0) return false;
@@ -304,10 +304,10 @@ bool PwCapture::connect(int fd, uint32_t node) {
     core_ = pw_context_connect_fd(context_, fd, nullptr, 0);
     if (!core_) {
         pw_thread_loop_unlock(loop_);
-        BDEX_ERR("PipeWire: cannot connect through the portal");
+        CHUDS_FG_ERR("PipeWire: cannot connect through the portal");
         return false;
     }
-    stream_ = pw_stream_new(core_, "bdex-capture",
+    stream_ = pw_stream_new(core_, "chuds-fg-capture",
                             pw_properties_new(PW_KEY_MEDIA_TYPE, "Video", PW_KEY_MEDIA_CATEGORY, "Capture",
                                               PW_KEY_MEDIA_ROLE, "Screen", nullptr));
     static pw_stream_events events = [] {
@@ -343,7 +343,7 @@ bool PwCapture::connect(int fd, uint32_t node) {
                                     static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS),
                                     params, 1);
     pw_thread_loop_unlock(loop_);
-    if (r < 0) BDEX_ERR("PipeWire: stream connection failed (%d)", r);
+    if (r < 0) CHUDS_FG_ERR("PipeWire: stream connection failed (%d)", r);
     return r >= 0;
 }
 
@@ -352,7 +352,7 @@ bool PwCapture::start(bool monitor, const X11Window& area) {
     int fd = -1;
     uint32_t node = 0;
     if (!portal(monitor, fd, node)) return false;
-    BDEX_INFO("screen-cast portal: PipeWire node %u%s", node, source_.empty() ? "" : (" (" + source_ + ")").c_str());
+    CHUDS_FG_INFO("screen-cast portal: PipeWire node %u%s", node, source_.empty() ? "" : (" (" + source_ + ")").c_str());
     return connect(fd, node);
 }
 
@@ -423,4 +423,4 @@ bool PwCapture::grab(int slot, Frame& out) {
     return true;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

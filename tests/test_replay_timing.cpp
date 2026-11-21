@@ -9,7 +9,7 @@ const std::vector<std::string> names{"f0000.ppm", "f0001.ppm", "f0002.ppm", "f00
 const char* const header = "frame,present_ms,interval_ms\n";
 bool rejects(const std::string& csv) {
     std::istringstream input(csv);
-    try { bdex::replay::readTimes(input, names); }
+    try { chuds_fg::replay::readTimes(input, names); }
     catch (const std::runtime_error&) { return true; }
     return false;
 }
@@ -22,7 +22,7 @@ TEST(replay_timing_preserves_irregular_source_clock) {
         "f0001.ppm,1450000033.333,33.333\r\n"
         "f0002.ppm,1450000113.334,80.000\r\n"
         "f0003.ppm,1450000133.334,20.000\r\n");
-    const auto times = bdex::replay::readTimes(input, names);
+    const auto times = chuds_fg::replay::readTimes(input, names);
     CHECK(times.size() == 4);
     CHECK(std::abs(times[1] - 33.333) < 0.0001);
     CHECK(std::abs(times[2] - 113.334) < 0.0001);
@@ -54,7 +54,7 @@ TEST(replay_timing_rejects_unusable_or_mismatched_recordings) {
 }
 
 TEST(replay_timing_does_not_catch_up_in_a_burst_after_overload) {
-    bdex::replay::Clock clock;
+    chuds_fg::replay::Clock clock;
     CHECK(clock.target(0, 1000) == 1000);
     CHECK(clock.commit(0, 1000) == 0);
     CHECK(clock.target(30, 1010) == 1030);

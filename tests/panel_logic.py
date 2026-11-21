@@ -150,7 +150,7 @@ print("anticheat warning ok")
 import subprocess
 import tempfile
 with tempfile.TemporaryDirectory() as tmp:
-    env = dict(os.environ, HOME=tmp, BDEX_FG_STATUS_DIR=os.path.join(tmp, "run"),
+    env = dict(os.environ, HOME=tmp, CHUDS_FG_STATUS_DIR=os.path.join(tmp, "run"),
                XDG_CACHE_HOME=os.path.join(tmp, "cache"), XDG_CONFIG_HOME=os.path.join(tmp, "config"),
                XDG_DATA_HOME=os.path.join(tmp, "data"))
     game = subprocess.Popen(["sleep", "30"], env=env)
@@ -158,7 +158,7 @@ with tempfile.TemporaryDirectory() as tmp:
     import time
     for _ in range(200):
         try:
-            if b"BDEX_FG_STATUS_DIR" in open(f"/proc/{game.pid}/environ", "rb").read():
+            if b"CHUDS_FG_STATUS_DIR" in open(f"/proc/{game.pid}/environ", "rb").read():
                 break
         except OSError:
             pass
@@ -175,7 +175,7 @@ with tempfile.TemporaryDirectory() as tmp:
         open(os.path.join(src, "f0000.ppm"), "wb").write(b"P6\n1 1\n255\n\0\0\0")
         open(os.path.join(src, "DONE"), "w").write("frames=1\n")
         out = panel.finish_recording(src)
-        assert os.path.isdir(out) and out.startswith(os.path.join(tmp, "cache", "bdex-framegen", "recordings")), out
+        assert os.path.isdir(out) and out.startswith(os.path.join(tmp, "cache", "chuds-fg", "recordings")), out
         assert os.path.isfile(os.path.join(out, "f0000.ppm")) and not os.path.exists(src)
     finally:
         game.kill()
@@ -193,7 +193,7 @@ with tempfile.TemporaryDirectory() as tmp:
     os.environ["XDG_CACHE_HOME"] = tmp
     try:
         assert panel.read_calibration() is None
-        os.makedirs(os.path.join(tmp, "bdex-framegen"))
+        os.makedirs(os.path.join(tmp, "chuds-fg"))
         hz = panel.display_hz()
         with open(panel.calibration_path(), "w") as f:
             _json.dump({"gpu": "GPU", "size": [1920, 1080], "refresh": hz, "budget": 0.25, "presets": {},

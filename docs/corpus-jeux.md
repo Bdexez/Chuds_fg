@@ -30,9 +30,9 @@ Varier les jeux compte plus que le nombre de scènes par jeu.
 - **Panneau** (à préférer) : une fois dans la scène, bouton « ● Enregistrer »
   sur la ligne du jeu (« Actualiser la liste » si le jeu a démarré après le
   panneau ; le bouton n'existe que pour un jeu armé). Il garde les 150 images
-  réelles suivantes dans `~/.cache/bdex-framegen/recordings/`. Le jeu garde
+  réelles suivantes dans `~/.cache/chuds-fg/recordings/`. Le jeu garde
   sa cadence : les images sont relues et écrites hors de son thread.
-- **Ligne de commande** : `bdex-framegen --record ~/rec/<jeu>-<scène> 150 --
+- **Ligne de commande** : `chuds-fg --record ~/rec/<jeu>-<scène> 150 --
   %command%` (options de lancement Steam). Attention : il enregistre dès la
   première image, donc les logos et le menu ; seulement pour un programme
   qui démarre directement dans la scène. Sans génération : ×1, images
@@ -45,7 +45,7 @@ dates de fichier ne donnent pas cette information : les écritures sont
 asynchrones. Pour mesurer les variations du temps d'image :
 
 ```bash
-python3 tools/recording_report.py ~/.cache/bdex-framegen/recordings/<séquence>
+python3 tools/recording_report.py ~/.cache/chuds-fg/recordings/<séquence>
 ```
 
 Les archives créées par `corpus_pack.py` conservent ces temps, y compris avec
@@ -62,7 +62,7 @@ chaque image dans `depth/f0000.f32`… — la taille des images, un flottant par
 pixel, Z inversé (plus grand = plus près), le texel du centre de chaque bloc
 (pas de moyenne à travers un contour). `DONE` en donne le compte (`depth=150`)
 et le statut du jeu dit si le tampon est trouvé (`depth=on`). C'est ce que
-`bdex_offline --depth` lit : `pending_decisions.py` note alors `depth` sur
+`chuds_fg_offline --depth` lit : `pending_decisions.py` note alors `depth` sur
 ces séquences, et `eval_sequence.py SEQ --variant DEPTH=1` suffit (le dossier
 `depth/` est pris de lui-même). `corpus_pack.py` / `corpus_fetch.py` la
 conservent. Sans génération, sans l'option ou en extrapolation : images
@@ -71,8 +71,8 @@ seules, comme avant.
 Pour reproduire ces variations dans la démo à travers la couche :
 
 ```bash
-BDEX_FG_CONFIG=/dev/null BDEX_FG=1 BDEX_FG_PRESET=quality BDEX_FG_MULTIPLIER=4 \
-  build/demo/bdex_demo --replay <séquence> --replay-timing --replay-log /tmp/rejeu.csv
+CHUDS_FG_CONFIG=/dev/null CHUDS_FG=1 CHUDS_FG_PRESET=quality CHUDS_FG_MULTIPLIER=4 \
+  build/demo/chuds_fg_demo --replay <séquence> --replay-timing --replay-log /tmp/rejeu.csv
 ```
 
 `--replay-timing` utilise `timestamps.csv` à la place de `--fps` et s'arrête
@@ -98,11 +98,11 @@ résolution), ne garder qu'une des deux séries.
 ## 3. Obtenir les verdicts
 
 ```bash
-tools/pending_decisions.py ~/.cache/bdex-framegen/recordings/* --build build
+tools/pending_decisions.py ~/.cache/chuds-fg/recordings/* --build build
 ```
 
 Le script note chaque option contre les réglages par défaut. Il le fait sur
-chaque séquence, dans chaque mode où l'option agit, avec `bdex_offline`
+chaque séquence, dans chaque mode où l'option agit, avec `chuds_fg_offline`
 (sans fenêtre). La référence est le preset automatique de ce GPU, c'est-à-dire
 ce que reçoit un joueur. Verdicts possibles :
 

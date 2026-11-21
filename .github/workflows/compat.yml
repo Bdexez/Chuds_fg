@@ -70,7 +70,7 @@ jobs:
         run: |
           echo "VK_ICD_FILENAMES=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)" >> "$GITHUB_ENV"
           echo "LIBGL_ALWAYS_SOFTWARE=1" >> "$GITHUB_ENV"
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBDEX_WERROR=ON
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCHUDS_FG_WERROR=ON
           cmake --build build -j"$(nproc)"
       - name: Determinism, validation and swapchain stress
         run: tools/ci/linux-tests.sh build none slow validation stress
@@ -114,10 +114,10 @@ jobs:
         run: |
           icd="$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)"
           out="$(vulkaninfo 2>/dev/null || true)"   # not piped into grep -q (pipefail + SIGPIPE)
-          if grep -qi bdex <<<"$out"; then
-            echo "an installed BDEX layer would shadow the sanitized build"; exit 1
+          if grep -qi chuds <<<"$out"; then
+            echo "an installed CHUDS FG layer would shadow the sanitized build"; exit 1
           fi
-          env ${{ matrix.env }} VK_ICD_FILENAMES="$icd" BDEX_REQUIRE_DISPLAY=1 \
+          env ${{ matrix.env }} VK_ICD_FILENAMES="$icd" CHUDS_FG_REQUIRE_DISPLAY=1 \
             xvfb-run -a -s '-screen 0 1280x800x24' \
             ctest --test-dir build -R "unit|offline|integration|acquire" --output-on-failure
 
@@ -192,8 +192,8 @@ jobs:
       - name: Options description (options_ui.json)
         run: |
           tools/ci/runner-apt.sh cmake g++ glslc libvulkan-dev
-          cmake -S . -B build -DBDEX_BUILD_TESTS=OFF -DBDEX_BUILD_DEMO=OFF -DBDEX_BUILD_OFFLINE=OFF
-          cmake --build build --target bdex_options_ui -j"$(nproc)"
+          cmake -S . -B build -DCHUDS_FG_BUILD_TESTS=OFF -DCHUDS_FG_BUILD_DEMO=OFF -DCHUDS_FG_BUILD_OFFLINE=OFF
+          cmake --build build --target chuds_fg_options_ui -j"$(nproc)"
       - name: Panel (Ubuntu 20.04, Debian 12, Arch)
         run: tools/ci/panel-check.sh build/options_ui.json ubuntu:20.04 debian:12 archlinux:latest
 
@@ -211,10 +211,10 @@ jobs:
         run: |
           nix build .#default .#layer32 -L
           mesa="$(nix build --no-link --print-out-paths nixpkgs#mesa | head -1)"
-          out="$(XDG_DATA_DIRS="$PWD/result/share" BDEX_FG=1 BDEX_FG_LOG=2 \
+          out="$(XDG_DATA_DIRS="$PWD/result/share" CHUDS_FG=1 CHUDS_FG_LOG=2 \
             VK_ICD_FILENAMES="$(ls "$mesa"/share/vulkan/icd.d/lvp_icd*.json | head -1)" \
             nix shell nixpkgs#vulkan-tools -c vulkaninfo --summary 2>&1 || true)"
-          grep -E 'bdex-fg.*loaded' <<<"$out"
+          grep -E 'chuds-fg.*loaded' <<<"$out"
 
   # The prebuilt archives: the SPIR-V compiled by glslc (as tested above),
   # the layers linked on Ubuntu 20.04 (glibc 2.31, GCC 10, static C++
@@ -239,13 +239,13 @@ jobs:
           if [ "$GITHUB_REF_TYPE" = tag ]; then version="${GITHUB_REF_NAME#v}"; fi
           tools/ci/package-release.sh dist "$version"
           # The same files as .deb and .rpm (x86_64 and aarch64).
-          for a in dist/bdex-framegen-linux-*.tar.gz; do tools/package-native.sh "$a" dist "$version"; done
+          for a in dist/chuds-fg-linux-*.tar.gz; do tools/package-native.sh "$a" dist "$version"; done
           # The Steam Deck's quick access menu (Decky Loader plugin).
           tools/ci/decky-check.sh dist
           (cd dist && sha256sum *.tar.gz *.deb *.rpm *.zip | tee SHA256SUMS-linux.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: bdex-framegen-linux
+          name: chuds-fg-linux
           path: |
             dist/*.tar.gz
             dist/*.deb
@@ -259,11 +259,11 @@ jobs:
       # release.
       - name: Check the archives on other distributions
         run: |
-          tools/ci/archive-check.sh dist/bdex-framegen-linux-x86_64*.tar.gz \
+          tools/ci/archive-check.sh dist/chuds-fg-linux-x86_64*.tar.gz \
             ubuntu:20.04 debian:11 ubuntu:22.04 debian:12 ubuntu:24.04 fedora:latest
-          tools/ci/archive-check.sh dist/bdex-framegen-linux-aarch64*.tar.gz bullseye bookworm
-          tools/ci/archive-check.sh dist/bdex-framegen_*_amd64.deb ubuntu:20.04 ubuntu:22.04 debian:12 ubuntu:24.04
-          tools/ci/archive-check.sh dist/bdex-framegen-*.x86_64.rpm fedora:latest opensuse/tumbleweed
+          tools/ci/archive-check.sh dist/chuds-fg-linux-aarch64*.tar.gz bullseye bookworm
+          tools/ci/archive-check.sh dist/chuds-fg_*_amd64.deb ubuntu:20.04 ubuntu:22.04 debian:12 ubuntu:24.04
+          tools/ci/archive-check.sh dist/chuds-fg-*.x86_64.rpm fedora:latest opensuse/tumbleweed
       - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2.6.2 (third party, with write access: pinned)

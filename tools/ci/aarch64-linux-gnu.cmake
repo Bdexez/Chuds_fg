@@ -1,6 +1,6 @@
 # CMake toolchain for the arm64 release layer, cross-compiled with Debian's
 # gcc-aarch64-linux-gnu (tools/ci/package-release.sh). The Vulkan headers are
-# architecture-independent (BDEX_VULKAN_INCLUDE_DIR); the layer links no
+# architecture-independent (CHUDS_FG_VULKAN_INCLUDE_DIR); the layer links no
 # Vulkan library.
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)

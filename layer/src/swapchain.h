@@ -19,7 +19,7 @@
 #include <thread>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // A swapchain as seen by the application. The application renders into
 // private images we hand out from vkAcquireNextImageKHR. On present, the
@@ -532,4 +532,4 @@ private:
     bool slotDone(uint32_t slot, uint64_t generation, bool wait);
 };
 
-} // namespace bdex
+} // namespace chuds_fg

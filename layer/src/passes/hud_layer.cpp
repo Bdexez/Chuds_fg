@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct HlPC { int32_t size[2]; uint32_t encoding; int32_t mode; float strength; float t; int32_t timing;
@@ -144,4 +144,4 @@ private:
 
 std::unique_ptr<FgPass> makeHudLayerPass() { return std::make_unique<HudLayerPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

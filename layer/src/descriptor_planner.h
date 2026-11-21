@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // Descriptor pool accounting for FrameGen: each descriptor set layout is
 // registered with what one set of it holds, and allocations are planned
@@ -41,4 +41,4 @@ private:
     uint32_t pools_ = 0;
 };
 
-} // namespace bdex
+} // namespace chuds_fg

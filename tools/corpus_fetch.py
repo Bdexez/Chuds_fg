@@ -4,7 +4,7 @@
   tools/corpus_fetch.py OUT_DIR ARCHIVE.tar.gz...
 
 Each archive becomes OUT_DIR/<name>/f0000.ppm..., the layout of
-tools/eval_sequence.py and of tests/test_corpus.py's BDEX_CORPUS_DIR
+tools/eval_sequence.py and of tests/test_corpus.py's CHUDS_FG_CORPUS_DIR
 (and OUT_DIR/<name>/depth/f0000.f32... when the recording kept the depth).
 """
 import io

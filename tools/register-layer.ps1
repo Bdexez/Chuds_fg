@@ -1,11 +1,11 @@
-# Registers the bdex-framegen Vulkan layer for the current Windows user, no
+# Registers the chuds-fg Vulkan layer for the current Windows user, no
 # admin rights needed. The loader discovers implicit layers through the
 # registry (not a directory like on Linux):
 #
 #   HKCU\SOFTWARE\Khronos\Vulkan\ImplicitLayers   (per-user)
 #   HKCU\SOFTWARE\WOW6432Node\...                 (32-bit layer view)
 #
-# The DLL and manifest are copied to %LOCALAPPDATA%\bdex-framegen so the layer
+# The DLL and manifest are copied to %LOCALAPPDATA%\chuds-fg so the layer
 # keeps working even if the build tree is deleted. The manifest uses a
 # relative library_path, so DLL and .json must stay in the same folder.
 #
@@ -15,25 +15,25 @@
 # Usage (x64, from the repo root):
 #   cmake -S . -B build-win -G "Visual Studio 17 2022" -A x64
 #   cmake --build build-win --config Release
-#   powershell -File tools\register-layer.ps1 -Dll build-win\layer\Release\VkLayer_bdex_framegen.dll
+#   powershell -File tools\register-layer.ps1 -Dll build-win\layer\Release\VkLayer_chuds_fg.dll
 #
 # 32-bit (old games / emulators): same with -A Win32, then:
-#   powershell -File tools\register-layer.ps1 -Dll build-win32\layer\Release\VkLayer_bdex_framegen.dll -Wow6432
+#   powershell -File tools\register-layer.ps1 -Dll build-win32\layer\Release\VkLayer_chuds_fg.dll -Wow6432
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true, HelpMessage = "Path to VkLayer_bdex_framegen.dll")]
+    [Parameter(Mandatory = $true, HelpMessage = "Path to VkLayer_chuds_fg.dll")]
     [string] $Dll,
     [switch] $Wow6432,
-    [string] $LayerName = 'VK_LAYER_BDEX_framegen'
+    [string] $LayerName = 'VK_LAYER_CHUDS_fg'
 )
 $ErrorActionPreference = 'Stop'
 
 $dllPath = (Resolve-Path -LiteralPath $Dll).Path
 if ($Wow6432) { $LayerName = "${LayerName}_32" }
 
-$dest = Join-Path $env:LOCALAPPDATA $(if ($Wow6432) { 'bdex-framegen32' } else { 'bdex-framegen' })
+$dest = Join-Path $env:LOCALAPPDATA $(if ($Wow6432) { 'chuds-fg32' } else { 'chuds-fg' })
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
-$dllDest = Join-Path $dest 'VkLayer_bdex_framegen.dll'
+$dllDest = Join-Path $dest 'VkLayer_chuds_fg.dll'
 Copy-Item -LiteralPath $dllPath -Destination $dllDest -Force
 
 $json = Join-Path $dest "$LayerName.json"
@@ -43,16 +43,16 @@ $json = Join-Path $dest "$LayerName.json"
   "layer": {
     "name": "$LayerName",
     "type": "GLOBAL",
-    "library_path": ".\\VkLayer_bdex_framegen.dll",
+    "library_path": ".\\VkLayer_chuds_fg.dll",
     "api_version": "1.4.0",
     "implementation_version": "1",
-    "description": "BDEX frame generation: interpolates extra frames between the game's frames",
+    "description": "CHUDS FG frame generation: interpolates extra frames between the game's frames",
     "functions": {
       "vkGetInstanceProcAddr": "vkGetInstanceProcAddr",
       "vkGetDeviceProcAddr": "vkGetDeviceProcAddr",
       "vkNegotiateLoaderLayerInterfaceVersion": "vkNegotiateLoaderLayerInterfaceVersion"
     },
-    "disable_environment": { "BDEX_FG_DISABLE": "1" }
+    "disable_environment": { "CHUDS_FG_DISABLE": "1" }
   }
 }
 "@ | Set-Content -Path $json -Encoding ASCII
@@ -67,8 +67,8 @@ Write-Host "  DLL      : $dllDest"
 Write-Host "  Manifest : $json"
 Write-Host "  Registry : $keyPath"
 Write-Host ''
-Write-Host 'Verify with:  vulkaninfo --summary    (should list VK_LAYER_BDEX_framegen)'
-Write-Host 'Config file:  %APPDATA%\bdex-framegen\bdex-framegen.conf   (enabled=1 to turn on)'
-Write-Host 'Steam launch options:  cmd /c "set BDEX_FG=1 && %command%"   (per game, no config file needed)'
-Write-Host 'Logs: stderr by default; set log_file in the config, e.g. log_file=%TEMP%\bdex-fg.log'
-Write-Host 'Unload without uninstalling: set BDEX_FG_DISABLE=1 in the environment.'
+Write-Host 'Verify with:  vulkaninfo --summary    (should list VK_LAYER_CHUDS_fg)'
+Write-Host 'Config file:  %APPDATA%\chuds-fg\chuds-fg.conf   (enabled=1 to turn on)'
+Write-Host 'Steam launch options:  cmd /c "set CHUDS_FG=1 && %command%"   (per game, no config file needed)'
+Write-Host 'Logs: stderr by default; set log_file in the config, e.g. log_file=%TEMP%\chuds-fg.log'
+Write-Host 'Unload without uninstalling: set CHUDS_FG_DISABLE=1 in the environment.'

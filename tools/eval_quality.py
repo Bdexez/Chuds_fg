@@ -4,8 +4,8 @@
 Usage: eval_quality.py <gt_dump_dir> <test_dump_dir> [multiplier]
                        [--expected-generated N] [--min-comparable N]
 
-Both directories must come from bdex_demo runs with --deterministic and the
-layer's BDEX_FG_DUMP option: the ground truth at multiplier times the frame
+Both directories must come from chuds_fg_demo runs with --deterministic and the
+layer's CHUDS_FG_DUMP option: the ground truth at multiplier times the frame
 rate of the test run. The demo draws its frame counter on
 screen; it is decoded here to align the two sequences, so the runs must use
 the same window size.

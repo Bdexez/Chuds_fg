@@ -6,17 +6,17 @@
 # goes on. The demo draws with a depth buffer and the depth option is on: each
 # frame's depth must be there too (depth/fNNNN.f32, the frame's size, with
 # near objects in it).
-#   record_live.sh <bdex_demo> <layer_dir>
+#   record_live.sh <chuds_fg_demo> <layer_dir>
 # Skips (77) without a display (Xvfb in CI, headless gamescope on a GPU).
 set -u
 DEMO="$1"
 LAYER_DIR="$2"
 if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${DISPLAY:-}" ]; then echo "no display available, skipping"; exit 77; fi
 . "$(dirname "$0")/../tools/layer_env.sh"
-bdex_use_layer "$LAYER_DIR"
+chuds_fg_use_layer "$LAYER_DIR"
 dir="$(mktemp -d)"
-trap 'kill $demo 2>/dev/null; rm -rf "$dir" "$BDEX_LAYER_XDG"' EXIT
-BDEX_FG=1 BDEX_FG_CONFIG=/dev/null BDEX_FG_LOG=2 BDEX_FG_STATS_INTERVAL=1 BDEX_FG_STATUS_DIR="$dir" BDEX_FG_DEPTH=1 \
+trap 'kill $demo 2>/dev/null; rm -rf "$dir" "$CHUDS_FG_LAYER_XDG"' EXIT
+CHUDS_FG=1 CHUDS_FG_CONFIG=/dev/null CHUDS_FG_LOG=2 CHUDS_FG_STATS_INTERVAL=1 CHUDS_FG_STATUS_DIR="$dir" CHUDS_FG_DEPTH=1 \
   timeout 90 "$DEMO" --depth --fps 30 --size 640x400 --duration 30 >"$dir/log" 2>&1 &
 demo=$!
 t=0
@@ -47,7 +47,7 @@ awk -F, '
     prev = $2 }
   END { exit (bad || NR != 41) }
 ' "$dir/rec-test/timestamps.csv" || { echo "recording timestamps missing or inconsistent"; status=1; }
-# The depth of each frame, as bdex_offline --depth reads it: width x height
+# The depth of each frame, as chuds_fg_offline --depth reads it: width x height
 # little-endian floats (640x400, written 1:1), not one value throughout.
 if grep -qE "depth: [0-9]+x[0-9]+ \(format" "$dir/log"; then
   nd=$(ls "$dir/rec-test/depth" 2>/dev/null | grep -c '^f[0-9]\{4\}\.f32$')

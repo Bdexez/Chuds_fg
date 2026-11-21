@@ -6,7 +6,7 @@
 # stretch. Each run must exit cleanly, under the Khronos validation layer
 # when it is installed (no VUID or SYNC message), and generate again at x2
 # once the storm is over.
-#   swapchain_stress.sh <bdex_demo> <layer_dir>
+#   swapchain_stress.sh <chuds_fg_demo> <layer_dir>
 # Skips (77) without a display. Display tests run in headless gamescope
 # (see AGENTS.md), never on the user's desktop.
 set -u
@@ -29,8 +29,8 @@ if [ -n "$vvl" ] && [ "$(printf '%s\n1.3.290\n' "$vvl" | sort -V | head -1)" = "
 fi
 LOG="$(mktemp)"
 . "$(dirname "$0")/../tools/layer_env.sh"
-bdex_use_layer "$LAYER_DIR"
-trap 'rm -rf "$LOG" "$BDEX_LAYER_XDG"' EXIT
+chuds_fg_use_layer "$LAYER_DIR"
+trap 'rm -rf "$LOG" "$CHUDS_FG_LAYER_XDG"' EXIT
 status=0
 # kind:every  layer settings
 runs=(
@@ -40,18 +40,18 @@ runs=(
   "window:41"
   "fullscreen:17"
   "minimize:29"
-  "resize:11,recreate:13,surface:31,fullscreen:19|BDEX_FG_MODE=extrapolate"
-  "resize:9,recreate:7|BDEX_FG_MODE=hybrid BDEX_FG_MULTIPLIER=3 BDEX_FG_RENDER_SCALE=0.75 BDEX_FG_HUD=2"
-  "recreate:6,resize:13|BDEX_FG_MULTIPLIER=8"
-  "resize:10,recreate:9|BDEX_FG_ADAPTIVE=1 BDEX_FG_MULTIPLIER=4 BDEX_FG_TARGET_FPS=75 BDEX_FG_PRESENT_QUEUE=0"
+  "resize:11,recreate:13,surface:31,fullscreen:19|CHUDS_FG_MODE=extrapolate"
+  "resize:9,recreate:7|CHUDS_FG_MODE=hybrid CHUDS_FG_MULTIPLIER=3 CHUDS_FG_RENDER_SCALE=0.75 CHUDS_FG_HUD=2"
+  "recreate:6,resize:13|CHUDS_FG_MULTIPLIER=8"
+  "resize:10,recreate:9|CHUDS_FG_ADAPTIVE=1 CHUDS_FG_MULTIPLIER=4 CHUDS_FG_TARGET_FPS=75 CHUDS_FG_PRESENT_QUEUE=0"
 )
 for run in "${runs[@]}"; do
   stress=${run%%|*}
   settings=""; [ "$stress" != "$run" ] && settings=${run#*|}
   # 30 fps: 150 frames of storm, then 90 steady ones (3 s, the last
   # statistics lines).
-  env $VALIDATION VK_KHRONOS_VALIDATION_VALIDATE_SYNC=true BDEX_FG=1 BDEX_FG_CONFIG=/dev/null BDEX_FG_LOG=2 \
-    BDEX_FG_STATS_INTERVAL=1 $settings \
+  env $VALIDATION VK_KHRONOS_VALIDATION_VALIDATE_SYNC=true CHUDS_FG=1 CHUDS_FG_CONFIG=/dev/null CHUDS_FG_LOG=2 \
+    CHUDS_FG_STATS_INTERVAL=1 $settings \
     timeout 120 "$DEMO" --fps 30 --size 640x400 --frames 240 --duration 60 --stress "$stress" --stress-until 150 \
     >"$LOG" 2>&1
   rc=$?
@@ -76,7 +76,7 @@ for run in "${runs[@]}"; do
   awk -v r="${ratio:-0}" -v m="$min" 'BEGIN { exit !(r >= m) }' ||
     { echo "  generation did not recover after the storm"; bad=1; }
   if [ $bad -ne 0 ]; then
-    grep -E "bdex-fg.*(WARN|ERROR)|demo:" "$LOG" | tail -15
+    grep -E "chuds-fg.*(WARN|ERROR)|demo:" "$LOG" | tail -15
     status=1
   fi
 done

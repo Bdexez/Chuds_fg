@@ -20,15 +20,15 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/src"
 (cd "$ROOT" && git ls-files -co --exclude-standard | grep -v '^build\|^dist' | tar -cf - -T - | tar -xf - -C "$work/src")
-docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/bdex-ci/apt-get:ro" -e dxvk_ver=$dxvk_ver -e dxvk_sha=$dxvk_sha -e vkd3d_ver=$vkd3d_ver -e vkd3d_sha=$vkd3d_sha -v "$work:/work" "$image" bash -euo pipefail -c '
+docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/chuds-fg-ci/apt-get:ro" -e dxvk_ver=$dxvk_ver -e dxvk_sha=$dxvk_sha -e vkd3d_ver=$vkd3d_ver -e vkd3d_sha=$vkd3d_sha -v "$work:/work" "$image" bash -euo pipefail -c '
 export DEBIAN_FRONTEND=noninteractive
-[ ! -x /usr/bin/apt-get ] || export PATH="/opt/bdex-ci:$PATH"  # tools/ci/apt-get
+[ ! -x /usr/bin/apt-get ] || export PATH="/opt/chuds-fg-ci:$PATH"  # tools/ci/apt-get
 apt-get update -qq
 apt-get install -y -qq --no-install-recommends cmake make g++ glslc libvulkan-dev python3 curl ca-certificates zstd \
   xserver-xorg-core xserver-xorg-video-dummy mesa-vulkan-drivers libvulkan1 wine64 g++-mingw-w64-x86-64 >/tmp/apt.log 2>&1 || { tail -20 /tmp/apt.log; exit 1; }
-cmake -S /work/src -B /tmp/b -DCMAKE_BUILD_TYPE=Release -DBDEX_BUILD_DEMO=OFF -DBDEX_BUILD_TESTS=OFF -DBDEX_BUILD_OFFLINE=OFF >/tmp/cfg.log 2>&1 ||
+cmake -S /work/src -B /tmp/b -DCMAKE_BUILD_TYPE=Release -DCHUDS_FG_BUILD_DEMO=OFF -DCHUDS_FG_BUILD_TESTS=OFF -DCHUDS_FG_BUILD_OFFLINE=OFF >/tmp/cfg.log 2>&1 ||
   { tail -20 /tmp/cfg.log; exit 1; }
-cmake --build /tmp/b -j"$(nproc)" --target bdex_framegen >/tmp/build.log 2>&1 ||
+cmake --build /tmp/b -j"$(nproc)" --target chuds_fg >/tmp/build.log 2>&1 ||
   { grep -E -A5 error /tmp/build.log | head -40; exit 1; }
 mkdir -p /tmp/xdg/vulkan/implicit_layer.d
 cp /tmp/b/layer/*.json /tmp/xdg/vulkan/implicit_layer.d/
@@ -52,10 +52,10 @@ cp /tmp/dxvk-$dxvk_ver/x64/d3d11.dll /tmp/dxvk-$dxvk_ver/x64/dxgi.dll /tmp/vkd3d
 icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
 check() {  # check NAME EXE
   local out ratio
-  out="$(XDG_DATA_HOME=/tmp/xdg VK_ICD_FILENAMES=$icd BDEX_FG=1 BDEX_FG_CONFIG=/dev/null BDEX_FG_LOG=2 \
-    BDEX_FG_STATS_INTERVAL=3 DXVK_LOG_LEVEL=warn VKD3D_DEBUG=err timeout 90 "$wine" "$2" 12 2>&1 || true)"
+  out="$(XDG_DATA_HOME=/tmp/xdg VK_ICD_FILENAMES=$icd CHUDS_FG=1 CHUDS_FG_CONFIG=/dev/null CHUDS_FG_LOG=2 \
+    CHUDS_FG_STATS_INTERVAL=3 DXVK_LOG_LEVEL=warn VKD3D_DEBUG=err timeout 90 "$wine" "$2" 12 2>&1 || true)"
   grep -q "frames presented" <<<"$out" || { echo "$1: the program did not finish:"; tail -30 <<<"$out"; exit 1; }
-  grep -q "VK_LAYER_BDEX_framegen" <<<"$out" || { echo "$1: the layer did not load into Wine"; tail -20 <<<"$out"; exit 1; }
+  grep -q "VK_LAYER_CHUDS_fg" <<<"$out" || { echo "$1: the layer did not load into Wine"; tail -20 <<<"$out"; exit 1; }
   grep -q "generation on" <<<"$out" || { echo "$1: no generation:"; tail -20 <<<"$out"; exit 1; }
   # x11_clock: the X Present events of the window Wine hands winevulkan.
   grep -q "x11_clock: watching" <<<"$out" || { echo "$1: x11_clock did not watch the window:"; grep x11_clock <<<"$out"; exit 1; }
@@ -72,7 +72,7 @@ check "Direct3D 12 (VKD3D-Proton $vkd3d_ver)" /tmp/d3d12.exe
 # DXVK'"'"'s / VKD3D-Proton'"'"'s commands and read it at each present.
 depthrun() {  # depthrun NAME EXE
   local out
-  out="$(XDG_DATA_HOME=/tmp/xdg VK_ICD_FILENAMES=$icd BDEX_FG=1 BDEX_FG_CONFIG=/dev/null BDEX_FG_LOG=2 BDEX_FG_DEPTH=1 \
+  out="$(XDG_DATA_HOME=/tmp/xdg VK_ICD_FILENAMES=$icd CHUDS_FG=1 CHUDS_FG_CONFIG=/dev/null CHUDS_FG_LOG=2 CHUDS_FG_DEPTH=1 \
     DXVK_LOG_LEVEL=warn VKD3D_DEBUG=err timeout 90 "$wine" "$2" 6 depth 2>&1 || true)"
   grep -q "frames presented" <<<"$out" || { echo "$1: the program did not finish:"; tail -30 <<<"$out"; exit 1; }
   grep -q "reversed Z" <<<"$out" || { echo "$1: its depth buffer was not found:"; grep -E "depth" <<<"$out"; exit 1; }
@@ -90,8 +90,8 @@ depthrun "Direct3D 12 depth (VKD3D-Proton $vkd3d_ver)" /tmp/d3d12.exe
 # before: checked to hold the rate.)
 limit() {  # limit NAME EXE FPS_LIMIT_WAIT
   local out fps
-  out="$(XDG_DATA_HOME=/tmp/xdg VK_ICD_FILENAMES=$icd BDEX_FG=1 BDEX_FG_CONFIG=/dev/null BDEX_FG_LOG=2 BDEX_FG_FPS_LIMIT=30 \
-    BDEX_FG_FPS_LIMIT_WAIT=$3 BDEX_FG_STATS_INTERVAL=3 DXVK_LOG_LEVEL=warn VKD3D_DEBUG=err timeout 90 "$wine" "$2" 8 uncapped 2>&1 || true)"
+  out="$(XDG_DATA_HOME=/tmp/xdg VK_ICD_FILENAMES=$icd CHUDS_FG=1 CHUDS_FG_CONFIG=/dev/null CHUDS_FG_LOG=2 CHUDS_FG_FPS_LIMIT=30 \
+    CHUDS_FG_FPS_LIMIT_WAIT=$3 CHUDS_FG_STATS_INTERVAL=3 DXVK_LOG_LEVEL=warn VKD3D_DEBUG=err timeout 90 "$wine" "$2" 8 uncapped 2>&1 || true)"
   grep -q "frames presented" <<<"$out" || { echo "$1: the program did not finish:"; tail -30 <<<"$out"; exit 1; }
   grep -E "fps_limit|probe: [0-9.]+ fps" <<<"$out" | sed "s/^/  /"
   fps=$(sed -n "s/.*probe: \([0-9.]*\) fps.*/\1/p" <<<"$out" | tail -1)

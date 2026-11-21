@@ -1,7 +1,7 @@
-"""Decky Loader backend of the bdex-framegen quick access menu (Steam Deck,
+"""Decky Loader backend of the chuds-fg quick access menu (Steam Deck,
 SteamOS Game Mode): reads and writes the layer's configuration
-(~/.config/bdex-framegen.conf) the way the control panel does, and reads
-the status files the layer publishes (~/.cache/bdex-framegen/run).
+(~/.config/chuds-fg.conf) the way the control panel does, and reads
+the status files the layer publishes (~/.cache/chuds-fg/run).
 
 Game Mode runs one application at a time, so the panel's « Démarrer » model
 (require_app) cannot work there: « Frame generation » here is the panel's
@@ -21,16 +21,16 @@ except ImportError:  # pragma: no cover - tests
     decky = None
     HOME = os.path.expanduser("~")
     import logging
-    log = logging.getLogger("bdex-framegen")
+    log = logging.getLogger("chuds-fg")
 
 
 def config_path(home=None):
     home = home or HOME
-    return os.environ.get("BDEX_FG_CONFIG") or os.path.join(home, ".config", "bdex-framegen.conf")
+    return os.environ.get("CHUDS_FG_CONFIG") or os.path.join(home, ".config", "chuds-fg.conf")
 
 
 def status_dir(home=None):
-    return os.path.join(home or HOME, ".cache", "bdex-framegen", "run")
+    return os.path.join(home or HOME, ".cache", "chuds-fg", "run")
 
 
 _SECTION = re.compile(r"\s*\[(.*)\]\s*$")
@@ -349,7 +349,7 @@ def layer_installed(home=None):
             "/etc/vulkan/implicit_layer.d"]
     for d in dirs:
         try:
-            if any("bdex" in f.lower() for f in os.listdir(d)):
+            if any("chuds" in f.lower() for f in os.listdir(d)):
                 return True
         except OSError:
             pass
@@ -371,11 +371,11 @@ class Plugin:
         game = (status or {}).get("game")
         apply_state(lines, changes, (status or {}).get("refresh_hz") or 60.0, game)
         write_lines(path, lines)
-        log.info("bdex-framegen: %s%s", changes, f" ({game})" if game else "")
+        log.info("chuds-fg: %s%s", changes, f" ({game})" if game else "")
         return state_from(lines, game)
 
     async def _main(self):
-        log.info("bdex-framegen menu loaded (config %s)", config_path())
+        log.info("chuds-fg menu loaded (config %s)", config_path())
 
     async def _unload(self):
         pass

@@ -22,7 +22,7 @@
 #include <string>
 #include <utility>
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct SelfEvalPC { int32_t size[2]; float flowExtent[2]; int32_t slot; int32_t step; int32_t hasPrev; };
@@ -64,7 +64,7 @@ static std::shared_ptr<OnlineTune> createOnlineTune(const Config& cfg) {
         std::stringstream text;
         text << in.rdbuf();
         if (in && tune->deserialize(text.str()))
-            BDEX_INFO("online_tune: cached decisions for %s: %s%s", cfg.tuneName.c_str(), tune->summary().c_str(),
+            CHUDS_FG_INFO("online_tune: cached decisions for %s: %s%s", cfg.tuneName.c_str(), tune->summary().c_str(),
                       tune->done() ? "" : " (trying the others)");
     }
     return tune;
@@ -207,7 +207,7 @@ private:
         const auto* w = static_cast<const uint32_t*>(mapped_) + slot * (kSlotBytes / 4);
         if (w[2] > 0 && !probeSample_[slot] &&
             tune_->observe(w[1] / 4096.0 / double(w[2]), w[6] / 4096.0 / double(w[2]))) {
-            BDEX_INFO("online_tune: the content changed (motion or brightness) — trying the options again");
+            CHUDS_FG_INFO("online_tune: the content changed (motion or brightness) — trying the options again");
             std::lock_guard<std::mutex> lock(ctx.device().onlineTuneMutex);
             ctx.device().onlineTuneReported = 0;  // the new decisions are logged again
         }
@@ -230,11 +230,11 @@ private:
         const auto decisions = tune_->decisions();
         if (decisions.size() == dev.onlineTuneReported) return;
         for (size_t i = dev.onlineTuneReported; i < decisions.size(); ++i)
-            BDEX_INFO("online_tune: %s=%s %s (prediction error %+.1f %%, flow change %+.0f %%)", decisions[i].key.c_str(),
+            CHUDS_FG_INFO("online_tune: %s=%s %s (prediction error %+.1f %%, flow change %+.0f %%)", decisions[i].key.c_str(),
                       decisions[i].value.c_str(), decisions[i].kept ? "kept" : "dropped", -100.0 * decisions[i].gain,
                       -100.0 * decisions[i].stability);
         dev.onlineTuneReported = decisions.size();
-        if (tune_->done()) BDEX_INFO("online_tune: done for %s: %s", cfg.tuneName.c_str(), tune_->summary().c_str());
+        if (tune_->done()) CHUDS_FG_INFO("online_tune: done for %s: %s", cfg.tuneName.c_str(), tune_->summary().c_str());
         // Cached after each decision: a short session still spares the next one.
         const std::string path = onlineTuneCachePath(cfg);
         if (path.empty()) return;
@@ -242,7 +242,7 @@ private:
         std::filesystem::create_directories(std::filesystem::path(path).parent_path(), ec);
         std::ofstream out(path, std::ios::trunc);
         out << tune_->serialize();
-        if (out && tune_->done()) BDEX_INFO("online_tune: decisions cached in %s", path.c_str());
+        if (out && tune_->done()) CHUDS_FG_INFO("online_tune: decisions cached in %s", path.c_str());
     }
 
     std::shared_ptr<OnlineTune> tune_;  // DeviceData::onlineTune: shared by the device's swapchains
@@ -268,4 +268,4 @@ private:
 
 std::unique_ptr<FgPass> makeOnlineTunePass() { return std::make_unique<OnlineTunePass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

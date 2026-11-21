@@ -11,13 +11,13 @@
 #include <thread>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // A recording for the evaluation corpus (the control panel's « Enregistrer »,
 // DeviceData::recordDir): the game's next N real frames as fNNNN.ppm (at most
 // 960 pixels wide), timestamps.csv (the game's present times), then DONE.
 // With the `depth` option on and the game's depth buffer found, also each
-// frame's depth as depth/fNNNN.f32 (the same size; bdex_offline --depth).
+// frame's depth as depth/fNNNN.f32 (the same size; chuds_fg_offline --depth).
 // The GPU copies each frame into one of a few
 // host buffers; a thread of its own converts and writes them. Written in
 // present() — a fence wait, then the conversion and the file, on the game's
@@ -89,4 +89,4 @@ private:
     std::thread writer_;
 };
 
-} // namespace bdex
+} // namespace chuds_fg

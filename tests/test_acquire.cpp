@@ -20,9 +20,9 @@ static void check(VkResult result, const char* call) {
 
 int main() {
     if (!glfwInit()) {
-        const char* required = std::getenv("BDEX_REQUIRE_DISPLAY");
+        const char* required = std::getenv("CHUDS_FG_REQUIRE_DISPLAY");
         if (required && std::string(required) == "1") {
-            std::fprintf(stderr, "glfwInit failed with BDEX_REQUIRE_DISPLAY set\n");
+            std::fprintf(stderr, "glfwInit failed with CHUDS_FG_REQUIRE_DISPLAY set\n");
             return 1;
         }
         std::puts("no usable display; skipping acquire integration test");
@@ -30,18 +30,18 @@ int main() {
     }
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    GLFWwindow* window = glfwCreateWindow(640, 480, "bdex acquire test", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(640, 480, "chuds-fg acquire test", nullptr, nullptr);
     if (!window) { glfwTerminate(); return 1; }
 
     std::string logPath;
     try {
-        char logTemplate[] = "/tmp/bdex-acquire-XXXXXX";
+        char logTemplate[] = "/tmp/chuds-fg-acquire-XXXXXX";
         int logFd = mkstemp(logTemplate);
         if (logFd < 0) throw std::runtime_error("could not create layer log");
         close(logFd);
         logPath = logTemplate;
         unsetenv("VK_ADD_IMPLICIT_LAYER_PATH");
-        if (setenv("BDEX_FG_LOG_FILE", logPath.c_str(), 1) != 0)
+        if (setenv("CHUDS_FG_LOG_FILE", logPath.c_str(), 1) != 0)
             throw std::runtime_error("could not set layer log path");
 
         VkInstance instance = VK_NULL_HANDLE;

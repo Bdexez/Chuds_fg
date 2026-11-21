@@ -1,20 +1,20 @@
-// bdex-capture (Linux): frame generation for a game window by capture, the
-// Linux counterpart of the Windows bdex_capture — nothing is injected into
+// chuds-fg-capture (Linux): frame generation for a game window by capture, the
+// Linux counterpart of the Windows chuds_fg_capture — nothing is injected into
 // the game, so it also serves the games the Vulkan layer stays out of
 // (anti-cheat), non-Vulkan programs, and two-GPU setups: the game renders on
 // one GPU, the capture generates on another (--gpu), the one driving the
 // screen, like Lossless Scaling's second-GPU mode.
 //
-//   bdex-capture [--name TEXT | --pid PID | --window 0xID | --pick] [--gpu N|NAME]
+//   chuds-fg-capture [--name TEXT | --pid PID | --window 0xID | --pick] [--gpu N|NAME]
 //                [-m N] [--mode interpolate|extrapolate|hybrid] [--preset P] [--hud N]
 //                [--fifo] [--hotkey ctrl+alt+g] [--duration S] [--list] [--list-gpus]
 //
 // X11 sessions and Xwayland windows (XComposite + XDamage + MIT-SHM); the
 // overlay is an override-redirect window without input region above the
 // game, following it. Settings: the layer's configuration file, with the
-// game's [section] (the process of the window), then BDEX_FG_* variables,
+// game's [section] (the process of the window), then CHUDS_FG_* variables,
 // then the command line. Ctrl+Alt+G toggles the generation, Ctrl+Alt+Q quits
-// (--hotkey or BDEX_FG_HOTKEY rebinds the toggle, e.g. ctrl+shift+f1).
+// (--hotkey or CHUDS_FG_HOTKEY rebinds the toggle, e.g. ctrl+shift+f1).
 #include "config.h"
 #include "framegen.h"
 #include "log.h"
@@ -22,7 +22,7 @@
 
 #include "presenter.h"
 #include "x11_capture.h"
-#ifdef BDEX_PIPEWIRE
+#ifdef CHUDS_FG_PIPEWIRE
 #include "pw_capture.h"
 #endif
 
@@ -51,7 +51,7 @@ int onXError(Display*, XErrorEvent* e) {
     // A window destroyed or resized under us (BadDrawable / BadMatch on the
     // old pixmap): counted, the loop notices from the events.
     ++g_xerrors;
-    if (g_xerrors <= 5) BDEX_WARN("X error %d (request %d)", e->error_code, e->request_code);
+    if (g_xerrors <= 5) CHUDS_FG_WARN("X error %d (request %d)", e->error_code, e->request_code);
     return 0;
 }
 
@@ -68,7 +68,7 @@ struct Options {
 
 void usage() {
     std::printf(
-        "usage: bdex-capture [--name TEXT | --pid PID | --window 0xID | --pick] [--gpu N|NAME]\n"
+        "usage: chuds-fg-capture [--name TEXT | --pid PID | --window 0xID | --pick] [--gpu N|NAME]\n"
         "                    [-m N] [--mode interpolate|extrapolate|hybrid] [--preset P] [--hud N]\n"
         "                    [--fifo] [--hotkey ctrl+alt+g] [--duration S] [--list] [--list-gpus]\n"
         "                    [--wayland [--screen] [--rect X,Y,W,H]]\n"
@@ -124,7 +124,7 @@ bool parse(int argc, char** argv, Options& o) {
 
 // The overlay: override-redirect (no window manager decoration nor
 // placement), no input region (clicks and keys reach the game below).
-Window makeOverlay(Display* dpy, const bdex::X11Window& at) {
+Window makeOverlay(Display* dpy, const chuds_fg::X11Window& at) {
     XSetWindowAttributes swa{};
     swa.override_redirect = True;
     swa.background_pixel = BlackPixel(dpy, DefaultScreen(dpy));
@@ -132,8 +132,8 @@ Window makeOverlay(Display* dpy, const bdex::X11Window& at) {
     const Window w = XCreateWindow(dpy, DefaultRootWindow(dpy), at.x, at.y, static_cast<unsigned>(at.width),
                                    static_cast<unsigned>(at.height), 0, CopyFromParent, InputOutput, CopyFromParent,
                                    CWOverrideRedirect | CWBackPixel | CWBorderPixel, &swa);
-    XStoreName(dpy, w, "bdex-capture overlay");
-    XClassHint ch{const_cast<char*>("bdex-capture"), const_cast<char*>("bdex-capture")};
+    XStoreName(dpy, w, "chuds-fg-capture overlay");
+    XClassHint ch{const_cast<char*>("chuds-fg-capture"), const_cast<char*>("chuds-fg-capture")};
     XSetClassHint(dpy, w, &ch);
     int ev, err;
     if (XFixesQueryExtension(dpy, &ev, &err)) {
@@ -141,7 +141,7 @@ Window makeOverlay(Display* dpy, const bdex::X11Window& at) {
         XFixesSetWindowShapeRegion(dpy, w, ShapeInput, 0, 0, none);
         XFixesDestroyRegion(dpy, none);
     } else {
-        BDEX_WARN("no XFIXES: the overlay takes the mouse clicks");
+        CHUDS_FG_WARN("no XFIXES: the overlay takes the mouse clicks");
     }
     XMapRaised(dpy, w);
     XSync(dpy, False);
@@ -196,9 +196,9 @@ void sleepUntil(Clock::time_point t) {
 // frame synthesised and its frames presented, paced like the Windows capture
 // (capture/src/main.cpp) and the layer's worker.
 template <class Cap>
-int generate(Cap& cap, Display* dpy, Window overlay, bdex::Presenter& vk, const bdex::Config& cfg, const Options& o,
-             const bdex::X11Window& target) {
-    using namespace bdex;
+int generate(Cap& cap, Display* dpy, Window overlay, chuds_fg::Presenter& vk, const chuds_fg::Config& cfg, const Options& o,
+             const chuds_fg::X11Window& target) {
+    using namespace chuds_fg;
     auto resize = [&]() {
         const X11Window& w = cap.window();
         XMoveResizeWindow(dpy, overlay, w.x, w.y, static_cast<unsigned>(std::max(1, w.width)),
@@ -214,7 +214,7 @@ int generate(Cap& cap, Display* dpy, Window overlay, bdex::Presenter& vk, const 
     grab(dpy, quit);
     XSelectInput(dpy, DefaultRootWindow(dpy), KeyPressMask);
 
-    BDEX_INFO("bdex-capture: %s on %s; Ctrl+Alt+G toggles, Ctrl+Alt+Q quits", target.process.c_str(),
+    CHUDS_FG_INFO("chuds-fg-capture: %s on %s; Ctrl+Alt+G toggles, Ctrl+Alt+Q quits", target.process.c_str(),
               vk.gpuName().c_str());
     const auto startT = Clock::now();
     auto statsT = startT, raiseT = startT;
@@ -243,11 +243,11 @@ int generate(Cap& cap, Display* dpy, Window overlay, bdex::Presenter& vk, const 
             const unsigned mods = ev.xkey.state & (ControlMask | Mod1Mask | ShiftMask | Mod4Mask);
             if (ev.xkey.keycode == quit.code && mods == quit.mods) g_stop = 1;
             else if (ev.xkey.keycode == toggle.code && mods == toggle.mods)
-                BDEX_INFO("frame generation %s", vk.toggleGeneration() ? "on" : "off");
+                CHUDS_FG_INFO("frame generation %s", vk.toggleGeneration() ? "on" : "off");
         }
         cap.pump(20);
         if (cap.gone()) {
-            BDEX_INFO("game window closed");
+            CHUDS_FG_INFO("game window closed");
             break;
         }
         const auto now = Clock::now();
@@ -274,7 +274,7 @@ int generate(Cap& cap, Display* dpy, Window overlay, bdex::Presenter& vk, const 
             r = vk.synthesize(frame);
         }
         if (r == -1) {
-            BDEX_ERR("fatal error, exiting");
+            CHUDS_FG_ERR("fatal error, exiting");
             break;
         }
         if (r != 0) continue;
@@ -313,7 +313,7 @@ int generate(Cap& cap, Display* dpy, Window overlay, bdex::Presenter& vk, const 
                 break;
             }
             if (r == -1) {
-                BDEX_ERR("fatal error, exiting");
+                CHUDS_FG_ERR("fatal error, exiting");
                 g_stop = 1;
                 break;
             }
@@ -329,7 +329,7 @@ int generate(Cap& cap, Display* dpy, Window overlay, bdex::Presenter& vk, const 
         if (secs >= 2.0) {
             const double outFps = presented / secs, realFps = presentedReal / secs;
             const double lat = latencyN ? latencySum / latencyN : -1.0;
-            BDEX_INFO("game %.1f fps -> output %.1f fps (x%.2f), damage -> present %.1f ms, %s%s", realFps, outFps,
+            CHUDS_FG_INFO("game %.1f fps -> output %.1f fps (x%.2f), damage -> present %.1f ms, %s%s", realFps, outFps,
                       realFps > 0 ? outFps / realFps : 0.0, lat, vk.hostImport() ? "in place" : "copied",
                       vk.generation() ? "" : ", generation off");
             vk.setHud(static_cast<int>(realFps + 0.5), static_cast<int>(outFps + 0.5));
@@ -346,7 +346,7 @@ int generate(Cap& cap, Display* dpy, Window overlay, bdex::Presenter& vk, const 
 } // namespace
 
 int main(int argc, char** argv) {
-    using namespace bdex;
+    using namespace chuds_fg;
     Options o;
     if (!parse(argc, argv, o)) return 2;
     std::signal(SIGINT, onSignal);
@@ -354,7 +354,7 @@ int main(int argc, char** argv) {
 
     Display* dpy = XOpenDisplay(nullptr);
     if (!dpy) {
-        std::fprintf(stderr, "bdex-capture: cannot open the X display (DISPLAY=%s)\n",
+        std::fprintf(stderr, "chuds-fg-capture: cannot open the X display (DISPLAY=%s)\n",
                      std::getenv("DISPLAY") ? std::getenv("DISPLAY") : "");
         return 1;
     }
@@ -370,8 +370,8 @@ int main(int argc, char** argv) {
     X11Window target;
     bool found = false;
     if (o.wayland) {
-#ifndef BDEX_PIPEWIRE
-        std::fprintf(stderr, "bdex-capture: built without PipeWire (libpipewire-0.3, gio-2.0): no --wayland\n");
+#ifndef CHUDS_FG_PIPEWIRE
+        std::fprintf(stderr, "chuds-fg-capture: built without PipeWire (libpipewire-0.3, gio-2.0): no --wayland\n");
         return 1;
 #endif
         // The window is chosen in the portal's dialog; the overlay goes
@@ -391,35 +391,35 @@ int main(int argc, char** argv) {
             if (!found) std::this_thread::sleep_for(std::chrono::milliseconds(200));
         }
     } else if (!o.listGpus) {
-        std::fprintf(stderr, "bdex-capture: click the game's window\n");
+        std::fprintf(stderr, "chuds-fg-capture: click the game's window\n");
         found = cap.pick(target);
     }
     if (!found && !o.listGpus) {
-        std::fprintf(stderr, "bdex-capture: no such window (--list shows them)\n");
+        std::fprintf(stderr, "chuds-fg-capture: no such window (--list shows them)\n");
         return 1;
     }
 
     // Settings: the configuration file with the game's section, then the
     // environment (Config::load), then the command line.
-    // Read as explicitly enabled (BDEX_FG=1): generating is this program's
+    // Read as explicitly enabled (CHUDS_FG=1): generating is this program's
     // purpose, and require_app (the panel's arming of games for the layer)
     // would otherwise pause it and turn its HUD off.
-    setenv("BDEX_FG", "1", 1);
+    setenv("CHUDS_FG", "1", 1);
     platformEnvForget();  // (the engine reads a copy of the environment)
     Config cfg = Config::load(target.process);
     log_set_level(cfg.logLevel);
     cfg.enabled = true;
-    if (!o.preset.empty() && !cfg.applyPreset(o.preset)) BDEX_WARN("unknown preset %s", o.preset.c_str());
+    if (!o.preset.empty() && !cfg.applyPreset(o.preset)) CHUDS_FG_WARN("unknown preset %s", o.preset.c_str());
     if (o.multiplier > 0) cfg.apply("multiplier", std::to_string(o.multiplier));
-    if (!o.mode.empty() && !cfg.apply("mode", o.mode)) BDEX_WARN("unknown mode %s", o.mode.c_str());
+    if (!o.mode.empty() && !cfg.apply("mode", o.mode)) CHUDS_FG_WARN("unknown mode %s", o.mode.c_str());
     if (o.hud >= 0) cfg.apply("overlay", std::to_string(o.hud));
     if (cfg.multiplier < 2 && o.multiplier == 0) cfg.multiplier = 2;  // (the panel's x1 means "off" for the layer)
     if (o.gpu.empty()) o.gpu = cfg.gpu;          // the configuration's GPU (panel, launchers)
     if (o.hotkey.empty()) o.hotkey = cfg.hotkey;
 
     // Our own Vulkan instance loads the layer too (implicit): it must stay a
-    // pass-through there, whatever the configuration or BDEX_FG says.
-    setenv("BDEX_FG", "0", 1);
+    // pass-through there, whatever the configuration or CHUDS_FG says.
+    setenv("CHUDS_FG", "0", 1);
     platformEnvForget();
 
     const Window overlay = makeOverlay(dpy, found ? target : X11Window{0, 0, "", "", 0, 0, 64, 64});
@@ -434,7 +434,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     int rc = 1;
-#ifdef BDEX_PIPEWIRE
+#ifdef CHUDS_FG_PIPEWIRE
     if (o.wayland) {
         PwCapture pw;
         if (pw.start(o.waylandScreen, target)) rc = generate(pw, dpy, overlay, vk, cfg, o, target);

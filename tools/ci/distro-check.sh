@@ -5,14 +5,14 @@
 # through (an older GCC, a header a newer libstdc++ includes implicitly, old
 # Vulkan headers, musl).
 #   tools/ci/distro-check.sh [image...]     (default: the list below)
-#   BDEX_DISTRO_CC=clang tools/ci/distro-check.sh fedora:latest   # with Clang
+#   CHUDS_FG_DISTRO_CC=clang tools/ci/distro-check.sh fedora:latest   # with Clang
 # Needs Docker. Works on a copy of the working tree (tracked + untracked files).
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 images=("$@")
 [ ${#images[@]} -gt 0 ] || images=(ubuntu:22.04 ubuntu:24.04 debian:12 fedora:latest archlinux:latest
                                   opensuse/tumbleweed alpine:latest)
-cc="${BDEX_DISTRO_CC:-gcc}"
+cc="${CHUDS_FG_DISTRO_CC:-gcc}"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/src"
@@ -25,7 +25,7 @@ cc="$1"
 # on a virtual display: GLFW, Xvfb, Mesa's software Vulkan driver (lavapipe).
 if command -v apt-get >/dev/null; then
   export DEBIAN_FRONTEND=noninteractive
-  [ ! -x /usr/bin/apt-get ] || export PATH="/opt/bdex-ci:$PATH"  # tools/ci/apt-get
+  [ ! -x /usr/bin/apt-get ] || export PATH="/opt/chuds-fg-ci:$PATH"  # tools/ci/apt-get
   apt-get update -qq
   apt-get install -y -qq --no-install-recommends cmake make g++ clang pkg-config libvulkan-dev python3 \
     glslang-tools >/dev/null
@@ -56,7 +56,7 @@ if [ "$cc" = clang ]; then export CC=clang CXX=clang++; fi
 . /etc/os-release
 echo "== $PRETTY_NAME: $($cc --version | head -1), cmake $(cmake --version | head -1 | cut -d' ' -f3), loader $(pkg-config --modversion vulkan 2>/dev/null || echo ?), shaders: $(command -v glslc || command -v glslangValidator || command -v glslang)"
 cp -r /work/src /tmp/src
-cmake -S /tmp/src -B /tmp/b -DCMAKE_BUILD_TYPE=Release -DBDEX_WERROR=ON >/tmp/configure.log 2>&1 ||
+cmake -S /tmp/src -B /tmp/b -DCMAKE_BUILD_TYPE=Release -DCHUDS_FG_WERROR=ON >/tmp/configure.log 2>&1 ||
   { cat /tmp/configure.log; exit 1; }
 grep -E 'Vulkan|Shaders' /tmp/configure.log || true
 cmake --build /tmp/b -j"$(nproc)" >/tmp/build.log 2>&1 || { grep -E -B2 -A6 'error' /tmp/build.log | head -60; exit 1; }
@@ -78,16 +78,16 @@ if ls /lib/ld-musl-*.so.1 >/dev/null 2>&1; then
     '    pthread_setattr_default_np(&a);' '}' > /tmp/stack.c
   "${CC:-cc}" -shared -fPIC -o /tmp/libstack.so /tmp/stack.c && preload=/tmp/libstack.so
 fi
-if [ -x /tmp/b/demo/bdex_demo ] && [ -n "$icd" ] && command -v Xvfb >/dev/null; then
+if [ -x /tmp/b/demo/chuds_fg_demo ] && [ -n "$icd" ] && command -v Xvfb >/dev/null; then
   Xvfb :99 -screen 0 1280x800x24 >/dev/null 2>&1 &
   sleep 2
   # The whole log on a failure (the verdict, the layer's statistics), its
   # end otherwise.
-  if DISPLAY=:99 VK_ICD_FILENAMES="$icd" BDEX_REQUIRE_DISPLAY=1 LD_PRELOAD="$preload" \
-       bash /tmp/src/tests/integration.sh /tmp/b/demo/bdex_demo /tmp/b/layer >/tmp/integration.log 2>&1; then
+  if DISPLAY=:99 VK_ICD_FILENAMES="$icd" CHUDS_FG_REQUIRE_DISPLAY=1 LD_PRELOAD="$preload" \
+       bash /tmp/src/tests/integration.sh /tmp/b/demo/chuds_fg_demo /tmp/b/layer >/tmp/integration.log 2>&1; then
     tail -3 /tmp/integration.log
   else
-    grep -vE '^bdex demo - ' /tmp/integration.log | tail -40
+    grep -vE '^chuds-fg demo - ' /tmp/integration.log | tail -40
     exit 1
   fi
 else
@@ -98,7 +98,7 @@ JOB
 status=0
 for img in "${images[@]}"; do
   # (Alpine has no bash until it is installed.)
-  if docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/bdex-ci/apt-get:ro" ${BDEX_DOCKER_ARGS:-} -v "$work:/work:ro" "$img" sh -c \
+  if docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/chuds-fg-ci/apt-get:ro" ${CHUDS_FG_DOCKER_ARGS:-} -v "$work:/work:ro" "$img" sh -c \
        'command -v bash >/dev/null || apk add -q bash >/dev/null; exec bash /work/job.sh "$1"' sh "$cc" 2>&1 |
      sed "s|^|[$img] |"; then
     echo "[$img] OK"

@@ -11,7 +11,7 @@
 #include <memory>
 #include <string>
 
-namespace bdex {
+namespace chuds_fg {
 
 class GpuLoad {
 public:
@@ -29,4 +29,4 @@ public:
 // NVML's UUID string for a Vulkan deviceUUID: "GPU-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".
 std::string nvmlUuidString(const uint8_t* uuid);
 
-} // namespace bdex
+} // namespace chuds_fg

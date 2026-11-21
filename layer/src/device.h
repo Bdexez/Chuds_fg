@@ -13,7 +13,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 class VirtualSwapchain;
 // Owning pointer with a runtime deleter, so DeviceData (and device.cpp) can
@@ -240,7 +240,7 @@ struct DeviceData {
     std::atomic<int64_t> memoryInUse{0};
 
     // pipeline_cache: the compiled shaders of the layer's passes kept on disk
-    // (~/.cache/bdex-framegen/pipelines-<vendor>-<device>-<cache UUID>.bin:
+    // (~/.cache/chuds-fg/pipelines-<vendor>-<device>-<cache UUID>.bin:
     // another driver or driver version gets a file of its own), loaded on
     // first use, written back when it grew. VK_NULL_HANDLE if off or
     // unavailable.
@@ -302,9 +302,9 @@ struct DeviceData {
 DeviceData* getDevice(void* key);
 InstanceData* getInstance(void* key);
 
-} // namespace bdex
+} // namespace chuds_fg
 
-namespace bdex {
+namespace chuds_fg {
 
 template <typename F>
 void DeviceData::immediate(F&& record) {
@@ -335,4 +335,4 @@ void DeviceData::immediate(F&& record) {
     vt.FreeCommandBuffers(device, cmdPool, 1, &cmd);
 }
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -10,13 +10,13 @@ EAPI=8
 inherit cmake-multilib
 
 DESCRIPTION="Frame generation and upscaling Vulkan layer for games"
-HOMEPAGE="https://github.com/Bdexez/bdex_frame_gen"
+HOMEPAGE="https://github.com/Bdexez/Chuds_fg"
 if [[ ${PV} == 9999 ]]; then
 	inherit git-r3
-	EGIT_REPO_URI="https://github.com/Bdexez/bdex_frame_gen.git"
+	EGIT_REPO_URI="https://github.com/Bdexez/Chuds_fg.git"
 else
-	SRC_URI="https://github.com/Bdexez/bdex_frame_gen/archive/v${PV}.tar.gz -> ${P}.tar.gz"
-	S="${WORKDIR}/bdex_frame_gen-${PV}"
+	SRC_URI="https://github.com/Bdexez/Chuds_fg/archive/v${PV}.tar.gz -> ${P}.tar.gz"
+	S="${WORKDIR}/Chuds_fg-${PV}"
 	KEYWORDS="~amd64 ~arm64"
 fi
 
@@ -38,27 +38,27 @@ BDEPEND="|| ( media-libs/shaderc dev-util/glslang )"
 
 multilib_src_configure() {
 	local mycmakeargs=(
-		-DBDEX_BUILD_DEMO=OFF
-		-DBDEX_BUILD_TESTS=OFF
-		-DBDEX_BUILD_OFFLINE=OFF
-		-DBDEX_INSTALL_LIBDIR=$(get_libdir)
+		-DCHUDS_FG_BUILD_DEMO=OFF
+		-DCHUDS_FG_BUILD_TESTS=OFF
+		-DCHUDS_FG_BUILD_OFFLINE=OFF
+		-DCHUDS_FG_INSTALL_LIBDIR=$(get_libdir)
 	)
-	# The other ABI's layer: its own manifest (VK_LAYER_BDEX_framegen_32,
+	# The other ABI's layer: its own manifest (VK_LAYER_CHUDS_fg_32,
 	# library_arch 32); the eclass already passes -m32.
-	multilib_is_native_abi || mycmakeargs+=( -DBDEX_32BIT=ON )
+	multilib_is_native_abi || mycmakeargs+=( -DCHUDS_FG_32BIT=ON )
 	cmake_src_configure
 }
 
 multilib_src_install_all() {
 	einstalldocs
 	if ! use gui; then
-		rm -f "${ED}"/usr/bin/bdex-framegen-gui "${ED}"/usr/share/applications/bdex-framegen.desktop || die
+		rm -f "${ED}"/usr/bin/chuds-fg-gui "${ED}"/usr/share/applications/chuds-fg.desktop || die
 	fi
 }
 
 pkg_postinst() {
 	elog "The layer loads into every Vulkan game and stays inert until turned on:"
-	elog "  bdex-framegen-gui (USE=gui), or BDEX_FG=1 %command% in Steam's launch options."
+	elog "  chuds-fg-gui (USE=gui), or CHUDS_FG=1 %command% in Steam's launch options."
 	elog "Steam, Heroic, Lutris or Bottles installed as a Flatpak? Run once, as your user:"
-	elog "  bdex-framegen --sandboxes"
+	elog "  chuds-fg --sandboxes"
 }

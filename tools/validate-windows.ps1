@@ -10,7 +10,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$name = if ($Wow6432) { 'VK_LAYER_BDEX_framegen_32' } else { 'VK_LAYER_BDEX_framegen' }
+$name = if ($Wow6432) { 'VK_LAYER_CHUDS_fg_32' } else { 'VK_LAYER_CHUDS_fg' }
 $registry = if ($Wow6432) {
     'HKCU:\SOFTWARE\WOW6432Node\Khronos\Vulkan\ImplicitLayers'
 } else {
@@ -38,21 +38,21 @@ if ($VulkanInfo) {
     Write-Host '32-bit loader check skipped; pass -VulkanInfo with a 32-bit vulkaninfo.exe to run it'
 }
 
-$capture = Join-Path $PSScriptRoot 'bdex_capture.exe'
+$capture = Join-Path $PSScriptRoot 'chuds_fg_capture.exe'
 if (Test-Path $capture) {
     & $capture --list
-    if ($LASTEXITCODE -ne 0) { throw 'bdex_capture --list failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'chuds_fg_capture --list failed' }
     Write-Host 'Capture window enumeration: passed'
 }
 
 if ($GameExe) {
     $game = (Resolve-Path -LiteralPath $GameExe).Path
-    $log = Join-Path $env:TEMP ("bdex-layer-hardware-{0}.log" -f [guid]::NewGuid())
-    $previousEnable = $env:BDEX_FG
-    $previousLog = $env:BDEX_FG_LOG_FILE
+    $log = Join-Path $env:TEMP ("chuds-fg-layer-hardware-{0}.log" -f [guid]::NewGuid())
+    $previousEnable = $env:CHUDS_FG
+    $previousLog = $env:CHUDS_FG_LOG_FILE
     try {
-        $env:BDEX_FG = '1'
-        $env:BDEX_FG_LOG_FILE = $log
+        $env:CHUDS_FG = '1'
+        $env:CHUDS_FG_LOG_FILE = $log
         Write-Host "Running Vulkan game: $game; layer log: $log"
         $launch = @{ FilePath = $game; Wait = $true; PassThru = $true }
         if ($GameArgs.Count -gt 0) { $launch.ArgumentList = $GameArgs }
@@ -61,8 +61,8 @@ if ($GameExe) {
             throw "Vulkan game exited with status $($gameProcess.ExitCode); inspect $log"
         }
     } finally {
-        $env:BDEX_FG = $previousEnable
-        $env:BDEX_FG_LOG_FILE = $previousLog
+        $env:CHUDS_FG = $previousEnable
+        $env:CHUDS_FG_LOG_FILE = $previousLog
     }
     if (-not (Test-Path $log)) { throw "No layer log written at $log" }
     $layerLog = Get-Content -LiteralPath $log -Raw
@@ -75,7 +75,7 @@ if ($GameExe) {
 
 if ($WindowTitle) {
     if (-not (Test-Path $capture)) { throw "Capture executable missing beside this script: $capture" }
-    $log = Join-Path $env:TEMP ("bdex-capture-hardware-{0}.log" -f [guid]::NewGuid())
+    $log = Join-Path $env:TEMP ("chuds-fg-capture-hardware-{0}.log" -f [guid]::NewGuid())
     Write-Host "Capturing $WindowTitle; stop with Ctrl+Alt+Q; log: $log"
     & $capture --title $WindowTitle --mode extrapolate --multiplier 2 --hud 2 2>&1 |
         Tee-Object -FilePath $log

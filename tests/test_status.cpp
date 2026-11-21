@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-using namespace bdex;
+using namespace chuds_fg;
 
 TEST(status_format_lists_every_entry) {
     std::map<uint64_t, StatusEntry> m;
@@ -66,8 +66,8 @@ TEST(status_parse_and_describe) {
     p.reason = "swapchain format 64 not supported";
     m[1] = c;
     m[2] = p;
-    const StatusFile f = statusParse(statusFormat("bdex_capture", 7, 99, m));
-    CHECK(f.process == "bdex_capture" && f.pid == 7 && f.time == 99 && f.sections.size() == 2);
+    const StatusFile f = statusParse(statusFormat("chuds_fg_capture", 7, 99, m));
+    CHECK(f.process == "chuds_fg_capture" && f.pid == 7 && f.time == 99 && f.sections.size() == 2);
     CHECK(f.sections[0].kind == "capture" && f.sections[0].values.at("target") == "skyrimse");
     const auto lines = statusDescribe(f);
     CHECK(lines.size() == 4);
@@ -211,7 +211,7 @@ TEST(status_process_alive) {
 // pids of another namespace), not other files.
 TEST(status_sweeps_files_of_processes_gone) {
     namespace fs = std::filesystem;
-    const fs::path dir = fs::path(test::tmpPath("bdex_status_sweep"));
+    const fs::path dir = fs::path(test::tmpPath("chuds_fg_status_sweep"));
     std::error_code ec;
     fs::remove_all(dir, ec);
     fs::create_directories(dir);
@@ -230,7 +230,7 @@ TEST(status_sweeps_files_of_processes_gone) {
     const fs::path recent = make(std::to_string(dead[1]) + ".status", std::chrono::minutes(1));
     const fs::path session = make("app.session", std::chrono::minutes(30));
     const fs::path other = make("notapid.status", std::chrono::minutes(30));
-    test::setEnv("BDEX_FG_STATUS_DIR", dir.string().c_str());
+    test::setEnv("CHUDS_FG_STATUS_DIR", dir.string().c_str());
     StatusEntry e;
     e.kind = "device";
     e.state = "active";
@@ -243,6 +243,6 @@ TEST(status_sweeps_files_of_processes_gone) {
     CHECK(fs::exists(other));
     statusRemove(0x5eed);
     CHECK(!fs::exists(own));
-    test::unsetEnv("BDEX_FG_STATUS_DIR");
+    test::unsetEnv("CHUDS_FG_STATUS_DIR");
     fs::remove_all(dir, ec);
 }

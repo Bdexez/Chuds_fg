@@ -19,7 +19,7 @@
 #include <cstdint>
 #include <chrono>
 
-namespace bdex {
+namespace chuds_fg {
 
 class Capture {
 public:
@@ -77,4 +77,4 @@ private:
     Impl* impl_ = nullptr;
 };
 
-} // namespace bdex
+} // namespace chuds_fg

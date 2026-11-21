@@ -61,7 +61,7 @@ static LRESULT CALLBACK wndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
         }                                                                     \
     } while (0)
 
-// Results to stdout, and to the file BDEX_PROBE_OUT names (under Proton the
+// Results to stdout, and to the file CHUDS_FG_PROBE_OUT names (under Proton the
 // program's stdout goes nowhere).
 static void report(const char* fmt, ...) {
     char line[512];
@@ -72,7 +72,7 @@ static void report(const char* fmt, ...) {
     fputs(line, stdout);
     fflush(stdout);
     char path[1024];
-    if (GetEnvironmentVariableA("BDEX_PROBE_OUT", path, sizeof path) > 0) {
+    if (GetEnvironmentVariableA("CHUDS_FG_PROBE_OUT", path, sizeof path) > 0) {
         if (FILE* f = fopen(path, "a")) {
             fputs(line, f);
             fclose(f);
@@ -121,9 +121,9 @@ int main(int argc, char** argv) {
     WNDCLASSA wc{};
     wc.lpfnWndProc = wndProc;
     wc.hInstance = GetModuleHandleA(nullptr);
-    wc.lpszClassName = "bdex_probe12";
+    wc.lpszClassName = "chuds_fg_probe12";
     RegisterClassA(&wc);
-    HWND hwnd = CreateWindowA("bdex_probe12", "bdex d3d12 probe", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 640, 360,
+    HWND hwnd = CreateWindowA("chuds_fg_probe12", "chuds-fg d3d12 probe", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 640, 360,
                               nullptr, nullptr, wc.hInstance, nullptr);
     RECT rc;
     GetClientRect(hwnd, &rc);

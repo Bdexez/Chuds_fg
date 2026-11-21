@@ -1,4 +1,4 @@
-// bdex-calibrate — what frame generation costs on this GPU, before any game:
+// chuds-fg-calibrate — what frame generation costs on this GPU, before any game:
 // the engine (FrameGen, unchanged) on synthetic moving frames at the
 // display's size, headless, for the automatic preset and each fixed one; the
 // mean GPU time of the analysis + flow (once per game frame) and of one
@@ -6,9 +6,9 @@
 // and the highest multiplier whose cost stays within a quarter of the GPU's
 // time at the display's refresh rate (the rest for the game).
 //
-// Usage: bdex-calibrate [--size WxH] [--refresh HZ] [--gpu NAME] [--frames N] [--json FILE]
+// Usage: chuds-fg-calibrate [--size WxH] [--refresh HZ] [--gpu NAME] [--frames N] [--json FILE]
 // Run by the control panel and the Windows launcher on first start
-// (« Calibrer »), and by `bdex-framegen --calibrate [--apply]`.
+// (« Calibrer »), and by `chuds-fg --calibrate [--apply]`.
 #include "platform.h"
 #include "config.h"
 #include "device.h"
@@ -27,18 +27,18 @@
 #include <string>
 #include <vector>
 
-using namespace bdex;
+using namespace chuds_fg;
 
 namespace {
 
 [[noreturn]] void die(const char* msg) {
-    fprintf(stderr, "bdex-calibrate: %s\n", msg);
+    fprintf(stderr, "chuds-fg-calibrate: %s\n", msg);
     exit(1);
 }
 
 void check(VkResult r, const char* what) {
     if (r != VK_SUCCESS) {
-        fprintf(stderr, "bdex-calibrate: %s failed (%d)\n", what, static_cast<int>(r));
+        fprintf(stderr, "chuds-fg-calibrate: %s failed (%d)\n", what, static_cast<int>(r));
         exit(1);
     }
 }
@@ -49,7 +49,7 @@ void setEnv(const char* k, const char* v) {
 #else
     setenv(k, v, 1);
 #endif
-    bdex::platformEnvForget();  // (the engine reads a copy of the environment)
+    chuds_fg::platformEnvForget();  // (the engine reads a copy of the environment)
 }
 
 std::string lower(std::string s) {
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
         else if (a == "--frames" && i + 1 < argc) frames = std::max(5, atoi(argv[++i]));
         else if (a == "--json" && i + 1 < argc) jsonPath = argv[++i];
         else {
-            fprintf(stderr, "usage: bdex-calibrate [--size WxH] [--refresh HZ] [--gpu NAME] [--frames N] [--json FILE]\n");
+            fprintf(stderr, "usage: chuds-fg-calibrate [--size WxH] [--refresh HZ] [--gpu NAME] [--frames N] [--json FILE]\n");
             return 2;
         }
     }
@@ -114,15 +114,15 @@ int main(int argc, char** argv) {
 
     // This process drives FrameGen itself: never the implicit layer, never the
     // user's settings (the defaults are what is measured).
-    setEnv("BDEX_FG_DISABLE", "1");
+    setEnv("CHUDS_FG_DISABLE", "1");
 #ifdef _WIN32
-    setEnv("BDEX_FG_CONFIG", "NUL");
+    setEnv("CHUDS_FG_CONFIG", "NUL");
 #else
-    setEnv("BDEX_FG_CONFIG", "/dev/null");
+    setEnv("CHUDS_FG_CONFIG", "/dev/null");
 #endif
 
     VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    app.pApplicationName = "bdex-calibrate";
+    app.pApplicationName = "chuds-fg-calibrate";
     app.apiVersion = VK_API_VERSION_1_1;
     VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     ici.pApplicationInfo = &app;
@@ -286,7 +286,7 @@ int main(int argc, char** argv) {
             vkDeviceWaitIdle(device);
         }
         results.push_back(r);
-        fprintf(stderr, "bdex-calibrate: %-11s (%s) analysis %.2f ms, flow %.2f ms, synthesis %.2f ms a generated frame\n",
+        fprintf(stderr, "chuds-fg-calibrate: %-11s (%s) analysis %.2f ms, flow %.2f ms, synthesis %.2f ms a generated frame\n",
                 r.name.c_str(), r.resolved.c_str(), r.analysis, r.flow, r.synth);
     }
 
@@ -312,7 +312,7 @@ int main(int argc, char** argv) {
     int mult = 2;
     for (int m = 2; m <= byRate; ++m)
         if (fits(*pick, m)) mult = m;
-    fprintf(stderr, "bdex-calibrate: %s, %ux%u at %.0f Hz: preset %s, up to x%d (x2 costs %.2f ms a game frame)\n",
+    fprintf(stderr, "chuds-fg-calibrate: %s, %ux%u at %.0f Hz: preset %s, up to x%d (x2 costs %.2f ms a game frame)\n",
             dev.props.deviceName, w, h, refresh, pick->name.c_str(), mult, pick->perGameFrame(2));
 
     std::string json = "{\n  \"gpu\": \"";

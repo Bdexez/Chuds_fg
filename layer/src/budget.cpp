@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace bdex {
+namespace chuds_fg {
 
 int GpuBudget::update(double gpuMs, double intervalMs, double budget, int maxLevel) {
     maxLevel = std::clamp(maxLevel, 0, kMaxLevels - 1);
@@ -33,4 +33,4 @@ int GpuBudget::update(double gpuMs, double intervalMs, double budget, int maxLev
     return level_;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

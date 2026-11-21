@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Offline quality evaluation on a recorded frame sequence (any game).
 
-Runs bdex_offline (the frame-generation engine, headless) on a directory of
+Runs chuds_fg_offline (the frame-generation engine, headless) on a directory of
 consecutive PPM frames, keeping every `multiplier`-th frame as input and
 scoring the generated frames against the skipped ones. No window is involved,
 so the scores do not depend on the compositor, and the same sequence can be
 replayed for every variant of an experiment.
 
 Record a sequence from a game through the layer (real frames only):
-    BDEX_FG=1 BDEX_FG_MULTIPLIER=1 BDEX_FG_DUMP=/tmp/kenshi BDEX_FG_DUMP_FRAMES=240 %command%
+    CHUDS_FG=1 CHUDS_FG_MULTIPLIER=1 CHUDS_FG_DUMP=/tmp/kenshi CHUDS_FG_DUMP_FRAMES=240 %command%
 Score it, and A/B an option against the defaults on the same frames:
     tools/eval_sequence.py /tmp/kenshi --variant OCCLUSION_STRENGTH=1
 
@@ -113,7 +113,7 @@ def score(out_dir, exclude):
     rows = []
     prev_err = None
     lines = (Path(out_dir) / "manifest.txt").read_text().splitlines()
-    # With an irregular game (bdex_offline --jitter/--dup) real frames are
+    # With an irregular game (chuds_fg_offline --jitter/--dup) real frames are
     # scored too, and an exact one would count 99 dB: cap every frame at
     # 60 dB so the mean still reflects the errors.
     cap = 60.0 if any(not line.startswith("gen_") for line in lines) else None
@@ -158,7 +158,7 @@ def mean(values):
 
 def run(binary, frames, out_dir, multiplier, env_extra, max_inputs, extra_args=()):
     env = {k: v for k, v in os.environ.items()}
-    env.setdefault("BDEX_FG_PRESET", "balanced")  # a fixed operating point, as run_eval.sh
+    env.setdefault("CHUDS_FG_PRESET", "balanced")  # a fixed operating point, as run_eval.sh
     env.update(env_extra)
     cmd = [str(binary), str(frames), str(out_dir), "--multiplier", str(multiplier)]
     if max_inputs:
@@ -172,18 +172,18 @@ def main():
     ap.add_argument("--build", default=str(ROOT / "build"), help="build directory (default: ./build)")
     ap.add_argument("--multiplier", type=int, default=2, choices=range(2, 9))
     ap.add_argument("--variant", action="append", default=[],
-                    help="KEY=VALUE[,KEY=VALUE...] BDEX_FG_* overrides to compare with the defaults (repeatable)")
+                    help="KEY=VALUE[,KEY=VALUE...] CHUDS_FG_* overrides to compare with the defaults (repeatable)")
     ap.add_argument("--exclude", action="append", default=[],
                     help="x0,y0,x1,y1 rectangle left out of every metric (e.g. a frame counter)")
     ap.add_argument("--max-inputs", type=int, default=0, help="limit the number of input frames")
     ap.add_argument("--offline-args", default="",
-                    help="extra bdex_offline arguments, e.g. \"--jitter 0.4 --spacing 4\" (an irregular game: "
+                    help="extra chuds_fg_offline arguments, e.g. \"--jitter 0.4 --spacing 4\" (an irregular game: "
                          "every displayed frame, real ones included, is then scored)")
     ap.add_argument("--keep", help="keep the generated frames under this directory")
     ap.add_argument("--json", help="also write the per-variant means to this JSON file")
     args = ap.parse_args()
 
-    binary = Path(args.build) / "tools" / "offline" / "bdex_offline"
+    binary = Path(args.build) / "tools" / "offline" / "chuds_fg_offline"
     if not binary.exists():
         sys.exit(f"{binary} not found: build the project first")
     exclude = [tuple(int(v) for v in r.split(",")) for r in args.exclude]
@@ -193,13 +193,13 @@ def main():
         for kv in spec.split(","):
             k, _, v = kv.partition("=")
             k = k.strip().upper()
-            env[k if k.startswith("BDEX_FG_") else "BDEX_FG_" + k] = v.strip()
+            env[k if k.startswith("CHUDS_FG_") else "CHUDS_FG_" + k] = v.strip()
         variants.append((spec, env))
 
     # Generated frames go to disk (~/.cache), not /tmp: /tmp is often a tmpfs.
     cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
     cache.mkdir(parents=True, exist_ok=True)
-    base = Path(args.keep) if args.keep else Path(tempfile.mkdtemp(prefix="bdex-seq-", dir=cache))
+    base = Path(args.keep) if args.keep else Path(tempfile.mkdtemp(prefix="chuds-fg-seq-", dir=cache))
     results = []
     for i, (name, env) in enumerate(variants):
         out = base / f"v{i}"
@@ -207,7 +207,7 @@ def main():
         # DEPTH=1 on a sequence that kept the game's depth (a recording made
         # with the option, make_game.py): the option with its input.
         depth = Path(args.frames) / "depth"
-        if env.get("BDEX_FG_DEPTH", "0").lower() in ("1", "on", "true", "yes") and depth.is_dir() and "--depth" not in extra:
+        if env.get("CHUDS_FG_DEPTH", "0").lower() in ("1", "on", "true", "yes") and depth.is_dir() and "--depth" not in extra:
             extra += ["--depth", str(depth)]
         run(binary, args.frames, out, args.multiplier, env, args.max_inputs, extra)
         rows = score(out, exclude)

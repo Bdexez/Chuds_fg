@@ -24,7 +24,7 @@ if command -v pacman >/dev/null; then
   pacman -Syu --noconfirm --needed python-gobject gtk4 libadwaita xorg-server-xvfb >/dev/null 2>&1
 elif command -v apt-get >/dev/null; then
   export DEBIAN_FRONTEND=noninteractive
-  [ ! -x /usr/bin/apt-get ] || export PATH="/opt/bdex-ci:$PATH"  # tools/ci/apt-get
+  [ ! -x /usr/bin/apt-get ] || export PATH="/opt/chuds-fg-ci:$PATH"  # tools/ci/apt-get
   apt-get update -qq
   # No GTK 4 before Ubuntu 22.04 / Debian 12: the text mode alone there.
   apt-get install -y -qq --no-install-recommends python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 xvfb bsdutils \
@@ -35,9 +35,9 @@ fi
 . /etc/os-release
 gtk="$(python3 -c 'import gi; gi.require_version("Gtk", "4.0"); from gi.repository import Gtk; print(f"GTK {Gtk.get_major_version()}.{Gtk.get_minor_version()}.{Gtk.get_micro_version()}, PyGObject {gi.__version__}")' 2>/dev/null || true)"
 echo "== $PRETTY_NAME: ${gtk:-no GTK 4}"
-export HOME=/tmp/home XDG_CONFIG_HOME=/tmp/home/.config BDEX_FG_OPTIONS_UI=/work/options_ui.json
+export HOME=/tmp/home XDG_CONFIG_HOME=/tmp/home/.config CHUDS_FG_OPTIONS_UI=/work/options_ui.json
 mkdir -p "$XDG_CONFIG_HOME"
-printf '[*]\nenabled = 1\nrequire_app = 0\n[mygame]\nrequire_app = 0\n' > "$XDG_CONFIG_HOME/bdex-framegen.conf"
+printf '[*]\nenabled = 1\nrequire_app = 0\n[mygame]\nrequire_app = 0\n' > "$XDG_CONFIG_HOME/chuds-fg.conf"
 status=0
 variants=(libadwaita plain)
 if [ -n "$gtk" ]; then
@@ -50,8 +50,8 @@ for variant in "${variants[@]}"; do
   noadw=""
   [ "$variant" = plain ] && noadw=1
   set +e
-  DISPLAY=:99 GDK_BACKEND=x11 GSK_RENDERER=cairo BDEX_FG_GUI_NO_ADW="$noadw" \
-    timeout 10 python3 /work/bdex-framegen-gui >/tmp/panel.log 2>&1
+  DISPLAY=:99 GDK_BACKEND=x11 GSK_RENDERER=cairo CHUDS_FG_GUI_NO_ADW="$noadw" \
+    timeout 10 python3 /work/chuds-fg-gui >/tmp/panel.log 2>&1
   rc=$?
   set -e
   if [ $rc -eq 124 ] && ! grep -q Traceback /tmp/panel.log; then
@@ -61,8 +61,8 @@ for variant in "${variants[@]}"; do
   fi
   for lang in fr en; do
     set +e
-    DISPLAY=:99 GDK_BACKEND=x11 GSK_RENDERER=cairo BDEX_FG_GUI_NO_ADW="$noadw" BDEX_LANG=$lang \
-      timeout 120 python3 /work/panel_ui.py /work/bdex-framegen-gui >/tmp/ui.log 2>&1
+    DISPLAY=:99 GDK_BACKEND=x11 GSK_RENDERER=cairo CHUDS_FG_GUI_NO_ADW="$noadw" CHUDS_FG_LANG=$lang \
+      timeout 120 python3 /work/panel_ui.py /work/chuds-fg-gui >/tmp/ui.log 2>&1
     rc=$?
     set -e
     if [ $rc -eq 0 ]; then
@@ -74,28 +74,28 @@ for variant in "${variants[@]}"; do
 done
 # Text mode: x3 chosen in the multiplier menu reaches the config file, and
 # the session is gone once it quits.
-export BDEX_FG_STATUS_DIR=/tmp/run
-textenv=(BDEX_FG_GUI_TEXT=1)
+export CHUDS_FG_STATUS_DIR=/tmp/run
+textenv=(CHUDS_FG_GUI_TEXT=1)
 [ -n "$gtk" ] || textenv=()
-# In French (BDEX_LANG=fr), then in English (the containers' C locale).
+# In French (CHUDS_FG_LANG=fr), then in English (the containers' C locale).
 for lang in fr en; do
-  rm -f "$XDG_CONFIG_HOME/bdex-framegen.conf"
+  rm -f "$XDG_CONFIG_HOME/chuds-fg.conf"
   want='mode texte'; [ $lang = en ] && want='text-mode panel'
-  printf 'm\n5\nq\n' | env BDEX_LANG=$lang ${textenv[@]+"${textenv[@]}"} script -qec "python3 /work/bdex-framegen-gui" /dev/null >/tmp/text.log 2>&1 || true
-  if grep -q '^multiplier = 3' "$XDG_CONFIG_HOME/bdex-framegen.conf" && grep -q "$want" /tmp/text.log &&
+  printf 'm\n5\nq\n' | env CHUDS_FG_LANG=$lang ${textenv[@]+"${textenv[@]}"} script -qec "python3 /work/chuds-fg-gui" /dev/null >/tmp/text.log 2>&1 || true
+  if grep -q '^multiplier = 3' "$XDG_CONFIG_HOME/chuds-fg.conf" && grep -q "$want" /tmp/text.log &&
      ! grep -q Traceback /tmp/text.log && [ ! -e /tmp/run/app.session ]; then
     echo "panel (text mode, $lang): options saved, session closed"
   else
     echo "panel (text mode, $lang): failed"; tail -20 /tmp/text.log; status=1
   fi
 done
-printf '[*]\nenabled = 1\nrequire_app = 0\n[mygame]\nrequire_app = 0\n' > "$XDG_CONFIG_HOME/bdex-framegen.conf"
-python3 /work/panel_logic.py /work/bdex-framegen-gui || status=1
+printf '[*]\nenabled = 1\nrequire_app = 0\n[mygame]\nrequire_app = 0\n' > "$XDG_CONFIG_HOME/chuds-fg.conf"
+python3 /work/panel_logic.py /work/chuds-fg-gui || status=1
 exit $status
 JOB
 status=0
 for img in "${images[@]}"; do
-  if docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/bdex-ci/apt-get:ro" -v "$job:/work/job.sh:ro" -v "$ROOT/tools/bdex-framegen-gui:/work/bdex-framegen-gui:ro" \
+  if docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/chuds-fg-ci/apt-get:ro" -v "$job:/work/job.sh:ro" -v "$ROOT/tools/chuds-fg-gui:/work/chuds-fg-gui:ro" \
        -v "$ROOT/tests/panel_logic.py:/work/panel_logic.py:ro" -v "$ROOT/tests/panel_ui.py:/work/panel_ui.py:ro" \
        -v "$json:/work/options_ui.json:ro" \
        "$img" bash /work/job.sh 2>&1 | sed "s|^|[$img] |"; then

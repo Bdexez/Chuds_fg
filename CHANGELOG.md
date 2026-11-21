@@ -8,7 +8,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### A new control panel: « Simple » and « Avancé » (2026-11-19)
 
-- **`bdex-framegen-gui` rebuilt around two pages** (header switcher,
+- **`chuds-fg-gui` rebuilt around two pages** (header switcher,
   <kbd>Ctrl</kbd>+<kbd>1</kbd> / <kbd>Ctrl</kbd>+<kbd>2</kbd>; the last one is
   remembered). **Simple**: a banner with the state and the one button
   (*Démarrer* / *Arrêter*, *Pause*; while generating, the game's FPS, the
@@ -27,7 +27,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   réinitialiser* with *Annuler*. The system tools (layer install, GPU,
   calibration, Game Mode per game, Steam launch options, configuration
   file, report, recording) are its *Système* category and the header menu.
-- **The Windows launcher (`bdex_capture.exe`) gets the same split**: it
+- **The Windows launcher (`chuds_fg_capture.exe`) gets the same split**: it
   opens on a **basic page** of one column — the game, then the preset, the
   frames per frame, the mode, the new **game frame limit** (`fps_limit`:
   none, 30 to 90 fps, *Auto* = screen ÷ multiplier, or a rate set elsewhere;
@@ -35,7 +35,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   counter, what is running, *Démarrer*. **Mode avancé** shows every control
   (the previous two-column window: method, GPU, display, presentation, flow
   tuning, the engine options' column, calibration, report); the choice is
-  remembered in `%LOCALAPPDATA%\bdex-framegen\launcher-mode`. Checked with
+  remembered in `%LOCALAPPDATA%\chuds-fg\launcher-mode`. Checked with
   MinGW (x64 and i686) and run under Wine (both pages, the switch between
   them, a cap read from the config file).
 - **Every engine option is in the panel**: 16 were missing from
@@ -74,13 +74,13 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   the first step down was nearly free in time, the next ones took it from
   the flow. `hud_mask` and `hud_layer` stay at every level (a HUD that
   wobbles is seen at once). The option is still off by default.
-- `bdex_offline --quality-level 1|2`: the ladder's level, offline — what a
-  level saves (`BDEX_FG_PROFILE=2`) and costs (`eval_sequence.py
+- `chuds_fg_offline --quality-level 1|2`: the ladder's level, offline — what a
+  level saves (`CHUDS_FG_PROFILE=2`) and costs (`eval_sequence.py
   --offline-args "--quality-level 1"`).
 
 ### X11 present traces: a tool and a real game in the tests (2026-11-11)
 
-- **`bdex-x11-trace`** (built with the offline tools, not installed):
+- **`chuds-fg-x11-trace`** (built with the offline tools, not installed):
   `watch SECONDS` records the X Present completion events of the windows on
   screen — read-only, a connection of its own, the events x11_clock reads in
   the layer — and `replay trace.txt [HINT_HZ]` feeds a trace to the layer's
@@ -107,12 +107,12 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   (`platformEnv`, `platformEnviron`); the library no longer imports
   `getenv`. Found by a static-analysis pass over the sources (clang-tidy
   and the Clang analyzer: 309 reports — this one real; the null-pointer and
-  out-of-bounds ones traced and false). The capture tools, `bdex_offline`
-  and `bdex-calibrate`, which set variables of their own before loading the
+  out-of-bounds ones traced and false). The capture tools, `chuds_fg_offline`
+  and `chuds-fg-calibrate`, which set variables of their own before loading the
   configuration, say so (`platformEnvForget`). Windows: the same copy (the
   CRT's `getenv` has the same limit against `_putenv`), taken from the
   process's own environment block — the CRT's narrow list, which the
-  `BDEX_FG_*` overrides were read from, does not exist in a program with a
+  `CHUDS_FG_*` overrides were read from, does not exist in a program with a
   wide entry point until its first `getenv`.
 - `gpu_headroom`'s log lines said "-1 % busy" on a GPU whose load is not
   measured: "load not measured".
@@ -124,7 +124,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   size, one little-endian float a pixel, reversed Z (the nearness the engine
   holds; the centre texel of each block when the recording is scaled down,
   not an average across an edge) — and `depth=N` in `DONE`. It is what
-  `bdex_offline --depth` reads: the option, found in every family of games
+  `chuds_fg_offline --depth` reads: the option, found in every family of games
   since 2026-11-01 (native Vulkan, DXVK, VKD3D-Proton) but judged on
   synthetic scenes only, can now be scored on what a game really shows.
   `tools/eval_sequence.py SEQ --variant DEPTH=1` takes the sequence's
@@ -136,11 +136,11 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### GPU time per pass: `profile = 2` (2026-11-11)
 
-- **`profile = 2` (`BDEX_FG_PROFILE=2`)**: with the GPU time per stage, the
+- **`profile = 2` (`CHUDS_FG_PROFILE=2`)**: with the GPU time per stage, the
   time of each engine step (analysis, flow, scene cut, synthesis, sharpening,
   the real frame's output) and of each optional pass a game frame, the
   costliest first — in the layer's statistics line and at the end of
-  `bdex_offline`: `per pass: synthesis 0.72 false_detail 0.45 flow 0.45
+  `chuds_fg_offline`: `per pass: synthesis 0.72 false_detail 0.45 flow 0.45
   mosaic_blur 0.22 hud_layer 0.15 …`. A GPU timestamp follows each step and
   each pass's hook; the time since the one before is that step's or pass's
   (the stages' sum again, within the noise). What an option costs was
@@ -254,7 +254,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   box), never removed, Steam killing it. A process's first status write
   now sweeps the files of processes gone (a pid that no longer runs, left
   alone for 10 minutes: a sandboxed game in another pid namespace rewrites
-  its own every second), and `bdex-framegen --report` skips them (577 there:
+  its own every second), and `chuds-fg --report` skips them (577 there:
   a 2.3 MB report down to 3.8 KB).
 - **Validation test**: `SYNC-HAZARD-PRESENT-AFTER-WRITE`, one run in two of
   `interpolate:waitcap` on 2 CPUs (the nightly job), is ignored with
@@ -310,7 +310,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   the game's queue. Off, the output is the same byte for byte.
 - `debug=depth` shows the depth read in the generated frames (grey; magenta
   where a pair has none); the status says `depth=on`, or why not
-  (`--report`, the panel). `bdex_offline --depth DIR` (and
+  (`--report`, the panel). `chuds_fg_offline --depth DIR` (and
   `--depth-standard`) feeds a sequence's depth through the same read;
   `tools/edge_bench/make_sequence.py` and `make_game.py` write the exact
   depth of their scenes; `tools/edge_bench/depth_oracle.py` is the
@@ -335,13 +335,13 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   (from the start of a frame's simulation to its present call) and
   `reflex_sim_gpu_ms` (to the end of its GPU work, where the driver counts
   more than the game's own work through the layer).
-- `bdex_demo --reflex-lock` makes the Reflex calls under one lock as
+- `chuds_fg_demo --reflex-lock` makes the Reflex calls under one lock as
   VKD3D-Proton does; `latency_probe` and the new `reflexcap` validation run
   use it.
 
 ### Unreal's own limit with Reflex as the latency reference (2026-10-31)
 
-- `bdex_demo --reflex-limit`: the game's frame limit handed to Reflex
+- `chuds_fg_demo --reflex-limit`: the game's frame limit handed to Reflex
   (`minimumIntervalUs`, the driver's limiter), as Unreal does with Reflex on;
   `latency_probe` checks the layer's limit at Reflex's sleep against it too.
   Measured at 40 fps: no systematic difference (means of 9.3–10.3 ms at
@@ -379,7 +379,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   goes for the `gpu_headroom` cap, the FIFO offered to DXVK / VKD3D-Proton
   games for `fps_limit_wait`, and the cap shown in the game's status. Games
   run without the panel (Game Mode, a `[game]` section with
-  `require_app = 0`, `BDEX_FG=1`) are capped as before. A targeted game
+  `require_app = 0`, `CHUDS_FG=1`) are capped as before. A targeted game
   paused by the shortcut keeps its cap. `limit_session` checks it (armed
   60 fps, started 20, stopped 60, panel closed 60, with a 20 fps limit), also
   presented as DXVK / VKD3D-Proton do.
@@ -398,7 +398,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   at their present wait they keep a frame of latency their own limiter does
   not have (40 fps: 46.9 ms against 27.3). With NVIDIA Reflex on in the game,
   the layer's limit holds them at Reflex's sleep, on that game thread:
-  26.2 ms. The game's status suggests it; `bdex_demo --sim-thread [--reflex]`
+  26.2 ms. The game's status suggests it; `chuds_fg_demo --sim-thread [--reflex]`
   and `latency_probe` check it.
 
 ### The frame limit adds no latency to Direct3D games under Proton (2026-10-31)
@@ -428,7 +428,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 - Without present wait in the driver (lavapipe), or with `fps_limit_wait = 0`,
   the limit holds the present as before. Reflex stays as it was (still off
   for DXVK, whose markers would name presents the driver never sees).
-- `bdex_demo --present-thread L` presents as DXVK and VKD3D-Proton do, for
+- `chuds_fg_demo --present-thread L` presents as DXVK and VKD3D-Proton do, for
   the latency bench and the tests; the Direct3D probes of
   `tools/ci/proton-check.sh` run uncapped under the layer's limit and report
   how long after a frame began the GPU had done it.
@@ -720,7 +720,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   compositor at (instead of the one aimed at), then its MSC, the content
   time it shows, the completion's UST and mode, and when it was presented.
   `tools/cadence_report.py` adds « motion jumps/s » from them.
-- **`bdex_demo --gpu-load` with `--replay`**: the scene drawn N times before
+- **`chuds_fg_demo --gpu-load` with `--replay`**: the scene drawn N times before
   the recorded frame is copied over it — a replayed game as heavy on the GPU.
 
 ### Edges in camera turns (2026-10-17)
@@ -849,7 +849,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   selecting a subsequence. `python3 tools/recording_report.py SEQUENCE`
   reports frame-time percentiles and spikes. This measures source presents;
   display cadence still requires a latency log. Older recordings still work.
-- **Timed source replay**: `bdex_demo --replay DIR --replay-timing` follows
+- **Timed source replay**: `chuds_fg_demo --replay DIR --replay-timing` follows
   `timestamps.csv`, including source selections, and ends at the last source.
   `--replay-log FILE` records requested/actual presents and overload shifts.
   Late preparation shifts following deadlines instead of sending a burst;
@@ -1008,7 +1008,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   turns: grossly wrong pixels −23 % and −29 %, +1.0 / +0.5 dB; at 853×480
   −1 to −13 %; synthetic scenes within ±0.04 dB; the flow's GPU time at
   1440p 6.9 → ~2 ms a game frame.
-- `tools/latency_report.py`: `BDEX_LATENCY_JOIN_MS` widens the join of the
+- `tools/latency_report.py`: `CHUDS_FG_LATENCY_JOIN_MS` widens the join of the
   demo's and the layer's present stamps (to see a limiter that makes the
   call wait).
 
@@ -1032,7 +1032,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   mode and the Windows launcher say so and suggest the game frame-rate cap on
   Auto, or a screen rate that is an exact multiple of the game's.
 - Tests: `corpus` and `offline` no longer read the user's own settings file
-  (`BDEX_FG_CONFIG=/dev/null`); on a discrete GPU, `corpus` and `min_limits`
+  (`CHUDS_FG_CONFIG=/dev/null`); on a discrete GPU, `corpus` and `min_limits`
   turn the discrete-GPU options off to compare with the lavapipe references.
 
 ### Game frame-rate cap in the panel (2026-10-13)
@@ -1066,13 +1066,13 @@ equivalent (`SECURITY.md` keeps the result):
   in both the libadwaita and the plain GTK 4 panel (which showed `&lt;` in
   some help texts).
 - **No shared `/tmp` directory taken blindly**: without `HOME`, the status
-  directory `/tmp/bdex-framegen-<uid>` is used only if it is ours (0700,
+  directory `/tmp/chuds-fg-<uid>` is used only if it is ours (0700,
   owned by us); another user could otherwise plant a session file or
   symbolic links there. Layer and panel.
 - **Windows, « Retirer les injections »** deletes only the translation DLLs
   it knows by name: the list it reads sits in the game's folder, and an
   edited line could have deleted any file.
-- **Diagnostic reports** (`bdex-framegen --report`, the Windows launcher's)
+- **Diagnostic reports** (`chuds-fg --report`, the Windows launcher's)
   hide the home / profile path (`~`, `%USERPROFILE%`) and list files with
   numeric owners: they are meant for public issues.
 - **LGPL compliance for VKD3D-Proton**: the Windows package now carries the
@@ -1124,7 +1124,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   « ⚠ Anti-triche détecté » in the status lines and the tray).
 - The Windows package carries DXVK and VKD3D-Proton
   (`tools/fetch_translation_layers.py`, pinned, SHA256 checked); a new CI
-  artifact, `bdex-framegen-windows-complete`, adds the 32-bit layer to the
+  artifact, `chuds-fg-windows-complete`, adds the 32-bit layer to the
   x64 package.
 
 ### Reports
@@ -1133,9 +1133,9 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   has: the diagnostic report (version, Windows build, GPUs, the layer's
   registration, the games with an injection, what runs now, the settings,
   the end of `log_file`) written to
-  `%LOCALAPPDATA%\bdex-framegen\bdex-framegen-report.txt`, copied to the
+  `%LOCALAPPDATA%\chuds-fg\chuds-fg-report.txt`, copied to the
   clipboard and shown in Explorer, then the pre-filled issue form (the same
-  fields as `bdex-framegen --issue-url`).
+  fields as `chuds-fg --issue-url`).
 
 ### Quality (experimental)
 
@@ -1151,7 +1151,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   pixels, from its neighbourhood, the matching error and its slope, and its
   fractional part (`learned_flow.comp`, two stages: corrections, then
   added). Trained on synthetic motions with their true flow
-  (`bdex_offline --dump-flow` exports the flow and the level-0 lumas):
+  (`chuds_fg_offline --dump-flow` exports the flow and the level-0 lumas):
   held-out end-point error 0.52 → 0.21 level px. On the corpus, never
   trained on: zoom +1.0 to +2.6 dB, sub-pixel +0.5 to +2.2, fade +1.4, the
   demo ±0.03, rotation −0.13 (interpolation); +0.3 ms a generated frame at
@@ -1159,7 +1159,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 
 ### Wayland capture
 
-- **`bdex-capture --wayland`**: native Wayland windows through the
+- **`chuds-fg-capture --wayland`**: native Wayland windows through the
   screen-cast portal (GDBus: CreateSession, SelectSources with the choice
   kept — `restore_token` cached —, Start, OpenPipeWireRemote) and a
   PipeWire stream (BGRx / RGBx, mapped memory, the window's crop region),
@@ -1189,7 +1189,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 
 ### Online benchmark
 
-- **`bdex_demo --replay DIR [--replay-step N]`**: a recorded sequence
+- **`chuds_fg_demo --replay DIR [--replay-step N]`**: a recorded sequence
   played as the game's frames (frame start + k·N on present k, blitted to
   the window), so the whole online path runs on real content.
 - **`tools/replay_bench.py`**: the replay through the layer, every
@@ -1202,7 +1202,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 
 ### Calibration
 
-- **`bdex-calibrate`** (Linux and Windows, installed beside the layer / in
+- **`chuds-fg-calibrate`** (Linux and Windows, installed beside the layer / in
   the Windows package): the engine on synthetic moving frames at the
   screen's size, for the automatic preset and each fixed one — analysis +
   flow per game frame, synthesis per generated frame (GPU timestamps,
@@ -1213,7 +1213,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   at 144 Hz (1.8 ms a game frame).
 - Run by itself at the first start of the Linux panel and of the Windows
   launcher (*Calibration du GPU*: *Mesurer*, *Appliquer*), text mode `k`,
-  `bdex-framegen --calibrate [--apply]`. The panel's *Auto* multiplier
+  `chuds-fg --calibrate [--apply]`. The panel's *Auto* multiplier
   never exceeds the calibrated one.
 
 ### Recording for the corpus
@@ -1224,9 +1224,9 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   (`<status dir>/<pid>.record`, taken by `DeviceData::pollRecordRequest`):
   written as `fNNNN.ppm` at most 960 pixels wide (box filter) while
   generation goes on, then `DONE`. The panel moves them to
-  `~/.cache/bdex-framegen/recordings` and packs them with
+  `~/.cache/chuds-fg/recordings` and packs them with
   `tools/corpus_pack.py` when it and Pillow are there (Windows:
-  `%LOCALAPPDATA%\bdex-framegen\recordings`). Test `record_live`.
+  `%LOCALAPPDATA%\chuds-fg\recordings`). Test `record_live`.
 
 ### Battery
 
@@ -1252,11 +1252,11 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   the layer stays out of (anti-cheat), or another GPU than the game's.
   New config key `method` (`auto`, `layer`, `capture`); each detected game
   in the panel says which and why. The panel starts and stops
-  `bdex-capture` itself (« Capturer une autre fenêtre… » for a program the
+  `chuds-fg-capture` itself (« Capturer une autre fenêtre… » for a program the
   layer does not see); the launcher drives the layer through the same
   session file as the panel (`app.session`, heartbeat every second), and
   arms Vulkan games (`enabled`, `require_app`) when the layer is registered.
-  `bdex_capture.exe --method auto|layer|capture`.
+  `chuds_fg_capture.exe --method auto|layer|capture`.
 - **The GPU that generates** (`gpu`, a part of its name; panel « GPU de
   génération », launcher « GPU de génération », `--gpu <n|name>`): on a
   two-GPU machine, the frames can be generated on the other GPU than the
@@ -1264,7 +1264,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 - The capture apps read their settings as explicitly enabled: under the
   panel's arming (`require_app = 1`) they were paused, HUD off, like an
   untargeted game (`capture_linux` checks it).
-- `hotkey` is a config key on Linux too (bdex-capture's toggle).
+- `hotkey` is a config key on Linux too (chuds-fg-capture's toggle).
 
 ### Performance
 
@@ -1387,7 +1387,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   cross-fade and of their luma difference), 8 ReLU units and one output — a
   bounded weight that moves the pixel toward the cross-fade, never past it
   (a free colour residual made correct pixels worse: subpixel −11 dB).
-  Trained offline with numpy by `tools/train_correction.py` from bdex_offline
+  Trained offline with numpy by `tools/train_correction.py` from chuds_fg_offline
   runs (weights in `layer/shaders/learned_correction_weights.glsl`, record in
   `layer/learned_correction.json`), run over each finished generated frame
   before the HUD (`learned_correction.comp`, 8-bit, no upscaling). On
@@ -1436,7 +1436,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   skip_fast, pause), a red mark when a frame was replaced before display.
   Push constants only (104 of the 128 bytes guaranteed), drawn by
   `hud_overlay.comp`; the panel also gained level 5 (latency).
-- **Bug reports ready to send**: `bdex-framegen --report` ends with the link
+- **Bug reports ready to send**: `chuds-fg --report` ends with the link
   to a GitHub issue form (`.github/ISSUE_TEMPLATE/bug_report.yml`) filled
   from the report — version, distribution, GPU and driver, session,
   installation, the quick read; never the settings or the log, which stay
@@ -1446,7 +1446,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   (The repository is private: the form opens for its collaborators only.)
 - **Crash journal** (`crash_log`, Linux, on where the layer works): a
   SIGSEGV / SIGBUS / SIGILL / SIGFPE whose instruction (or one of its first
-  four callers) is in the layer writes `~/.cache/bdex-framegen/crash-<game>-
+  four callers) is in the layer writes `~/.cache/chuds-fg/crash-<game>-
   <pid>.txt` — signal, offsets in the layer for addr2line, version and
   settings — with async-signal-safe calls only, then goes on to the handler
   that was there (Wine's, Proton's) or the default action; every other
@@ -1457,7 +1457,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 
 - **`pipeline_cache`** (default on): the passes' pipelines through a
   `VkPipelineCache` loaded from and written back to
-  `~/.cache/bdex-framegen/pipelines-<vendor>-<device>-<UUID>.bin` (checked
+  `~/.cache/chuds-fg/pipelines-<vendor>-<device>-<UUID>.bin` (checked
   against the driver's cache UUID, written atomically). NVIDIA without its
   own shader cache: frame generation ready in 0.15 s instead of 0.88.
 - **`thread_priority`** (default on): the presentation thread gets the
@@ -1492,7 +1492,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   (`tests/gamescope_limit.sh`). skip_fast now ignores that cycle once a limit
   has been on, and otherwise takes the larger of the measured and the panel's
   rates.
-- **Measuring input-to-screen latency**: `bdex_demo --latency-test [auto]`
+- **Measuring input-to-screen latency**: `chuds_fg_demo --latency-test [auto]`
   answers each key press (or an automatic input every half second) with a
   white frame and logs input and present times (`--latency-log`); the layer's
   `latency_log` logs every displayed frame (present feedback);
@@ -1546,7 +1546,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 
 ### Linux distributions
 
-- **`bdex-capture` on Linux** (`capture/linux`): frame generation for a game
+- **`chuds-fg-capture` on Linux** (`capture/linux`): frame generation for a game
   window by capture, as the Windows capture app does — nothing loaded into
   the game: the games the layer stays out of (anti-cheat), non-Vulkan
   programs, and **two GPUs** (`--gpu`: the generation on the GPU driving the
@@ -1562,7 +1562,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 - **The control panel and the Windows launcher in English** when the
   system language is not French (`LANGUAGE`, `LC_ALL`, `LC_MESSAGES`,
   `LANG`; on Windows the display language), French otherwise;
-  `BDEX_LANG=fr|en` chooses. The option texts come from
+  `CHUDS_FG_LANG=fr|en` chooses. The option texts come from
   `layer/options_ui.en.conf` (the build fails on an option without one),
   the panel's own through `tr()`, the status lines of the launcher too
   (`statusDescribe(…, english)`, which also names the hybrid mode now).
@@ -1577,7 +1577,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   task, else `THREAD_PRIORITY_HIGHEST`: it did nothing), and the 1 ms timer
   while the worker runs (`precise_wake`: paced waits otherwise last up to
   the default 15.6 ms on Windows).
-- **`bdex-capture` under a window manager and a compositor** (openbox +
+- **`chuds-fg-capture` under a window manager and a compositor** (openbox +
   picom, CI): x2 / x3 / x2 and the overlay showing the game, as without.
 - **Proton on Wine's Wayland driver in CI** (`tools/ci/proton-wayland-check.sh`):
   the Direct3D 11 program under Wine 11 (WineHQ) on its Wayland driver — no
@@ -1596,7 +1596,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   architecture, a 32-bit vkcube runs through it on Xvfb with the 32-bit
   lavapipe — loaded, generating, x2.00. (It had only ever been compiled.)
 - **Flatpak Vulkan layer extension**
-  (`packaging/flatpak/org.freedesktop.Platform.VulkanLayer.BdexFramegen.yml`,
+  (`packaging/flatpak/org.freedesktop.Platform.VulkanLayer.ChudsFg.yml`,
   Freedesktop runtime 25.08, 64 and 32-bit, Flathub-ready): every Flatpak
   app on that runtime loads the layer, `flatpak update` updates it.
   `flatpak.sh` copies no layer into an app the extension covers (only the
@@ -1605,26 +1605,26 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   64-bit loader, listed by its i386 one.
 - **Source packages for build services**, each built from the checkout in
   the distribution's container, installed and checked (CI job
-  `source-packages`): `packaging/rpm/bdex-framegen.spec` (COPR, OBS; Fedora 44
+  `source-packages`): `packaging/rpm/chuds-fg.spec` (COPR, OBS; Fedora 44
   and Tumbleweed, 32-bit layer included, no 32-bit glibc dependency),
   `packaging/debian/` (PPA, OBS; Ubuntu 24.04, 22.04, Debian 12, i386 layer
   in `lib/i386-linux-gnu`), a Gentoo overlay (`packaging/gentoo`, multilib
   `ABI_X86="64 32"`, `USE=gui`) and a Void template (glibc and musl).
-- **`bdex-framegen --gpu screen | discrete | integrated | nvidia | amd |
+- **`chuds-fg --gpu screen | discrete | integrated | nvidia | amd |
   intel | list`**: the game on one GPU of a hybrid laptop (Mesa device
   selection, NVIDIA PRIME offload, DXVK / VKD3D-Proton device filter) — the
   GPU the screen is plugged into avoids a PRIME copy of every frame; the
   report's PRIME hint names it.
 - `tools/uninstall.sh --purge`: also the settings and caches (and their
   copies in Flatpak / Snap launchers).
-- `bdex-framegen --help` printed a fixed range of lines and had lost its
+- `chuds-fg --help` printed a fixed range of lines and had lost its
   last options.
 - `docs/linux-validation.md`: what to try on real machines (Flatpak Steam,
   Deck, Snap, SELinux, NVIDIA + KDE, hybrid laptops...) and what to send.
 - **Outdated sandbox copies**: after an update of the layer (package,
   archive, AUR...), the copies in the Flatpak / Snap launchers kept the old
   one. `flatpak.sh --check <prefix>` lists them; the control panel re-copies
-  them when it opens (toast « Couche mise à jour dans… »), `bdex-framegen
+  them when it opens (toast « Couche mise à jour dans… »), `chuds-fg
   --check` exits 2 and `--report` flags them.
 - **No copy over a running game's library**: `install.sh` (archive and
   source) and `flatpak.sh` replaced the installed `.so` in place, truncating
@@ -1633,11 +1633,11 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   looked for `/usr/lib32/libvulkan.so.1` (Arch's path only) and skipped the
   32-bit layer elsewhere. It now checks that a 32-bit C++ shared library
   links (verified in Ubuntu 24.04 and Fedora containers) and names the
-  packages to install; `BDEX_NO_32BIT=1` skips it.
+  packages to install; `CHUDS_FG_NO_32BIT=1` skips it.
 - **Refresh rate under Wayland (text-mode panel)**: read from `hyprctl`,
   `kscreen-doctor` (Plasma only), `wlr-randr` or GNOME's DisplayConfig before
   xrandr, which only sees Xwayland (143.78 Hz read for a 143.91 Hz screen
-  under Hyprland). `bdex-framegen --report` reads hyprctl / wlr-randr too,
+  under Hyprland). `chuds-fg --report` reads hyprctl / wlr-randr too,
   and no longer hangs outside Plasma (`kscreen-doctor` waits forever
   without KScreen: now only in a Plasma session, under a timeout).
 - **Terminal for the text-mode panel**: `$TERMINAL`, `xdg-terminal-exec`,
@@ -1653,30 +1653,30 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   `/usr`, the layer in the distribution's library directory
   (`lib/x86_64-linux-gnu`, `lib64`; the 32-bit one in `lib/i386-linux-gnu`
   / `lib`). The layer finds its shipped profiles one level deeper for such a
-  directory; `BDEX_INSTALL_LIBDIR` sets it for a build. Checked in CI:
+  directory; `CHUDS_FG_INSTALL_LIBDIR` sets it for a build. Checked in CI:
   installed with apt on Ubuntu 20.04 to 24.04 and Debian 12, with dnf and
   zypper on Fedora and openSUSE Tumbleweed — loaded, profiles read, x2
   through vkcube.
-- **Arch (AUR-ready)**: `packaging/arch/bdex-framegen-bin` (the release
-  archive) and `bdex-framegen-git` (from source, now with the 32-bit layer,
+- **Arch (AUR-ready)**: `packaging/arch/chuds-fg-bin` (the release
+  archive) and `chuds-fg-git` (from source, now with the 32-bit layer,
   and the C++ runtime linked in like the archives), each with its
   `.SRCINFO`. Both built with makepkg and loaded in an Arch container.
 - **NixOS**: `flake.nix` — the package, the 32-bit layer (`layer32`), and a
-  module (`programs.bdex-framegen.enable`) that links `share/vulkan` into the
+  module (`programs.chuds-fg.enable`) that links `share/vulkan` into the
   system profile; CI job `nix` builds them and loads the layer.
 - **Panel without GTK 4** (Ubuntu 20.04, Debian 11): text mode in a
   terminal — detected games, « Démarrer » / « Arrêter » (the same session
   and heartbeat), multiplier, mode, preset, fps counter, Game Mode, the
   Steam string; from the application menu it opens a terminal;
-  `bdex-framegen-gui --text` forces it. Checked in CI (job `panel`: Ubuntu
+  `chuds-fg-gui --text` forces it. Checked in CI (job `panel`: Ubuntu
   20.04 text only; Debian 12 and Arch, GTK 4 with and without libadwaita,
   and text).
 - **Steam as a Snap**: the layer, its settings and the panel's session in
   `~/snap/steam` (written from snapd's layout; not tried on a real snap).
-- `bdex-framegen --sandboxes [--remove]`: the layer copied into the Flatpak
+- `chuds-fg --sandboxes [--remove]`: the layer copied into the Flatpak
   / Snap launchers — after a distribution package, which cannot write into
   the home.
-- `bdex-framegen --mangohud`: MangoHud *under* the layer. On its own it
+- `chuds-fg --mangohud`: MangoHud *under* the layer. On its own it
   loads above it (measured: it counted 330 fps for 660 shown, and drew on
   the real frames only).
 
@@ -1704,7 +1704,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   at a time, so the panel cannot stay open beside a game: its new « Mode
   Jeu — sans le panneau » makes every game, or the selected one, generate
   from its start with the panel's settings (`require_app = 0` in `[*]` or in
-  the game's section; `bdex-framegen --always-on [GAME]` / `--always-off`).
+  the game's section; `chuds-fg --always-on [GAME]` / `--always-off`).
   Turned on for every game this way, desktop programs stay excluded, as
   under the panel — gamescope above all, Game Mode's compositor, which loads
   the layer too (before, `[*] enabled = 1` alone enabled it everywhere).
@@ -1777,7 +1777,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   panel copies the settings there on every save and finds their games — in
   a process namespace of their own, it writes the session with the pid the
   game knows itself by and reads its status through the game's view of the
-  files (`/proc/<pid>/root`); `bdex-framegen --report` and `--toggle`
+  files (`/proc/<pid>/root`); `chuds-fg --report` and `--toggle`
   follow. `uninstall.sh` removes the copies.
 - **Small GPUs.** The engine now fits in the limits every Vulkan GPU
   guarantees: `flow_refine` reads its lumas as textures (3 storage images per
@@ -1786,7 +1786,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   guaranteed) is only built where there are 32 KB, its optional terms off
   otherwise. A GPU below the guarantees gets its frames passed through with
   the reason, instead of a failed pipeline. Frames unchanged bit for bit;
-  new test `min_limits` (`bdex_offline --limit-shared`,
+  new test `min_limits` (`chuds_fg_offline --limit-shared`,
   `--limit-storage-images` simulate a small GPU on any GPU).
 - **Building from source on more distributions**: GCC 10 and later (the
   floating-point `from_chars` was GCC 11's), the Vulkan headers of Ubuntu
@@ -1924,8 +1924,8 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   Offline on the demo (normal and fast): x4 −1.3 to −2.4 dB from
   interpolation, against −3.0 to −4.7 dB for extrapolation; x3 −1.0 to
   −1.4 dB, against −3.4 to −4.4 dB. In the control panel, the capture
-  launcher and `bdex_capture --mode hybrid`. The frame order is one
-  definition shared by the layer, the capture app and `bdex_offline`
+  launcher and `chuds_fg_capture --mode hybrid`. The frame order is one
+  definition shared by the layer, the capture app and `chuds_fg_offline`
   (`frame_order.h`); interpolation and extrapolation are unchanged bit for
   bit.
 - **`latency_limiter`** (default on, with `max_frame_latency`): when the GPU
@@ -1948,10 +1948,10 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   its previous present returned, where most games read their input — to the
   screen). The fps HUD shows the displayed rate instead of game fps ×
   multiplier when it is known.
-- `bdex-framegen --report` compares the frames sent with the frames really
+- `chuds-fg --report` compares the frames sent with the frames really
   displayed (last statistics line) and says what to try when a share of them
   never reaches the screen.
-- `bdex_capture --adaptive` (the launcher's « Adaptatif » on the command
+- `chuds_fg_capture --adaptive` (the launcher's « Adaptatif » on the command
   line); `--multiplier`, if given, is its ceiling.
 
 ## [0.5.5] - 2026-09-26
@@ -1990,7 +1990,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 
 ### Added
 
-- `bdex-framegen --report` starts with a **quick read** (in French, like the
+- `chuds-fg --report` starts with a **quick read** (in French, like the
   panel) of the usual causes of « no generated frames »: « Auto » at x1
   because the layer's refresh rate is at or under the game's fps, a refresh
   rate that differs from the desktop's (screen misdetected) or is unknown,
@@ -2035,7 +2035,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   none, or older than 1.4): it stopped at start-up with « Namespace Adw not
   available ». The widgets it uses are now also built from plain GTK 4
   (`_Compat`), used when libadwaita 1.4+ is missing; the panel needs only
-  Python 3, PyGObject and GTK 4. `BDEX_FG_GUI_NO_ADW=1` forces that path.
+  Python 3, PyGObject and GTK 4. `CHUDS_FG_GUI_NO_ADW=1` forces that path.
 - **Electron / Chromium apps (Discord) were armed as games**: their command
   line is rewritten as one string, so the name checks missed them. The layer
   also checks its executable's name (`platformExeName`), the panel the
@@ -2061,14 +2061,14 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   generates. Options changed while a game runs apply live: settings that
   size the output stage (multiplier, mode, flow, HUD) rebuild it, like a
   resize. Upscaling applies to games started while the panel is open.
-  `BDEX_FG=1` (Steam option, CLI) bypasses it. Covered by a new "panel" run
+  `CHUDS_FG=1` (Steam option, CLI) bypasses it. Covered by a new "panel" run
   of `tests/validation.sh`, and checked with the demo inside Steam's
   container (SteamLinuxRuntime_sniper).
 
 ### Changed
 
-- **Linux status / session directory: `~/.cache/bdex-framegen/run`** (was
-  `$XDG_RUNTIME_DIR/bdex-framegen`). Steam's container (pressure-vessel, every
+- **Linux status / session directory: `~/.cache/chuds-fg/run`** (was
+  `$XDG_RUNTIME_DIR/chuds-fg`). Steam's container (pressure-vessel, every
   Proton game) shares the home but only a few sockets of the runtime
   directory: Proton games' status never reached the panel and the panel's
   session never reached them (PRAGMATA could not be started). The session is
@@ -2105,12 +2105,12 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 
 ### Added (release)
 
-- **Prebuilt Linux archive** `bdex-framegen-linux-x86_64-<version>.tar.gz`
+- **Prebuilt Linux archive** `chuds-fg-linux-x86_64-<version>.tar.gz`
   (`tools/package-linux.sh`, CI job `package`, attached to the GitHub
   release with the Windows zips): 64- and 32-bit layer, the CLI, the
   control panel, profiles, `install.sh` / `uninstall.sh` — nothing to
   compile. Built on Debian 12 (glibc 2.36+) with newer Khronos headers; the
-  layer links libstdc++/libgcc statically (`BDEX_STATIC_RUNTIME`) so it
+  layer links libstdc++/libgcc statically (`CHUDS_FG_STATIC_RUNTIME`) so it
   loads inside the Steam runtime.
 
 ### Changed (release)
@@ -2155,7 +2155,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   `pixel_vectors` (1.7 dB alone, where the online eval had measured +0.02),
   hence 0.02. In the GTK panel and the Windows launcher preset lists.
 - `determinism` test: every option (and all of them together, per mode)
-  runs twice through bdex_offline on the `occlude` scene and must give
+  runs twice through chuds_fg_offline on the `occlude` scene and must give
   byte-identical frames — a shader reading what it did not write or a race
   between invocations shows at once (as rot_weight's out-of-tile reads
   did). The option list comes from the registry: a new option fails the
@@ -2166,15 +2166,15 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   the detailed status (passes, `online_tune`) and quits — the hotkeys'
   actions, for players who do not remember them. The icon comes back when
   Explorer restarts.
-- **Recorded game sequences in the CI.** `bdex-framegen --record DIR [N]`
+- **Recorded game sequences in the CI.** `chuds-fg --record DIR [N]`
   records a game's real frames; `tools/corpus_pack.py` packs a downscaled
   window of them (PNG + meta.json), `tools/corpus_fetch.py` unpacks
   archives into sequence directories. The Linux CI downloads the archives
   of the repository's `corpus` release, when it exists, and scores them in
-  the corpus regression test (`BDEX_CORPUS_DIR`). CONTRIBUTING.md explains
+  the corpus regression test (`CHUDS_FG_CORPUS_DIR`). CONTRIBUTING.md explains
   how to add a game. No game sequence ships yet: they have to be recorded
   on a machine with the games.
-- `bdex-framegen --tuned-profile [GAME] [--mode M] [--apply]`: the options
+- `chuds-fg --tuned-profile [GAME] [--mode M] [--apply]`: the options
   `online_tune` kept for a game (pairs expanded) as a `[GAME]` config
   section — printed (ready to share or to add to `layer/profiles.conf`), or
   merged into the config file, which pins them (the tuner leaves options
@@ -2203,7 +2203,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 - CI: a `windows-syntax` job in `linux.yml` runs the MinGW x64 / x86
   syntax check on every push (the check caught both Windows breakages of
   the day before they reached MSVC, but only when run by hand).
-- **Windows: live status in the capture app's launcher.** `bdex_capture`
+- **Windows: live status in the capture app's launcher.** `chuds_fg_capture`
   publishes its state like the layer (`kind=capture`, with the captured
   game, fps, latency from WGC to the present call, passes, `online_tune`),
   and the launcher gains an **En cours** frame that reads the status files
@@ -2214,7 +2214,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   optional passes at work (`passes=`, `FgPass::active`) and `online_tune`'s
   state (`online_tune=`: its decisions, or the option on trial and how many
   are decided); the GTK panel's "En cours" view shows both, in French.
-  `bdex-framegen --report` adds the live status of the running games and
+  `chuds-fg --report` adds the live status of the running games and
   the cached `online_tune` decisions, so a bug report carries what used to
   take a log file (the pass-through reason and `gpu_budget` level were
   already in the status).
@@ -2288,7 +2288,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   (HUD scene −0.13). Heavier accumulation loses (no camera jitter to
   gather, integer flow). Default 0 byte-identical, with or without
   upscaling; covered by the validation state runs.
-- `bdex_offline --score-real`: the real frames enter the manifest as the
+- `chuds_fg_offline --score-real`: the real frames enter the manifest as the
   engine outputs them, so `eval_sequence.py --offline-args "--render-scale
   0.5 --score-real"` scores the upscaler too.
 - **`online_tune` (opt-in): per-game automatic choice of the motion
@@ -2305,7 +2305,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   −0.9 dB interpolated where the measure favours it), `flow_temporal=1`;
   options the user set are not candidates. Decisions are logged and cached
   per game and mode after each one (`platformCacheDir()`,
-  `BDEX_FG_CACHE_DIR`), so the next session starts tuned. The demo is
+  `CHUDS_FG_CACHE_DIR`), so the next session starts tuned. The demo is
   tuned in 6.6 s at 60 fps; offline the choices match the PSNR (e.g.
   `zero_bias_contrast` +4.75 dB kept on a swinging camera, dropped on the
   neutral HUD scene). Also in the capture app (its command slots feed the
@@ -2339,8 +2339,8 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   is meant for GPUs whose compute engines overlap graphics (AMD), to be
   measured there.
 - **Live status in the control panel.** Each process where the layer is
-  enabled publishes a small status file (`$XDG_RUNTIME_DIR/bdex-framegen/
-  <pid>.status`, `%TEMP%\bdex-framegen` on Windows, `BDEX_FG_STATUS_DIR` to
+  enabled publishes a small status file (`$XDG_RUNTIME_DIR/chuds-fg/
+  <pid>.status`, `%TEMP%\chuds-fg` on Windows, `CHUDS_FG_STATUS_DIR` to
   move or disable it), rewritten atomically at most once a second and
   removed on exit: per swapchain its state (generating, paused,
   pass-through), game and output fps, multiplier and mode, measured refresh
@@ -2385,7 +2385,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   (on by default; content timing still follows `frame_timing`/`dedup`);
   `target_fps = auto` and `fps_limit = auto` use the measured rate; the
   statistics report the refresh rate and frames replaced before display.
-  Offline (`bdex_offline --refresh HZ [--refresh-known]` simulates a
+  Offline (`chuds_fg_offline --refresh HZ [--refresh-known]` simulates a
   fixed-refresh display): 60 fps game at x2 on 144 Hz +2.1 to +3.1 dB, on
   100 Hz +10 to +11 dB, on 75 Hz +15 dB; byte-identical without a grid.
   The GTK panel shows `auto` as −1 and gains the switch.
@@ -2405,7 +2405,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   `layer/options_ui.conf` holds the sections, labels, help texts and UI
   ranges; kinds, registry ranges and defaults come from the option
   registry (`Config::optionInfo`). The GTK panel builds its sections from
-  `options_ui.json` (generated at build time by `tools/options/bdex_options`,
+  `options_ui.json` (generated at build time by `tools/options/chuds_fg_options`,
   which fails on an unknown key, and installed next to the panel); the
   Windows launcher embeds the `.conf` and builds its option column from it,
   its window sized to the content. Both used to keep hand-written lists.
@@ -2427,22 +2427,22 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   `passes/registry.cpp` lists them in hook order. `flow_temporal`,
   `online_tune` (self-evaluation) and `upscale_temporal` moved there out of
   `FrameGen` (~200 lines and five touch points each). The engine sources
-  are one CMake list (`BDEX_ENGINE_SOURCES`) shared by the layer,
-  `bdex_offline` and `bdex_capture`. Output byte-identical; the options
+  are one CMake list (`CHUDS_FG_ENGINE_SOURCES`) shared by the layer,
+  `chuds_fg_offline` and `chuds_fg_capture`. Output byte-identical; the options
   measure as before.
 - `framegen.cpp` split by feature: `framegen_tune.cpp` (self-evaluation and
   `online_tune`), `framegen_output.cpp` (the real frame's output stage:
   spatial / temporal upscaling, HUD, dedup replacement, CAS), and
   `framegen_internal.h` (push-constant blocks, state-buffer layout, shared
-  helpers, private to these files). The layer, `bdex_offline` and
-  `bdex_capture` build all three. No behaviour change.
+  helpers, private to these files). The layer, `chuds_fg_offline` and
+  `chuds_fg_capture` build all three. No behaviour change.
 - **Option registry.** The plain bool / int / float options are declared
   once, in a table in `config.cpp` (key, alias, range, live-reloadable,
   `online_tune` candidate and trial value): `Config::apply`,
   `Config::applyLive` and the `online_tune` candidates are driven by it
   instead of ~50 hand-written branches, a copy list and a separate
   candidate list in `framegen.cpp`. `Config::optionKeys()` and
-  `bdex_offline --list-options [--canonical]` list every key. Parsing and
+  `chuds_fg_offline --list-options [--canonical]` list every key. Parsing and
   output unchanged (byte-identical).
 - **`option_keys` test**: the GTK panel, the Windows launcher and the README
   option table may only name keys the engine understands, and the README
@@ -2476,7 +2476,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   7 tiles changed right after one where at least 32 did is a repeat of the
   world (a static scene with a small moving object changes the same few
   tiles every present and is not). Offline, each image presented twice
-  under a counter redrawn every present (`bdex_offline --hud-counter`):
+  under a counter redrawn every present (`chuds_fg_offline --hud-counter`):
   +0.3 to +6.9 dB, same as a full repeat (the whole-image test found none);
   no repeat detected on a static scene with a small moving object, and
   byte-identical on every non-repeating sequence.
@@ -2500,7 +2500,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   (mostly static scenery, any GPU): balanced 1.75 → 1.30 ms, quality
   4.3 → 2.65 ms. Games with static HUDs, menus and scenery gain most.
 
-- **`bdex_offline` benchmarks the engine**: `BDEX_FG_PROFILE=1` prints the
+- **`chuds_fg_offline` benchmarks the engine**: `CHUDS_FG_PROFILE=1` prints the
   mean GPU time per stage of a fixed workload (dump copies excluded), and
   `--bench N` repeats the flow back to back so the GPU stays at full clock
   (±7 % between runs instead of ±15–40 % for a live, half-idle demo). Used to
@@ -2520,11 +2520,11 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   for the standard `getenv`/`fopen` calls, explicit narrowing in the PPM
   dump, `_environ` no longer redeclared (inconsistent linkage),
   `WIN32_LEAN_AND_MEAN` guarded, a shadowed lock renamed. New option
-  `BDEX_WERROR` (`/WX`, `-Werror`) on the layer, the unit tests and the
+  `CHUDS_FG_WERROR` (`/WX`, `-Werror`) on the layer, the unit tests and the
   capture app; both CI workflows turn it on.
 - Windows capture build: the engine files in `layer/src/passes/` got the
-  capture app's `log.h` (no `BDEX_INFO`) because `capture/src` came first
-  among `bdex_capture`'s include directories; `layer/src` now comes first.
+  capture app's `log.h` (no `CHUDS_FG_INFO`) because `capture/src` came first
+  among `chuds_fg_capture`'s include directories; `layer/src` now comes first.
   `tools/ci/run.sh mingw` compiles the engine with that include order too.
 - `eval_sequence.py`: SSIM was numerically wrong on large frames — the
   integral images were summed in float32 (squared values reach ~1e11 on
@@ -2538,7 +2538,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   integration demo its 60 s, and the validation "state" runs (300 frames)
   their 120 s. The demo gains `--duration S` and every test run is bounded
   in time (40 s); `offline` uses shorter sequences and a 900 s limit.
-  `tools/ci/run.sh` accepts `BDEX_CI_CPUS=n` to replay on a runner-sized
+  `tools/ci/run.sh` accepts `CHUDS_FG_CI_CPUS=n` to replay on a runner-sized
   container; on one CPU all jobs pass (ASan integration stops at 41 s).
 
 - **Command pools were shared between threads.** Every virtual swapchain
@@ -2567,7 +2567,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 
 ### Fixed (2026-09-24)
 
-- **`bdex-framegen --gl` did nothing on the NVIDIA driver.** It only set
+- **`chuds-fg --gl` did nothing on the NVIDIA driver.** It only set
   `MESA_LOADER_DRIVER_OVERRIDE=zink`, which reaches Mesa's own GL; with a
   vendor driver installed, libglvnd dispatched GLX/EGL to NVIDIA's GL, Zink
   never loaded and the game ran out of the layer's reach, silently. `--gl`
@@ -2587,7 +2587,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   photometric errors and the scene-cut thresholds are tuned for a
   perceptual scale with SDR white at 1. HDR values are now converted to
   linear light relative to SDR white (203 nits) and encoded like decoded
-  sRGB. Offline (`bdex_offline --colorspace scrgb|hdr10`, corpus with
+  sRGB. Offline (`chuds_fg_offline --colorspace scrgb|hdr10`, corpus with
   highlights up to ~1000 nits): scRGB HUD scene 10.8 → 20.0 dB (the raw
   costs tripped the scene cut), fade +0.55; HDR10 pan +2.8, fade +0.6.
   On SDR-range content both now score within 0.05 dB of the sRGB format
@@ -2684,7 +2684,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   tolerance), gates the flow passes off through indirect dispatches so the
   previous pair's motion is kept, times the outputs on first appearances
   and, in extrapolation, replaces the stale repeated frame with an
-  extrapolated one. Measured with the new `bdex_offline --jitter / --dup /
+  extrapolated one. Measured with the new `chuds_fg_offline --jitter / --dup /
   --steady-content` schedules (every displayed frame scored against the
   frame the player should see): variable frame times ±20–40 % +0.1 to
   +2.3 dB; each image presented twice +0.9 to +7 dB (HUD scene extrapolated
@@ -2704,17 +2704,17 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   layer's defaults are written), and a *Paused* switch applied live to
   running games.
 
-- `bdex_offline --format rgba8|bgra8|srgb|rgb10|rgba16f` and
+- `chuds_fg_offline --format rgba8|bgra8|srgb|rgb10|rgba16f` and
   `--render-scale S`, and the `formats` ctest: every output encoding and the
   upscaling path are checked headless (BGRA8 byte-identical to RGBA8, 10-bit
   and FP16 within quantisation, sRGB within 0.15 dB against the ground truth,
   upscaled output within 1.5 dB of native). Frame dumps now also decode
   RGBA16F swapchains.
-- `packaging/arch/PKGBUILD` (`bdex-framegen-git`, installs to `/usr`), and a
+- `packaging/arch/PKGBUILD` (`chuds-fg-git`, installs to `/usr`), and a
   Windows section in the README presenting both Windows products.
 
 - **Shipped per-game profiles** (`layer/profiles.conf`, installed to
-  `share/bdex-framegen/`, next to the DLL/exe in the Windows zip), loaded
+  `share/chuds-fg/`, next to the DLL/exe in the Windows zip), loaded
   before the user's file. They only apply to named games and can never enable
   or pause the layer; a `[*]` section in them is ignored. First entry: Kenshi
   in interpolation (extrapolation artefacts reported on it). The anti-cheat
@@ -2724,7 +2724,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   the config file every ~0.5 s and reload the settings that can change on the
   fly (flow/synthesis knobs, scene-cut thresholds, `fps_limit`, `target_fps`,
   sharpness between non-zero values) plus the new `paused` key, which
-  presents only the real frames. `bdex-framegen --toggle` flips `paused` in
+  presents only the real frames. `chuds-fg --toggle` flips `paused` in
   the `[*]` section: bound to a desktop shortcut (e.g. a Hyprland `bind`), it
   is the Linux counterpart of the capture app's hotkey. Measured on the demo:
   x2 → x1 within 0.6 s of the toggle, and back. Settings that size resources
@@ -2742,9 +2742,9 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   panel exposes it, together with `zero_bias_contrast`, `pixel_vectors`,
   `subpixel` and `extrapolate_splat`.
 
-- `bdex_offline` + `tools/eval_sequence.py`: offline quality evaluation on
+- `chuds_fg_offline` + `tools/eval_sequence.py`: offline quality evaluation on
   any recorded frame sequence (a game dumped through the layer with
-  `BDEX_FG_MULTIPLIER=1`). The unchanged engine runs headless (no window, no
+  `CHUDS_FG_MULTIPLIER=1`). The unchanged engine runs headless (no window, no
   compositor-dependent size); every `multiplier`-th frame is an input, the
   others are the ground truth. Reports whole-frame / moving-region /
   moving-edge PSNR next to frame repetition and cross-fade baselines, and
@@ -2832,7 +2832,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   per-swapchain `pNext` arrays for each forwarded present; a two-swapchain
   unit test covers IDs, modes, regions, fences and device masks.
 - The quality runner ignores the user's config file while preserving explicit
-  `BDEX_FG_*` overrides. Reports show how many generated frames aligned with
+  `CHUDS_FG_*` overrides. Reports show how many generated frames aligned with
   ground truth, and runs with too few comparisons fail instead of publishing
   a misleading PSNR mean.
 
@@ -2877,7 +2877,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   digit, or `F1`–`F24`). Ctrl+Alt+Q still quits. A busy combo is a warning,
   not a failure.
 
-- **Windows capture (mode 2): per-game profiles.** `bdex_capture` now applies
+- **Windows capture (mode 2): per-game profiles.** `chuds_fg_capture` now applies
   the config file's `[game]` section for the *captured* title, not just its
   own process — a hand-written `[DarkSoulsIII]` section (or one saved from the
   launcher) overrides the globals for that game. The launcher gained a
@@ -2965,17 +2965,17 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   windows to half height. The demo now waits for the framebuffer size to
   settle before creating the swapchain and pins the window size
   (`GLFW_RESIZABLE=false`) under `--deterministic`; `run_eval.sh` pins
-  `BDEX_FG_PRESET=balanced` unless the caller sets one, so a user config file
+  `CHUDS_FG_PRESET=balanced` unless the caller sets one, so a user config file
   no longer silently changes the measured operating point.
 
 - **Windows layer** `log_file` now expands environment references before
   opening the file: `%VAR%` on Windows (via `ExpandEnvironmentStringsA`),
   `$VAR` / `${VAR}` / a leading `~` on Linux. The Windows docs recommend
-  `log_file=%TEMP%\bdex-fg.log`, which was being opened verbatim — so the
+  `log_file=%TEMP%\chuds-fg.log`, which was being opened verbatim — so the
   layer logged nowhere (and a game's stderr goes nowhere on Windows), leaving
   a first run with no diagnostics. Covered by a new `config_expand_log_file`
-  unit test on both platforms (`bdex::platformExpandPath`).
-- `bdex_capture`'s overlay no longer paints its own arrow cursor over the
+  unit test on both platforms (`chuds_fg::platformExpandPath`).
+- `chuds_fg_capture`'s overlay no longer paints its own arrow cursor over the
   game: on titles that hide the hardware cursor (PRAGMATA, Dark Souls III)
   the overlay's class cursor stayed visible on top of the game (double /
   lingering cursor). The overlay now has no class cursor and never sets a
@@ -2986,7 +2986,7 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 ### Added
 
 - **Windows capture product** (`capture/`, mode 2 of the Windows plan,
-  phases 1–2 of `docs/windows-capture.md`): `bdex_capture.exe` captures any
+  phases 1–2 of `docs/windows-capture.md`): `chuds_fg_capture.exe` captures any
   windowed game with Windows.Graphics.Capture, shares the D3D11 frames into
   Vulkan (`VK_KHR_external_memory_win32` + `VK_KHR_win32_keyed_mutex`), runs
   the layer's frame-generation engine on them (`FrameGen` and the shaders,
@@ -2995,17 +2995,17 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   layer, in a topmost overlay that follows the game window (`--list`,
   `--title`/`--pid`, `--scale`/`--fit`, `--multiplier`, `--mode`,
   `--preset`, `--filter`, `--sharpness`, `--hud`, `--gpu`, `--fifo`,
-  Ctrl+Alt+Q; the config file and `BDEX_FG_*` apply). The discrete GPU is
+  Ctrl+Alt+Q; the config file and `CHUDS_FG_*` apply). The discrete GPU is
   preferred and the D3D11 device is created on the same adapter. MSVC/x64
   only. Phases 1 (capture/interop/present) and 2 (frame generation on the
   captured frames) validated on hardware (2026-09-15: PRAGMATA, Dark Souls
   III, Skyrim SE, Fallout: New Vegas — D3D12/11/9).
-- **Windows launcher GUI** (`capture/src/launcher.{h,cpp}`): `bdex_capture.exe`
+- **Windows launcher GUI** (`capture/src/launcher.{h,cpp}`): `chuds_fg_capture.exe`
   run without arguments opens a native Win32 window (no toolkit): pick the
   game window, set the same options as the Linux control panel (generation
   on/off, ×2–×4, mode, quality preset, overlay size / fit, upscale filter,
   CAS sharpness, FIFO, fps HUD) and Démarrer persists them to the shared
-  `bdex-framegen.conf` — game sections and unknown keys preserved — and
+  `chuds-fg.conf` — game sections and unknown keys preserved — and
   starts the capture; when the capture stops the launcher reopens.
   `present_mode = fifo` in the config now also selects FIFO in capture mode.
 - **Windows CI** (`.github/workflows/windows.yml`): MSVC build of the layer
@@ -3015,8 +3015,8 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 
 - **Windows port of the Vulkan layer** (mode 1 "injection" of the two-mode
   Windows plan; see `docs/windows-port.md`). The layer builds with MSVC
-  (`VkLayer_bdex_framegen.dll`, `__declspec(dllexport)` entry points, no ELF
-  linker flags), reads its config from `%APPDATA%\bdex-framegen\bdex-framegen.conf`,
+  (`VkLayer_chuds_fg.dll`, `__declspec(dllexport)` entry points, no ELF
+  linker flags), reads its config from `%APPDATA%\chuds-fg\chuds-fg.conf`,
   matches `[game]` sections against Windows process names, and installs per-user
   via the registry with `tools/register-layer.ps1` /
   `tools/unregister-layer.ps1` (no admin; 32-bit layer under `WOW6432Node`).
@@ -3050,16 +3050,16 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
 
 ### Changed
 
-- The layer is now always loaded into Vulkan games (the `BDEX_FG=1`
+- The layer is now always loaded into Vulkan games (the `CHUDS_FG=1`
   `enable_environment` gate was removed from the manifest) and stays a pure
   pass-through until it is turned on — so frame generation can be enabled from
   the config file alone, with **no Steam launch options**. The default state is
-  now off (`enabled = false`); `BDEX_FG=1` in the environment still forces it on
+  now off (`enabled = false`); `CHUDS_FG=1` in the environment still forces it on
   for a single process and overrides the config, keeping the old per-game and
   command-line workflows working.
 - The GTK graphical launcher is now a **control panel** (Lossless-Scaling
   style): a master "enable for all Vulkan games" switch plus a per-game list you
-  add to, backed directly by `~/.config/bdex-framegen.conf` (read on start,
+  add to, backed directly by `~/.config/chuds-fg.conf` (read on start,
   written on every change, hand-written keys preserved). Open it once, turn
   frame generation on, and launch games normally through Steam.
 
@@ -3144,10 +3144,10 @@ software is proprietary** (`LICENSE`; up to 0.5.5 it was MIT).
   now covers the worker's copies.
 - Launcher options `-x/--extrapolate`, `-P/--preset` and `--gl` (OpenGL
   games through Zink).
-- Graphical launcher `bdex-framegen-gui` (GTK 4 / libadwaita): pick a game and
+- Graphical launcher `chuds-fg-gui` (GTK 4 / libadwaita): pick a game and
   set every option with switches and dropdowns, then launch it, copy the Steam
   launch options, or save a per-game profile. Installed with a desktop entry;
-  also reachable as `bdex-framegen --gui`.
+  also reachable as `chuds-fg --gui`.
 
 ### Changed
 
@@ -3174,7 +3174,7 @@ First release.
 
 ### Added
 
-- Implicit Vulkan layer `VK_LAYER_BDEX_framegen`, enabled with `BDEX_FG=1`,
+- Implicit Vulkan layer `VK_LAYER_CHUDS_fg`, enabled with `CHUDS_FG=1`,
   which virtualises the game's swapchain and presents intermediate frames
   (x2, x3 or x4 multiplier).
 - GPU motion estimation: luma pyramid (R16F when the driver supports it),
@@ -3194,18 +3194,18 @@ First release.
   present fences and present mode switches, and of
   `vkReleaseSwapchainImagesEXT`; handling of `oldSwapchain` (the old
   swapchain is retired before being replaced).
-- Configuration through `BDEX_FG_*` variables and the
-  `~/.config/bdex-framegen.conf` file with per-game sections (`[Game.exe]`).
+- Configuration through `CHUDS_FG_*` variables and the
+  `~/.config/chuds-fg.conf` file with per-game sections (`[Game.exe]`).
 - `flow`, `split` and `passthrough` debug modes, periodic statistics,
   per-stage GPU profiling (`PROFILE`), export of the presented frames
   (`DUMP`).
-- GLFW demo application (`bdex_demo`) with a procedural scene, frame counter,
+- GLFW demo application (`chuds_fg_demo`) with a procedural scene, frame counter,
   deterministic mode, adjustable scene cuts and speed.
 - Unit tests (configuration, formats), end-to-end test (doubled output frame
   rate) and quality evaluation tool (`tools/run_eval.sh`, PSNR against a
   60 fps reference).
 - `tools/install.sh` / `tools/uninstall.sh` scripts (64-bit and 32-bit),
-  `bdex-framegen` launcher with a `--check` option.
+  `chuds-fg` launcher with a `--check` option.
 
 ### Fixed
 
@@ -3216,15 +3216,15 @@ First release.
 - Swapchain image layout transition ordered after the acquire semaphore's
   wait stage (synchronization validation).
 
-[Unreleased]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.5.6...HEAD
-[0.5.6]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.5.5...v0.5.6
-[0.5.5]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.5.4...v0.5.5
-[0.5.4]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.5.3...v0.5.4
-[0.5.3]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.5.2...v0.5.3
-[0.5.2]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.5.1...v0.5.2
-[0.5.1]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.5.0...v0.5.1
-[0.5.0]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/Bdexez/bdex_frame_gen/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/Bdexez/bdex_frame_gen/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Bdexez/Chuds_fg/compare/v0.5.6...HEAD
+[0.5.6]: https://github.com/Bdexez/Chuds_fg/compare/v0.5.5...v0.5.6
+[0.5.5]: https://github.com/Bdexez/Chuds_fg/compare/v0.5.4...v0.5.5
+[0.5.4]: https://github.com/Bdexez/Chuds_fg/compare/v0.5.3...v0.5.4
+[0.5.3]: https://github.com/Bdexez/Chuds_fg/compare/v0.5.2...v0.5.3
+[0.5.2]: https://github.com/Bdexez/Chuds_fg/compare/v0.5.1...v0.5.2
+[0.5.1]: https://github.com/Bdexez/Chuds_fg/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/Bdexez/Chuds_fg/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/Bdexez/Chuds_fg/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/Bdexez/Chuds_fg/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/Bdexez/Chuds_fg/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Bdexez/Chuds_fg/releases/tag/v0.1.0

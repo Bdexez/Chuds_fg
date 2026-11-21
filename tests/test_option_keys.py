@@ -2,7 +2,7 @@
 """Configuration keys agree across the project.
 
 The option registry (layer/src/config.cpp) is the source of truth; the
-engine lists it with `bdex_offline --list-options`. Every key the UIs'
+engine lists it with `chuds_fg_offline --list-options`. Every key the UIs'
 option description (layer/options_ui.conf), the GTK panel, the Windows
 launcher or the README option table names must be one the engine
 understands (a typo there silently does nothing), and every option the
@@ -18,11 +18,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 # Keys read by other programs than the engine (the capture app's hotkey,
 # the environment switch).
-EXTERNAL = {"hotkey", "bdex_fg"}
+EXTERNAL = {"hotkey", "chuds_fg"}
 
 
 def main():
-    binary = Path(sys.argv[1]) / "tools" / "offline" / "bdex_offline"
+    binary = Path(sys.argv[1]) / "tools" / "offline" / "chuds_fg_offline"
     run = lambda *a: set(subprocess.run([str(binary), "--list-options", *a], check=True,
                                         capture_output=True, text=True).stdout.split())
     known, canonical = run() | EXTERNAL, run("--canonical")
@@ -32,7 +32,7 @@ def main():
     # the UIs' code: the GTK panel's main page, the launcher's left column.
     conf = (ROOT / "layer" / "options_ui.conf").read_text()
     conf_keys = set(re.findall(r"^(?:switch|spin|choice|text)\s*\|\s*([a-z_0-9]+)", conf, re.M))
-    gui = (ROOT / "tools" / "bdex-framegen-gui").read_text()
+    gui = (ROOT / "tools" / "chuds-fg-gui").read_text()
     block = gui[gui.index("GLOBAL_KEYS"):gui.index("+ tuple", gui.index("GLOBAL_KEYS"))]
     gui_keys = set(re.findall(r'"([a-z_0-9]+)"', block)) | conf_keys
     src = (ROOT / "capture" / "src" / "launcher.cpp").read_text()
@@ -42,7 +42,7 @@ def main():
     readme = {k.lower() for row in rows for k in re.findall(r"`([A-Z_0-9]+)`", row)}
 
     failed = False
-    for name, keys in (("layer/options_ui.conf", conf_keys), ("tools/bdex-framegen-gui", gui_keys),
+    for name, keys in (("layer/options_ui.conf", conf_keys), ("tools/chuds-fg-gui", gui_keys),
                        ("capture/src/launcher.cpp", launcher),
                        ("README.md option table", readme)):
         unknown = sorted(keys - known)

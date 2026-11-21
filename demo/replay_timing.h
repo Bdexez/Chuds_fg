@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace bdex::replay {
+namespace chuds_fg::replay {
 
 inline std::vector<double> readTimes(std::istream& in, const std::vector<std::string>& names) {
     auto fail = [] { throw std::runtime_error("--replay-timing: invalid or incomplete timestamps.csv"); };
@@ -70,4 +70,4 @@ struct Clock {
     }
 };
 
-} // namespace bdex::replay
+} // namespace chuds_fg::replay

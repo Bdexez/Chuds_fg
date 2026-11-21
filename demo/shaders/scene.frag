@@ -3,7 +3,7 @@
 // different speeds, a rotating textured square (pure rotation), a static
 // "HUD" and a frame counter so that generated frames are easy to tell apart
 // from real ones. gl_FragDepth: each object's distance as a game's depth
-// buffer holds it (reversed Z, near / z; used with bdex_demo --depth, ignored
+// buffer holds it (reversed Z, near / z; used with chuds_fg_demo --depth, ignored
 // without a depth attachment): backdrop 100, bar 20, circles 15 to 11, box
 // 8, rotating square 6; the HUD and the counter have none.
 layout(location = 0) in vec2 vUV;

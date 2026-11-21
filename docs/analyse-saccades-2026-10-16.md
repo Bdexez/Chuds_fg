@@ -9,7 +9,7 @@ sans nouvelle demande de permission.
 
 ## Sources examinées
 
-Sept dossiers dans `~/.cache/bdex-framegen/recordings`, chacun de 150 images
+Sept dossiers dans `~/.cache/chuds-fg/recordings`, chacun de 150 images
 853×480 (1 050 images au total). Échantillons visuels aux indices 0, 45, 90,
 135 dans chaque séquence, puis différences entre toutes les images voisines.
 
@@ -109,7 +109,7 @@ réelle 32,6 → 33,9 ms ; rattrapages sans génération dans les stats stables
 retours d'affichage de gamescope varient (hors plan après : 11–51 %).
 Ce banc ne mesure pas directement les trajectoires dans les images.
 Logs et script de reproduction temporaires :
-`/tmp/bdex-refresh-cap-bench/`, `/tmp/bdex_refresh_cap_bench.py`.
+`/tmp/chuds-fg-refresh-cap-bench/`, `/tmp/chuds_fg_refresh_cap_bench.py`.
 
 ## Correction 4 : résorber un petit retard sans jeter toute la paire
 
@@ -146,10 +146,10 @@ Les traces confirment que les nouveaux rattrapages gardent trois sorties,
 sans attente du worker. Le banc ne démontre pas de gain global d'i/s ni de
 répétitions ; la correction porte sur le saut volontaire de contenu lors
 du rattrapage. Le ressenti sur le jeu reste à mesurer. Opt-out à chaud :
-`catchup_smooth=0`. Logs temporaires : `/tmp/bdex-catchup-bench/`,
-trace de diagnostic `/tmp/bdex-catchup-trace/`, script
-`/tmp/bdex_catchup_bench.py` ; référence avant correction
-`/tmp/bdex-before-catchup/`.
+`catchup_smooth=0`. Logs temporaires : `/tmp/chuds-fg-catchup-bench/`,
+trace de diagnostic `/tmp/chuds-fg-catchup-trace/`, script
+`/tmp/chuds_fg_catchup_bench.py` ; référence avant correction
+`/tmp/chuds-fg-before-catchup/`.
 
 Vérification du chemin proche de celui du joueur : trois A/B de plus en
 **X11/Xwayland sans couche WSI**. Le premier lancement retirait
@@ -169,8 +169,8 @@ non mesuré, grille virtuelle fournie par le contexte du panneau.
 
 Ce résultat confirme la conservation des intermédiaires lors des nouveaux
 rattrapages sur ce chemin aussi. Il ne prouve pas la disparition de toutes
-les saccades en jeu. Logs/script : `/tmp/bdex-catchup-x11-bench/`,
-`/tmp/bdex_catchup_x11_bench.py`.
+les saccades en jeu. Logs/script : `/tmp/chuds-fg-catchup-x11-bench/`,
+`/tmp/chuds_fg_catchup_x11_bench.py`.
 
 Les lancements du banc gamescope se terminent par un signal au démontage,
 après `Primary child shut down!`, avant comme après la correction (comportement
@@ -222,9 +222,9 @@ par les intervalles bruts seuls a été écarté : au plafond ×5, l'alternance
 court/long perd des sorties dans un modèle de comptage. La confirmation
 sur deux intervalles conserve le lissage dans ce cas.
 
-Référence avant : `/tmp/bdex-before-interval-response/` ; reproduction :
-`/tmp/bdex_interval_response_bench.py` ; journaux et mesures structurées :
-`/tmp/bdex-timed-transition-bench/summary.json`. Comme les autres essais,
+Référence avant : `/tmp/chuds-fg-before-interval-response/` ; reproduction :
+`/tmp/chuds_fg_interval_response_bench.py` ; journaux et mesures structurées :
+`/tmp/chuds-fg-timed-transition-bench/summary.json`. Comme les autres essais,
 gamescope termine par un signal après fermeture du processus enfant ;
 les mesures et les comparaisons concernent uniquement sa partie active.
 
@@ -252,9 +252,9 @@ plus courbes ne permettent pas de distinguer accélération réelle et temps
 d'image variable : les captures originales n'ont pas d'horodatage.
 
 Inspection visuelle de la paire 95→96 et ses trois intermédiaires :
-`/tmp/bdex-cp-pair96.png`. Script de suivi : `/tmp/bdex_track_motion.py`
-(OpenCV installé uniquement dans `/tmp/bdex-motion-deps`), résultats
-`/tmp/bdex-cp-motion.json`. Les 72 premières sorties comparées après la
+`/tmp/chuds-fg-cp-pair96.png`. Script de suivi : `/tmp/chuds_fg_track_motion.py`
+(OpenCV installé uniquement dans `/tmp/chuds-fg-motion-deps`), résultats
+`/tmp/chuds-fg-cp-motion.json`. Les 72 premières sorties comparées après la
 modification du shader, à cadence constante, sont identiques octet par
 octet à la référence précédente.
 
@@ -312,10 +312,10 @@ globales de PSNR entre −0,011 et +0,009 dB ; le panoramique est inchangé.
 La première formule sans garde dégradait ce cas de 0,25 dB : elle a été
 remplacée. Les gains de +1,34/+4,15 dB du premier essai ne sont pas les
 chiffres de la comparaison finale : durée et filtre de cadence différaient.
-Mesures finales : `/tmp/bdex-accel-timing-eval/aligned-final-results.log`,
+Mesures finales : `/tmp/chuds-fg-accel-timing-eval/aligned-final-results.log`,
 fichiers `*-aligned-before.json` / `*-aligned-after.json` ; reproduction :
-`/tmp/bdex_accel_timing_final_eval.py`. Référence compilée dans
-`/tmp/bdex-accel-final-baseline/build`.
+`/tmp/chuds_fg_accel_timing_final_eval.py`. Référence compilée dans
+`/tmp/chuds-fg-accel-final-baseline/build`.
 
 ### Coût et cadence
 
@@ -338,9 +338,9 @@ surcoût GPU net. La version finale garde le chemin historique à ±0,5 %
 et les cinq nouveaux A/B ci-dessus sont comparables. Ce banc reste sensible
 à la phase du compositeur et aux réveils du retour d'affichage ; cela ne
 prouve pas une suppression des saccades en jeu. Journaux et `summary.json` :
-`/tmp/bdex-accel-timing-cadence-deadband/`, script
-`/tmp/bdex_accel_timing_deadband_bench.py`. Première série conservée dans
-`/tmp/bdex-accel-timing-cadence-bench/`. Même signal connu au démontage de
+`/tmp/chuds-fg-accel-timing-cadence-deadband/`, script
+`/tmp/chuds_fg_accel_timing_deadband_bench.py`. Première série conservée dans
+`/tmp/chuds-fg-accel-timing-cadence-bench/`. Même signal connu au démontage de
 gamescope, après fermeture de l'enfant ; mesures sur la partie active.
 
 ### Défaut restant à ce stade
@@ -380,8 +380,8 @@ Les scènes 720p de rotation avec personnage/parallaxe/flou et coups de
 souris restent proches : −0,015 à 0 dB global, arêtes jusqu'à −0,107 dB,
 SSIM +0,0002 à +0,0008. L'interpolation est identique dans les cas testés.
 Ces mesures qualifient des artefacts d'extrapolation, pas la cadence
-d'affichage du jeu. Résultats `/tmp/bdex-reveal-accel-pan.log` et
-`/tmp/bdex-reveal-accel-games.log`, JSON dans leurs dossiers associés.
+d'affichage du jeu. Résultats `/tmp/chuds-fg-reveal-accel-pan.log` et
+`/tmp/chuds-fg-reveal-accel-games.log`, JSON dans leurs dossiers associés.
 
 Deux prototypes de validation du flux précédent (copie du flux avant puis
 copie du coût de matching) n'ont presque rien changé au panoramique ; ils
@@ -397,8 +397,8 @@ sur lavapipe dans Ubuntu 24.04. Intégration de la couche et capture Linux
 (quatre modes) réussies, accélération/remplissage/horloge activés, sous
 gamescope headless sans WSI. Son signal 139 connu survient au démontage,
 après la réussite des tests et la fermeture de l'enfant. Journaux :
-`/tmp/bdex-reveal-accel-perf/`, `/tmp/bdex-reveal-accel-software.log`,
-`/tmp/bdex-reveal-accel-online.log`.
+`/tmp/chuds-fg-reveal-accel-perf/`, `/tmp/chuds-fg-reveal-accel-software.log`,
+`/tmp/chuds-fg-reveal-accel-online.log`.
 
 Correction installée localement le 17/10 en Release 64/32 bits ; couches
 et capture identiques aux builds. Réglages préservés (SHA256 inchangé).
@@ -461,10 +461,10 @@ voie précoce dans une paire seulement ; insuffisant pour conclure sur la
 cadence globale. Le premier stimulus par changement de config est écarté
 (heartbeat fautif et reconstruction de l'étage de sortie).
 
-Journaux, méthodes et résumé : `/tmp/bdex-plan-slip-delays/`, scripts
-`/tmp/bdex_plan_slip_controlled_build.py` et
-`/tmp/bdex_plan_slip_delay_bench.py`. Bibliothèques de test dans
-`/tmp/bdex-plan-slip-controlled/` ; elles ne sont pas installées.
+Journaux, méthodes et résumé : `/tmp/chuds-fg-plan-slip-delays/`, scripts
+`/tmp/chuds_fg_plan_slip_controlled_build.py` et
+`/tmp/chuds_fg_plan_slip_delay_bench.py`. Bibliothèques de test dans
+`/tmp/chuds-fg-plan-slip-controlled/` ; elles ne sont pas installées.
 
 Vérifications finales : 94 tests unitaires, clés des options et logique du
 panneau réussis ; intégration et réglages à chaud réussis sous gamescope
@@ -489,7 +489,7 @@ Les pistes ci-dessous ne sont pas lancées.
    métadonnées invalides et ancien format) réussis. Les anciens fichiers
    sans horloge ne permettent pas de reconstituer leurs temps exacts.
    Le rejeu de cette horloge est maintenant implémenté :
-   `bdex_demo --replay SEQ --replay-timing --replay-log FILE`. Il préserve
+   `chuds_fg_demo --replay SEQ --replay-timing --replay-log FILE`. Il préserve
    les écarts d'une sélection, termine à la dernière source, refuse une
    horloge manquante/incohérente et journalise les temps visés/réels.
    Les retards >0,5 ms décalent la suite sans rafale de rattrapage, et sont
@@ -506,5 +506,5 @@ Les pistes ci-dessous ne sont pas lancées.
    d'une vraie paire à 30 i/s ; elle ne reproduit pas les essais du joueur.
 
 Les enregistrements originaux sont conservés. Copie temporaire de la couche
-64 bits avant correction : `/tmp/bdex-before-phase/` ; montage d'observation :
-`/tmp/bdex-recordings-20261016.png`.
+64 bits avant correction : `/tmp/chuds-fg-before-phase/` ; montage d'observation :
+`/tmp/chuds-fg-recordings-20261016.png`.

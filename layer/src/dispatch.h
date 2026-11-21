@@ -3,9 +3,9 @@
 #include "vk_compat.h"
 #include <vulkan/vk_layer.h>
 
-namespace bdex {
+namespace chuds_fg {
 
-#define BDEX_INSTANCE_FUNCS(X)                       \
+#define CHUDS_FG_INSTANCE_FUNCS(X)                       \
     X(GetInstanceProcAddr)                           \
     X(DestroyInstance)                               \
     X(EnumerateDeviceExtensionProperties)            \
@@ -23,7 +23,7 @@ namespace bdex {
     X(GetPhysicalDeviceSurfaceCapabilities2KHR)      \
     X(GetPhysicalDeviceSurfacePresentModesKHR)
 
-#define BDEX_DEVICE_FUNCS(X)          \
+#define CHUDS_FG_DEVICE_FUNCS(X)          \
     X(GetDeviceProcAddr)              \
     X(DestroyDevice)                  \
     X(GetDeviceQueue)                 \
@@ -131,62 +131,62 @@ namespace bdex {
     X(GetDeviceImageSparseMemoryRequirementsKHR)
 // Newer than the oldest Vulkan headers the layer builds with (1.3.204).
 #ifdef VK_NV_low_latency2
-#define BDEX_DEVICE_FUNCS_LOW_LATENCY2(X) \
+#define CHUDS_FG_DEVICE_FUNCS_LOW_LATENCY2(X) \
     X(SetLatencySleepModeNV)             \
     X(LatencySleepNV)                    \
     X(SetLatencyMarkerNV)                \
     X(GetLatencyTimingsNV)
 #else
-#define BDEX_DEVICE_FUNCS_LOW_LATENCY2(X)
+#define CHUDS_FG_DEVICE_FUNCS_LOW_LATENCY2(X)
 #endif
 #ifdef VK_KHR_present_wait2
-#define BDEX_DEVICE_FUNCS_PRESENT_WAIT2(X) X(WaitForPresent2KHR)
+#define CHUDS_FG_DEVICE_FUNCS_PRESENT_WAIT2(X) X(WaitForPresent2KHR)
 #else
-#define BDEX_DEVICE_FUNCS_PRESENT_WAIT2(X)
+#define CHUDS_FG_DEVICE_FUNCS_PRESENT_WAIT2(X)
 #endif
 #ifdef VK_AMD_anti_lag
-#define BDEX_DEVICE_FUNCS_ANTI_LAG(X) X(AntiLagUpdateAMD)
+#define CHUDS_FG_DEVICE_FUNCS_ANTI_LAG(X) X(AntiLagUpdateAMD)
 #else
-#define BDEX_DEVICE_FUNCS_ANTI_LAG(X)
+#define CHUDS_FG_DEVICE_FUNCS_ANTI_LAG(X)
 #endif
 #ifdef VK_EXT_present_timing
-#define BDEX_DEVICE_FUNCS_PRESENT_TIMING(X)    \
+#define CHUDS_FG_DEVICE_FUNCS_PRESENT_TIMING(X)    \
     X(SetSwapchainPresentTimingQueueSizeEXT)   \
     X(GetSwapchainTimingPropertiesEXT)         \
     X(GetSwapchainTimeDomainPropertiesEXT)     \
     X(GetPastPresentationTimingEXT)
 #else
-#define BDEX_DEVICE_FUNCS_PRESENT_TIMING(X)
+#define CHUDS_FG_DEVICE_FUNCS_PRESENT_TIMING(X)
 #endif
 
 struct InstanceDispatch {
 #define X(name) PFN_vk##name name = nullptr;
-    BDEX_INSTANCE_FUNCS(X)
+    CHUDS_FG_INSTANCE_FUNCS(X)
 #undef X
     void load(VkInstance instance, PFN_vkGetInstanceProcAddr gpa) {
         GetInstanceProcAddr = gpa;
 #define X(name) name = reinterpret_cast<PFN_vk##name>(gpa(instance, "vk" #name));
-        BDEX_INSTANCE_FUNCS(X)
+        CHUDS_FG_INSTANCE_FUNCS(X)
 #undef X
     }
 };
 
 struct DeviceDispatch {
 #define X(name) PFN_vk##name name = nullptr;
-    BDEX_DEVICE_FUNCS(X)
-    BDEX_DEVICE_FUNCS_LOW_LATENCY2(X)
-    BDEX_DEVICE_FUNCS_PRESENT_WAIT2(X)
-    BDEX_DEVICE_FUNCS_ANTI_LAG(X)
-    BDEX_DEVICE_FUNCS_PRESENT_TIMING(X)
+    CHUDS_FG_DEVICE_FUNCS(X)
+    CHUDS_FG_DEVICE_FUNCS_LOW_LATENCY2(X)
+    CHUDS_FG_DEVICE_FUNCS_PRESENT_WAIT2(X)
+    CHUDS_FG_DEVICE_FUNCS_ANTI_LAG(X)
+    CHUDS_FG_DEVICE_FUNCS_PRESENT_TIMING(X)
 #undef X
     void load(VkDevice device, PFN_vkGetDeviceProcAddr gdpa) {
         GetDeviceProcAddr = gdpa;
 #define X(name) name = reinterpret_cast<PFN_vk##name>(gdpa(device, "vk" #name));
-        BDEX_DEVICE_FUNCS(X)
-        BDEX_DEVICE_FUNCS_LOW_LATENCY2(X)
-        BDEX_DEVICE_FUNCS_PRESENT_WAIT2(X)
-        BDEX_DEVICE_FUNCS_ANTI_LAG(X)
-        BDEX_DEVICE_FUNCS_PRESENT_TIMING(X)
+        CHUDS_FG_DEVICE_FUNCS(X)
+        CHUDS_FG_DEVICE_FUNCS_LOW_LATENCY2(X)
+        CHUDS_FG_DEVICE_FUNCS_PRESENT_WAIT2(X)
+        CHUDS_FG_DEVICE_FUNCS_ANTI_LAG(X)
+        CHUDS_FG_DEVICE_FUNCS_PRESENT_TIMING(X)
 #undef X
     }
 };
@@ -201,4 +201,4 @@ inline void* dispatchKey(const void* handle) { return *static_cast<void* const*>
 // parent device's.
 inline void adoptDispatch(void* handle, const void* device) { *static_cast<void**>(handle) = dispatchKey(device); }
 
-} // namespace bdex
+} // namespace chuds_fg

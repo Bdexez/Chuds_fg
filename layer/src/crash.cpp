@@ -19,7 +19,7 @@
 #endif
 #endif
 
-namespace bdex {
+namespace chuds_fg {
 
 #if defined(__linux__)
 namespace {
@@ -145,7 +145,7 @@ void handler(int sig, siginfo_t* info, void* uctx) {
         memcpy(path + len, ".txt", 5);
         const int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
         if (fd >= 0) {
-            put(fd, "bdex-framegen crash report\n");
+            put(fd, "chuds-fg crash report\n");
             put(fd, "signal: ");
             put(fd, signalName(sig));
             put(fd, " (");
@@ -237,4 +237,4 @@ std::string crashLogPath() { return {}; }
 
 #endif
 
-} // namespace bdex
+} // namespace chuds_fg

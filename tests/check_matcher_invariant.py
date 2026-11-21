@@ -30,34 +30,34 @@ def layer_env(build, work):
 
 def render(build, dump):
     # Compare the historical default path, regardless of the caller's game
-    # profile or experimental BDEX_FG_* settings.
+    # profile or experimental CHUDS_FG_* settings.
     env = {k: v for k, v in os.environ.items()
-           if k != "BDEX_FG" and not k.startswith("BDEX_FG_") and k != "VK_ADD_IMPLICIT_LAYER_PATH"}
+           if k != "CHUDS_FG" and not k.startswith("CHUDS_FG_") and k != "VK_ADD_IMPLICIT_LAYER_PATH"}
     env.update({
         **layer_env(build, Path(dump).parent / f"xdg-{build.resolve().as_posix().replace('/', '_')}"),
-        "BDEX_FG_CONFIG": "/dev/null",
-        "BDEX_FG": "1",
-        "BDEX_FG_PRESET": "balanced",
-        "BDEX_FG_MULTIPLIER": "2",
-        "BDEX_FG_GRAD_WEIGHT": "0",
+        "CHUDS_FG_CONFIG": "/dev/null",
+        "CHUDS_FG": "1",
+        "CHUDS_FG_PRESET": "balanced",
+        "CHUDS_FG_MULTIPLIER": "2",
+        "CHUDS_FG_GRAD_WEIGHT": "0",
         # The default since 0.4, absent from the baseline: off for the historical path.
-        "BDEX_FG_ZERO_BIAS_CONTRAST": "0",
+        "CHUDS_FG_ZERO_BIAS_CONTRAST": "0",
         # Likewise (0.6): the histogram gate of the scene-cut fallback, the
         # capped zero bias.
-        "BDEX_FG_SCENE_CUT_HIST": "0",
-        "BDEX_FG_ZERO_BIAS_CAP": "0",
-        "BDEX_FG_HUD": "0",
+        "CHUDS_FG_SCENE_CUT_HIST": "0",
+        "CHUDS_FG_ZERO_BIAS_CAP": "0",
+        "CHUDS_FG_HUD": "0",
         # What a discrete GPU turns on by itself with any preset but
         # performance (Config::autoConfigure): off, as on the CI's lavapipe.
-        "BDEX_FG_PIXEL_VECTORS": "0", "BDEX_FG_INTERP_SPLAT": "0", "BDEX_FG_ROT_WEIGHT": "0",
-        "BDEX_FG_TEMPORAL_PREDICTION": "0", "BDEX_FG_ZERO_BIAS": "0.002", "BDEX_FG_SCENE_CUT_LOCAL": "0",
-        "BDEX_FG_EXTRAPOLATE_SPLAT": "0", "BDEX_FG_REVEAL_FILL": "0", "BDEX_FG_GLOBAL_MOTION": "0", "BDEX_FG_HUD_MASK": "0", "BDEX_FG_STATIC_SOFT": "0", "BDEX_FG_INTERP_ACCEL": "0", "BDEX_FG_FALSE_DETAIL": "0", "BDEX_FG_BORDER_PREDICT": "0", "BDEX_FG_BORDER_FILL": "0", "BDEX_FG_STILL_OCCLUDER": "0", "BDEX_FG_HUD_AVOID": "0", "BDEX_FG_MOSAIC_BLUR": "0", "BDEX_FG_SEARCH_FINE": "2", "BDEX_FG_SMOOTHNESS": "0.004",
-        "BDEX_FG_LOG": "0",
-        "BDEX_FG_STATS": "0",
-        "BDEX_FG_DUMP": str(dump),
-        "BDEX_FG_DUMP_FRAMES": "24",
+        "CHUDS_FG_PIXEL_VECTORS": "0", "CHUDS_FG_INTERP_SPLAT": "0", "CHUDS_FG_ROT_WEIGHT": "0",
+        "CHUDS_FG_TEMPORAL_PREDICTION": "0", "CHUDS_FG_ZERO_BIAS": "0.002", "CHUDS_FG_SCENE_CUT_LOCAL": "0",
+        "CHUDS_FG_EXTRAPOLATE_SPLAT": "0", "CHUDS_FG_REVEAL_FILL": "0", "CHUDS_FG_GLOBAL_MOTION": "0", "CHUDS_FG_HUD_MASK": "0", "CHUDS_FG_STATIC_SOFT": "0", "CHUDS_FG_INTERP_ACCEL": "0", "CHUDS_FG_FALSE_DETAIL": "0", "CHUDS_FG_BORDER_PREDICT": "0", "CHUDS_FG_BORDER_FILL": "0", "CHUDS_FG_STILL_OCCLUDER": "0", "CHUDS_FG_HUD_AVOID": "0", "CHUDS_FG_MOSAIC_BLUR": "0", "CHUDS_FG_SEARCH_FINE": "2", "CHUDS_FG_SMOOTHNESS": "0.004",
+        "CHUDS_FG_LOG": "0",
+        "CHUDS_FG_STATS": "0",
+        "CHUDS_FG_DUMP": str(dump),
+        "CHUDS_FG_DUMP_FRAMES": "24",
     })
-    return subprocess.Popen([str(build / "demo" / "bdex_demo"), "--fps", "30",
+    return subprocess.Popen([str(build / "demo" / "chuds_fg_demo"), "--fps", "30",
                              "--frames", "12", "--size", "800x600", "--deterministic"],
                             env=env, stdout=subprocess.DEVNULL)
 
@@ -76,8 +76,8 @@ def main():
         print(__doc__)
         return 2
     current, baseline = (Path(p).resolve() for p in sys.argv[1:])
-    keep = os.environ.get("BDEX_INVARIANT_KEEP")
-    context = nullcontext(keep) if keep else tempfile.TemporaryDirectory(prefix="bdex-invariant-")
+    keep = os.environ.get("CHUDS_FG_INVARIANT_KEEP")
+    context = nullcontext(keep) if keep else tempfile.TemporaryDirectory(prefix="chuds-fg-invariant-")
     with context as tmp:
         root = Path(tmp)
         if keep:
@@ -90,7 +90,7 @@ def main():
                 (root / name).mkdir()
                 process = render(build, root / name)
                 processes.append(process)
-                if os.environ.get("BDEX_INVARIANT_SEQUENTIAL") == "1":
+                if os.environ.get("CHUDS_FG_INVARIANT_SEQUENTIAL") == "1":
                     if process.wait(timeout=120) != 0:
                         raise RuntimeError(f"{name} demo exited with status {process.returncode}")
             for process in processes:

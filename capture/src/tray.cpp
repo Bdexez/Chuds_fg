@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cwchar>
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 constexpr UINT kCallback = WM_APP + 1;
@@ -16,7 +16,7 @@ enum { kCmdToggle = 100, kCmdDetails, kCmdQuit, kCmdRecord };
 
 bool Tray::create() {
     const HINSTANCE inst = GetModuleHandleW(nullptr);
-    const wchar_t* cls = L"bdex_capture_tray";
+    const wchar_t* cls = L"chuds_fg_capture_tray";
     WNDCLASSEXW wc{sizeof wc};
     if (!GetClassInfoExW(inst, cls, &wc)) {
         wc.lpfnWndProc = proc;
@@ -26,7 +26,7 @@ bool Tray::create() {
     }
     // A hidden top-level window (message-only windows do not get the
     // TaskbarCreated broadcast, sent when Explorer restarts).
-    hwnd_ = CreateWindowExW(0, cls, L"bdex framegen", 0, 0, 0, 0, 0, nullptr, nullptr, inst, this);
+    hwnd_ = CreateWindowExW(0, cls, L"chuds-fg", 0, 0, 0, 0, 0, nullptr, nullptr, inst, this);
     if (!hwnd_) return false;
     taskbarCreated_ = RegisterWindowMessageW(L"TaskbarCreated");
     add();
@@ -83,7 +83,7 @@ void Tray::showMenu() {
     if (cmd == kCmdQuit) PostThreadMessageW(GetCurrentThreadId(), kMsgQuit, 0, 0);
     if (cmd == kCmdRecord) PostThreadMessageW(GetCurrentThreadId(), kMsgRecord, 0, 0);
     if (cmd == kCmdDetails)
-        MessageBoxW(nullptr, details_.empty() ? L"(pas encore de mesure)" : details_.c_str(), L"bdex framegen — en cours",
+        MessageBoxW(nullptr, details_.empty() ? L"(pas encore de mesure)" : details_.c_str(), L"chuds-fg — en cours",
                     MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
 }
 
@@ -105,4 +105,4 @@ LRESULT CALLBACK Tray::proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcW(hwnd, msg, wp, lp);
 }
 
-} // namespace bdex
+} // namespace chuds_fg

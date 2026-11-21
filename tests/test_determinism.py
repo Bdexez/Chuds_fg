@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every engine option gives the same frames twice.
 
-Runs bdex_offline twice per setting on a small synthetic sequence (the
+Runs chuds_fg_offline twice per setting on a small synthetic sequence (the
 corpus's `occlude`: fast and slow motion, occlusions) and compares the
 generated frames byte for byte. A shader reading outside what it wrote, a
 missing barrier or a race between invocations shows as a run-to-run
@@ -22,7 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # Each setting, the modes it acts in (i interpolate, e extrapolate, h hybrid),
-# extra bdex_offline arguments.
+# extra chuds_fg_offline arguments.
 SETTINGS = [
     # The game's depth (--depth: a made-up one for `occlude`, a few levels of
     # its luma — wrong, but every decision of the depth test is taken).
@@ -78,7 +78,7 @@ def frames_hash(out):
 
 def main():
     build = Path(sys.argv[1])
-    binary = build / "tools" / "offline" / "bdex_offline"
+    binary = build / "tools" / "offline" / "chuds_fg_offline"
     keys = subprocess.run([str(binary), "--list-options", "--canonical"], check=True, capture_output=True,
                           text=True).stdout.split()
     covered = {kv.split("=")[0] for s in SETTINGS for kv in s[0].split(",")}
@@ -105,12 +105,12 @@ def main():
         for setting in SETTINGS:
             spec, modes = setting[0], setting[1]
             extra = [a.replace("{seq}", str(seq)) for a in (setting[2] if len(setting) > 2 else [])]
-            env = dict(os.environ, BDEX_FG_CONFIG="/dev/null", BDEX_FG_PRESET="balanced", BDEX_FG_CACHE_DIR="")
+            env = dict(os.environ, CHUDS_FG_CONFIG="/dev/null", CHUDS_FG_PRESET="balanced", CHUDS_FG_CACHE_DIR="")
             for kv in spec.split(","):
                 k, v = kv.split("=")
-                env["BDEX_FG_" + k.upper()] = v
+                env["CHUDS_FG_" + k.upper()] = v
             for mode in modes:
-                env["BDEX_FG_MODE"] = {"i": "interpolate", "e": "extrapolate", "h": "hybrid"}[mode]
+                env["CHUDS_FG_MODE"] = {"i": "interpolate", "e": "extrapolate", "h": "hybrid"}[mode]
                 hashes = []
                 for run in (0, 1):
                     out = tmp / f"run{run}"
@@ -120,15 +120,15 @@ def main():
                         print("no Vulkan device, skipping")
                         return 77
                     if r.returncode != 0:
-                        failures.append(f"{spec} [{env['BDEX_FG_MODE']}]: bdex_offline failed: {r.stderr.strip()[-200:]}")
+                        failures.append(f"{spec} [{env['CHUDS_FG_MODE']}]: chuds_fg_offline failed: {r.stderr.strip()[-200:]}")
                         break
                     hashes.append(frames_hash(out))
                 if len(hashes) == 2:
                     diff = [n for n in hashes[0] if hashes[0][n] != hashes[1].get(n)]
                     status = "ok" if not diff and hashes[0] else f"DIFFERS ({len(diff)} of {len(hashes[0])} frames)"
                     if status != "ok":
-                        failures.append(f"{spec} [{env['BDEX_FG_MODE']}]: {status}")
-                    print(f"{env['BDEX_FG_MODE']:<12} {spec[:70]:<70} {status}")
+                        failures.append(f"{spec} [{env['CHUDS_FG_MODE']}]: {status}")
+                    print(f"{env['CHUDS_FG_MODE']:<12} {spec[:70]:<70} {status}")
     if failures:
         print("not deterministic:\n  " + "\n  ".join(failures))
         return 1

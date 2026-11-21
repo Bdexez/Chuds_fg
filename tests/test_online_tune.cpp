@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstdint>
 
-using namespace bdex;
+using namespace chuds_fg;
 
 namespace {
 

@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace bdex {
+namespace chuds_fg {
 
 class Tray {
 public:
@@ -35,7 +35,7 @@ private:
     UINT taskbarCreated_ = 0;
     bool generation_ = true;
     bool recordable_ = false;
-    std::wstring tip_ = L"bdex framegen", details_;
+    std::wstring tip_ = L"chuds-fg", details_;
 };
 
-} // namespace bdex
+} // namespace chuds_fg

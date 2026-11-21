@@ -3,7 +3,7 @@
 # access menu) in a Node container — TypeScript checked, bundled by
 # @decky/rollup — tests its backend, and packs the zip Decky installs
 # ("Install from ZIP" in Decky's developer settings):
-#   bdex-framegen/{dist/index.js, main.py, plugin.json, package.json, LICENSE, README.md}
+#   chuds-fg/{dist/index.js, main.py, plugin.json, package.json, LICENSE, README.md}
 #   tools/ci/decky-check.sh [outdir]   (default: dist/)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -23,10 +23,10 @@ pnpm audit --prod --audit-level high
 pnpm exec tsc --noEmit
 pnpm build >/tmp/build.log 2>&1 || { tail -30 /tmp/build.log; exit 1; }
 test -s dist/index.js
-mkdir -p /work/pkg/bdex-framegen
-cp -r dist main.py plugin.json package.json LICENSE README.md /work/pkg/bdex-framegen/
+mkdir -p /work/pkg/chuds-fg
+cp -r dist main.py plugin.json package.json LICENSE README.md /work/pkg/chuds-fg/
 '
 (cd "$work/pkg" && python3 -c "
-import shutil; shutil.make_archive('bdex-framegen-decky', 'zip', '.', 'bdex-framegen')")
-cp "$work/pkg/bdex-framegen-decky.zip" "$out/"
-echo "decky plugin: $out/bdex-framegen-decky.zip ($(du -h "$out/bdex-framegen-decky.zip" | cut -f1))"
+import shutil; shutil.make_archive('chuds-fg-decky', 'zip', '.', 'chuds-fg')")
+cp "$work/pkg/chuds-fg-decky.zip" "$out/"
+echo "decky plugin: $out/chuds-fg-decky.zip ($(du -h "$out/chuds-fg-decky.zip" | cut -f1))"

@@ -4,16 +4,16 @@
 #include <string>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
-// Live status of this process for the control panel (tools/bdex-framegen-gui):
+// Live status of this process for the control panel (tools/chuds-fg-gui):
 // one small key=value file per process, <platformStatusDir()>/<pid>.status,
 // rewritten atomically at most once a second (at once when a state changes)
 // and removed when the last entry goes. It tells the user what the layer is
 // doing in a running game — and, above all, why it passes frames through
 // when it does, which otherwise takes a log file to find out.
 struct StatusEntry {
-    std::string kind;        // "device", "swapchain" (the layer) or "capture" (bdex_capture)
+    std::string kind;        // "device", "swapchain" (the layer) or "capture" (chuds_fg_capture)
     std::string state;       // generating | paused | pass-through | active | anti-cheat | inactive
     std::string reason;      // why pass-through / inactive (empty otherwise)
     std::string mode;        // interpolate | extrapolate
@@ -79,4 +79,4 @@ StatusFile statusParse(const std::string& text);
 // What a status file says, in French, a line per point worth showing.
 std::vector<std::string> statusDescribe(const StatusFile& file, bool english = false);
 
-} // namespace bdex
+} // namespace chuds_fg

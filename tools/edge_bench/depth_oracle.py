@@ -2,7 +2,7 @@
 """depth_oracle.py SEQ OUT [MAXFRAMES] [VARIANTS]: what a depth buffer (or frame
 N-2) would give the synthesis at occlusions, on a make_sequence.py sequence.
 
-    bdex_offline SEQ OUT --multiplier 2 --dump-flow OUT/flow
+    chuds_fg_offline SEQ OUT --multiplier 2 --dump-flow OUT/flow
     depth_oracle.py SEQ OUT 6 n2,depth,depthv
 
 Post-corrects the engine's generated frames (t = 0.5) where no candidate

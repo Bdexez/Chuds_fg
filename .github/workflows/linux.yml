@@ -137,7 +137,7 @@ jobs:
       - name: Build
         run: |
           ccache -z
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBDEX_WERROR=ON \
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCHUDS_FG_WERROR=ON \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build build -j"$(nproc)"
           cmake -S baseline -B baseline/build -DCMAKE_BUILD_TYPE=Release \
@@ -157,15 +157,15 @@ jobs:
           # Capture first: under the step's `bash -eo pipefail`, `vulkaninfo |
           # grep -q` fails when grep exits early (SIGPIPE) — i.e. when it matches.
           out="$(vulkaninfo 2>/dev/null || true)"
-          if grep -qi bdex <<<"$out"; then
-            echo "a BDEX layer is installed system-wide on this runner"; exit 1
+          if grep -qi chuds <<<"$out"; then
+            echo "a CHUDS FG layer is installed system-wide on this runner"; exit 1
           fi
           xdg="$(mktemp -d)"; mkdir -p "$xdg/vulkan/implicit_layer.d"
-          cp build/layer/VK_LAYER_BDEX_framegen.json "$xdg/vulkan/implicit_layer.d/"
+          cp build/layer/VK_LAYER_CHUDS_fg.json "$xdg/vulkan/implicit_layer.d/"
           out="$(env -u VK_IMPLICIT_LAYER_PATH XDG_DATA_HOME="$xdg" vulkaninfo 2>/dev/null || true)"
-          if ! grep -qi bdex <<<"$out"; then
+          if ! grep -qi chuds <<<"$out"; then
             echo "=== layer not discovered through XDG_DATA_HOME ==="
-            XDG_DATA_HOME="$xdg" VK_LOADER_DEBUG=all vulkaninfo 2>&1 | grep -i "bdex\|implicit\|layer" | head -40 || true
+            XDG_DATA_HOME="$xdg" VK_LOADER_DEBUG=all vulkaninfo 2>&1 | grep -i "chuds\|implicit\|layer" | head -40 || true
             exit 1
           fi
           echo "layer discovered through XDG_DATA_HOME"
@@ -181,12 +181,12 @@ jobs:
         run: |
           if gh release download corpus --repo "$GITHUB_REPOSITORY" --dir corpus-archives --pattern '*.tar.gz'; then
             python3 tools/corpus_fetch.py corpus-real corpus-archives/*.tar.gz
-            echo "BDEX_CORPUS_DIR=$PWD/corpus-real" >> "$GITHUB_ENV"
+            echo "CHUDS_FG_CORPUS_DIR=$PWD/corpus-real" >> "$GITHUB_ENV"
           else
             echo "no \"corpus\" release: recorded sequences skipped"
           fi
 
-      # core: GPU tests without a display (bdex_offline), the f2cec5f
+      # core: GPU tests without a display (chuds_fg_offline), the f2cec5f
       # invariant, the PSNR gates; display: the demo through the layer;
       # mingw: the Windows C++ for 32-bit x86 (MSVC x64 runs in
       # windows.yml). Determinism and output_reuse, Khronos validation over

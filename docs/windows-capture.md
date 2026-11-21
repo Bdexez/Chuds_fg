@@ -4,12 +4,12 @@
 **multiplayer-safe** path. Mode 1 is the [Vulkan-layer injection](windows-port.md)
 (lowest latency, solo games / emulators, small anti-cheat risk). This document
 scopes a **Windows application** that delivers the same rendering
-as bdex-framegen (optical-flow frame generation + spatial upscaling) but via
+as chuds-fg (optical-flow frame generation + spatial upscaling) but via
 **screen/window capture** instead of a Vulkan layer — the Lossless Scaling
 model — so it works with **every render API** (D3D9/10/11/12, OpenGL, Vulkan)
 without injecting into the game, which is what multiplayer anti-cheats flag.
 
-It reuses bdex-framegen's **algorithm and shaders**, not its layer machinery.
+It reuses chuds-fg's **algorithm and shaders**, not its layer machinery.
 
 ---
 
@@ -47,9 +47,9 @@ single-player titles, but it is a separate, fragile track.
 
 ---
 
-## 1. What we reuse from bdex-framegen
+## 1. What we reuse from chuds-fg
 
-The **algorithm is the asset**, and it is a good fit: bdex-framegen already
+The **algorithm is the asset**, and it is a good fit: chuds-fg already
 estimates motion **from colour only** (luma pyramid + block-matching optical
 flow), which is exactly the situation a capture tool is in — no motion vectors,
 no depth, just the final image.
@@ -125,7 +125,7 @@ This is a new application; the reused algorithm is maybe 30% of it. The new 70%:
   injection-free is fine for SmartScreen; still worth signing for trust).
 
 ### 2.5 Config reuse
-- The INI config model (`bdex-framegen.conf`, the control-panel format) can be
+- The INI config model (`chuds-fg.conf`, the control-panel format) can be
   reused as-is; only the process-name matching and paths change (see
   `windows-port.md` §2.2 for the `%APPDATA%` / process-name shims — those apply
   here too since we still read the same config).
@@ -152,7 +152,7 @@ Implemented in `capture/` and validated on hardware (2026-09-15).**
   (`D3D11_TEXTURE_BIT`, dedicated allocation), keyed-mutex acquire/release
   chained on the `VkSubmitInfo` (`VK_KHR_win32_keyed_mutex`), ownership
   transfer barriers from/to `VK_QUEUE_FAMILY_EXTERNAL`, the layer's
-  `upscale.comp` (embedded through the same `bdex_add_shaders` pipeline) into
+  `upscale.comp` (embedded through the same `chuds_fg_add_shaders` pipeline) into
   an `R32_UINT` stage image, copy into a Win32 swapchain (mailbox, or FIFO
   with `--fifo`). `main.cpp`: window picker (`--list`, `--title`, `--pid`,
   or the foreground window after 5 s), topmost no-activate overlay following
@@ -163,9 +163,9 @@ Implemented in `capture/` and validated on hardware (2026-09-15).**
 
 **Phase-1 validation checklist** (repeat for new GPUs and drivers; the MSVC build
 itself is done by the `windows` GitHub Actions workflow, artifact
-`bdex-framegen-windows-x64`):
-1. `bdex_capture.exe --list` prints the open windows.
-2. Start a windowed D3D game; `bdex_capture.exe --title <game> --hud 2`.
+`chuds-fg-windows-x64`):
+1. `chuds_fg_capture.exe --list` prints the open windows.
+2. Start a windowed D3D game; `chuds_fg_capture.exe --title <game> --hud 2`.
    Expected log lines: `GPU: …`, `vulkan ready`, `capturing window WxH`,
    `capture ring WxH (generation 1)`, `swapchain WxH, N images, mailbox`,
    `imported ring slot 0…2`, then periodic capture/shown/output fps and WGC
@@ -174,7 +174,7 @@ itself is done by the `windows` GitHub Actions workflow, artifact
    on a small window shows the bicubic upscale.
 4. Resize / move / minimise the game window: overlay follows, ring
    regenerates (`generation 2`), no validation errors with
-   `BDEX_CAP_VALIDATION=1` (the external-queue-family barrier layouts and
+   `CHUDS_FG_CAP_VALIDATION=1` (the external-queue-family barrier layouts and
    the keyed-mutex submit are the two places a driver could disagree).
 5. Note the latency subjectively (mailbox vs `--fifo`) and whether mouse
    clicks reach the game through the overlay (`WS_EX_TRANSPARENT`); both
@@ -196,7 +196,7 @@ itself is done by the `windows` GitHub Actions workflow, artifact
   overlay swapchain paced like `presentOne` (extrapolation drops a predicted
   frame when the next real one arrives early; FIFO leaves pacing to the
   display). Options: `--multiplier`, `--mode`, `--preset`, `--filter`,
-  `--sharpness`, `--hud`, plus the config file / `BDEX_FG_*` environment.
+  `--sharpness`, `--hud`, plus the config file / `CHUDS_FG_*` environment.
 - **Acceptance:** a D3D game at 30/60 fps shows 60/120 with the flow quality of
   the Linux build.
 
@@ -223,7 +223,7 @@ real frame. This measures processing and queueing after WGC delivery; it does
 not measure game-present-to-WGC delay or display scanout.
 
 **Phase 3 — product.**
-- Config window ✅ (v1: running `bdex_capture.exe` with no arguments opens a
+- Config window ✅ (v1: running `chuds_fg_capture.exe` with no arguments opens a
   native launcher — window picker, generation/upscale/presentation/HUD options
   plus an **Advanced optical-flow group** (grad_weight, scene-cut thresholds,
   smoothness, zero_bias, search_fine, flow_iterations), persisted to the shared

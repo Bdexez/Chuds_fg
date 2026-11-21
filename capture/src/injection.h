@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // What the launcher knows of a running game.
 struct GameInfo {
@@ -31,23 +31,23 @@ const char* apiName(GameInfo::Api api);
 
 // The DLLs `api` needs, by file name (empty: no translation, Vulkan / OpenGL).
 std::vector<std::wstring> translationFiles(GameInfo::Api api);
-// They are shipped next to bdex_capture.exe (dxvk\x64, vkd3d-proton\x64...).
+// They are shipped next to chuds_fg_capture.exe (dxvk\x64, vkd3d-proton\x64...).
 bool translationAvailable(const GameInfo& game);
 // Copies them next to the game's executable — never over a file that is
 // already there (another translation layer, ReShade...): `why` then says
-// which — and lists them in bdex-framegen-injection.txt there and in the
+// which — and lists them in chuds-fg-injection.txt there and in the
 // launcher's own list (injectedGames) so they can be removed.
 bool installTranslation(const GameInfo& game, std::string& why);
 // Removes what installTranslation put next to `exePath` (the game closed:
 // a loaded DLL cannot be deleted). False with `why` otherwise.
 bool removeTranslation(const std::wstring& exePath, std::string& why);
-// Every executable installTranslation prepared (%LOCALAPPDATA%\bdex-framegen\injections.txt).
+// Every executable installTranslation prepared (%LOCALAPPDATA%\chuds-fg\injections.txt).
 std::vector<std::wstring> injectedGames();
 
 // Registers the Vulkan layer for the current user (HKCU, as
 // register-layer.ps1 does): the DLL and the profiles copied to
-// %LOCALAPPDATA%\bdex-framegen, its manifest beside them; the 32-bit layer
-// too when the package has it (x86\VkLayer_bdex_framegen.dll). Updates the
+// %LOCALAPPDATA%\chuds-fg, its manifest beside them; the 32-bit layer
+// too when the package has it (x86\VkLayer_chuds_fg.dll). Updates the
 // copy when the package's DLL changed (not while a game holds it loaded).
 bool registerLayerForUser(std::string& why);
 
@@ -55,4 +55,4 @@ bool registerLayerForUser(std::string& why);
 // anti-cheat (the launch goes ahead): what the user risks, by method.
 std::wstring antiCheatWarning(const GameInfo& game, bool injection);
 
-} // namespace bdex
+} // namespace chuds_fg

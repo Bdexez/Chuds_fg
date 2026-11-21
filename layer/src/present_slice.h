@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // A vkQueuePresentKHR call for a subset of the original swapchains. Every
 // supported per-swapchain pNext array is sliced in the same order as the
@@ -58,4 +58,4 @@ private:
 #endif
 };
 
-} // namespace bdex
+} // namespace chuds_fg

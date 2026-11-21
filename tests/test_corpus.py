@@ -2,8 +2,8 @@
 """Quality regression on the evaluation corpus, headless (no display needed).
 
 Generates the synthetic corpus (tools/make_corpus.py), plus every sequence
-directory under $BDEX_CORPUS_DIR when set (recorded game sequences), runs
-bdex_offline through tools/eval_sequence.py in interpolation and
+directory under $CHUDS_FG_CORPUS_DIR when set (recorded game sequences), runs
+chuds_fg_offline through tools/eval_sequence.py in interpolation and
 extrapolation, for the defaults and for the candidate opt-in settings, and
 fails when a PSNR or SSIM drops below its reference in
 tests/corpus_reference.json by more than the tolerance. Missing references
@@ -33,7 +33,7 @@ CONFIGS = {
 
 
 # What Config::autoConfigure turns on by itself on a discrete GPU.
-STRONG_GPU_OFF = {f"BDEX_FG_{k}": v for k, v in {
+STRONG_GPU_OFF = {f"CHUDS_FG_{k}": v for k, v in {
     "PIXEL_VECTORS": "0", "INTERP_SPLAT": "0", "ROT_WEIGHT": "0", "TEMPORAL_PREDICTION": "0", "ZERO_BIAS": "0.002",
     "SCENE_CUT_LOCAL": "0", "EXTRAPOLATE_SPLAT": "0", "REVEAL_FILL": "0", "GLOBAL_MOTION": "0",
     "HUD_MASK": "0", "STATIC_SOFT": "0", "INTERP_ACCEL": "0", "FALSE_DETAIL": "0", "BORDER_PREDICT": "0", "BORDER_FILL": "0", "STILL_OCCLUDER": "0", "HUD_AVOID": "0", "MOSAIC_BLUR": "0"}.items()}
@@ -46,7 +46,7 @@ def evaluate(build, seq, mode, variant, work):
         cmd += ["--variant", variant]
     # Not the user's settings file; and the references are lavapipe's (CI),
     # where none of the discrete-GPU options turns itself on: off here too.
-    env = dict(os.environ, BDEX_FG_MODE=mode, BDEX_FG_CONFIG="/dev/null", **STRONG_GPU_OFF)
+    env = dict(os.environ, CHUDS_FG_MODE=mode, CHUDS_FG_CONFIG="/dev/null", **STRONG_GPU_OFF)
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, env=env)
     return json.loads(out.read_text())
 
@@ -54,8 +54,8 @@ def evaluate(build, seq, mode, variant, work):
 def main():
     build = Path(sys.argv[1])
     update = "--update" in sys.argv
-    if not (build / "tools" / "offline" / "bdex_offline").exists():
-        print("bdex_offline not built, skipping")
+    if not (build / "tools" / "offline" / "chuds_fg_offline").exists():
+        print("chuds_fg_offline not built, skipping")
         return 77
     refs = json.loads(REFERENCE.read_text()) if REFERENCE.exists() else {}
     results, failures = {}, []
@@ -64,8 +64,8 @@ def main():
         subprocess.run([sys.executable, str(ROOT / "tools" / "make_corpus.py"), str(tmp / "corpus")],
                        check=True, stdout=subprocess.DEVNULL)
         seqs = sorted(p for p in (tmp / "corpus").iterdir() if p.is_dir())
-        if os.environ.get("BDEX_CORPUS_DIR"):
-            seqs += sorted(p for p in Path(os.environ["BDEX_CORPUS_DIR"]).iterdir() if p.is_dir())
+        if os.environ.get("CHUDS_FG_CORPUS_DIR"):
+            seqs += sorted(p for p in Path(os.environ["CHUDS_FG_CORPUS_DIR"]).iterdir() if p.is_dir())
         for seq in seqs:
             for mode in ("interpolate", "extrapolate"):
                 # One run per mode: the defaults and the candidate variant.

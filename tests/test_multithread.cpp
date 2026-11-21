@@ -115,9 +115,9 @@ void writeConfig(const std::string& path, int k) {
 
 int main() {
     if (!glfwInit()) {
-        const char* required = std::getenv("BDEX_REQUIRE_DISPLAY");
+        const char* required = std::getenv("CHUDS_FG_REQUIRE_DISPLAY");
         if (required && std::string(required) == "1") {
-            std::fprintf(stderr, "glfwInit failed with BDEX_REQUIRE_DISPLAY set\n");
+            std::fprintf(stderr, "glfwInit failed with CHUDS_FG_REQUIRE_DISPLAY set\n");
             return 1;
         }
         std::puts("no usable display; skipping multi-thread test");
@@ -128,19 +128,19 @@ int main() {
     std::string logPath, configPath;
     int status = 0;
     try {
-        char logTemplate[] = "/tmp/bdex-mt-log-XXXXXX";
+        char logTemplate[] = "/tmp/chuds-fg-mt-log-XXXXXX";
         int fd = mkstemp(logTemplate);
         if (fd < 0) throw std::runtime_error("could not create layer log");
         close(fd);
         logPath = logTemplate;
-        char cfgTemplate[] = "/tmp/bdex-mt-conf-XXXXXX";
+        char cfgTemplate[] = "/tmp/chuds-fg-mt-conf-XXXXXX";
         fd = mkstemp(cfgTemplate);
         if (fd < 0) throw std::runtime_error("could not create config file");
         close(fd);
         configPath = cfgTemplate;
         writeConfig(configPath, 0);
-        setenv("BDEX_FG_LOG_FILE", logPath.c_str(), 1);
-        setenv("BDEX_FG_CONFIG", configPath.c_str(), 1);
+        setenv("CHUDS_FG_LOG_FILE", logPath.c_str(), 1);
+        setenv("CHUDS_FG_CONFIG", configPath.c_str(), 1);
 
         uint32_t extensionCount = 0;
         const char** extensions = glfwGetRequiredInstanceExtensions(&extensionCount);
@@ -152,7 +152,7 @@ int main() {
 
         Target targets[2];
         for (int i = 0; i < 2; ++i) {
-            targets[i].window = glfwCreateWindow(320, 240, i ? "bdex mt 2" : "bdex mt 1", nullptr, nullptr);
+            targets[i].window = glfwCreateWindow(320, 240, i ? "chuds-fg mt 2" : "chuds-fg mt 1", nullptr, nullptr);
             if (!targets[i].window) throw std::runtime_error("glfwCreateWindow");
             check(glfwCreateWindowSurface(instance, targets[i].window, nullptr, &targets[i].surface), "surface");
         }

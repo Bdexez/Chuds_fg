@@ -19,7 +19,7 @@
 #include <fstream>
 #include <functional>
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace {
 
@@ -102,7 +102,7 @@ VirtualSwapchain::VirtualSwapchain(DeviceData& dev, const VkSwapchainCreateInfoK
     publishStatus(cfg_.multiplier);
     static uint32_t nextDumpId = 0;
     dumpId_ = nextDumpId++;
-    BDEX_INFO("swapchain %ux%u format %d: %zu virtual images, %zu real images, present mode %s, generation %s",
+    CHUDS_FG_INFO("swapchain %ux%u format %d: %zu virtual images, %zu real images, present mode %s, generation %s",
               extent_.width, extent_.height, static_cast<int>(format_), virtualImages_.size(), realImages_.size(),
               presentModeName(presentMode_), generating_ ? "on" : "off");
 }
@@ -195,7 +195,7 @@ std::unique_ptr<FrameGen> VirtualSwapchain::makeFrameGen(bool& generating) {
                                               static_cast<uint32_t>(cfg_.outputCeiling()), sources, colorSpace_,
                                               flowScaleFactor_, &cfg_);
         } catch (const VkError& e) {
-            BDEX_WARN("frame generation unavailable for this swapchain (%s); passing frames through", e.what());
+            CHUDS_FG_WARN("frame generation unavailable for this swapchain (%s); passing frames through", e.what());
             genFailReason_ = std::string("frame generation unavailable: ") + e.what();
             generating = false;
         }
@@ -225,7 +225,7 @@ void VirtualSwapchain::createReal(const VkSwapchainCreateInfoKHR& appInfo) {
         const VkPresentModeKHR want = presentModeSupported(dev_, appInfo.surface, VK_PRESENT_MODE_IMMEDIATE_KHR) ? VK_PRESENT_MODE_IMMEDIATE_KHR
                                       : presentModeSupported(dev_, appInfo.surface, VK_PRESENT_MODE_MAILBOX_KHR) ? VK_PRESENT_MODE_MAILBOX_KHR
                                                                                                                  : ci.presentMode;
-        BDEX_INFO("fps_limit_wait: the game was offered FIFO only (it waits for each present there, where the frame limit "
+        CHUDS_FG_INFO("fps_limit_wait: the game was offered FIFO only (it waits for each present there, where the frame limit "
                   "holds it); presenting with %s", presentModeName(want));
         ci.presentMode = want;
     }
@@ -233,11 +233,11 @@ void VirtualSwapchain::createReal(const VkSwapchainCreateInfoKHR& appInfo) {
     // modes...): it describes the surface-side behaviour which stays the same.
     if (cfg_.presentMode >= 0 &&
         findChain<VkBaseInStructure>(appInfo.pNext, VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT)) {
-        BDEX_WARN("application declares its present modes (VK_EXT_swapchain_maintenance1); ignoring present_mode override");
+        CHUDS_FG_WARN("application declares its present modes (VK_EXT_swapchain_maintenance1); ignoring present_mode override");
     } else if (cfg_.presentMode >= 0) {
         auto mode = static_cast<VkPresentModeKHR>(cfg_.presentMode);
         if (presentModeSupported(dev_, appInfo.surface, mode)) ci.presentMode = mode;
-        else BDEX_WARN("present mode %s not supported by the surface, keeping %s", presentModeName(mode), presentModeName(appInfo.presentMode));
+        else CHUDS_FG_WARN("present mode %s not supported by the surface, keeping %s", presentModeName(mode), presentModeName(appInfo.presentMode));
     } else if (cfg_.presentMode == -2 && fifoLike(ci.presentMode) && !fifoOurs) {
         // Never present the real swapchain in FIFO: our worker presents
         // asynchronously, and a FIFO present hard-hangs Direct3D translation
@@ -248,11 +248,11 @@ void VirtualSwapchain::createReal(const VkSwapchainCreateInfoKHR& appInfo) {
         if (presentModeSupported(dev_, appInfo.surface, VK_PRESENT_MODE_MAILBOX_KHR)) want = VK_PRESENT_MODE_MAILBOX_KHR;
         else if (presentModeSupported(dev_, appInfo.surface, VK_PRESENT_MODE_IMMEDIATE_KHR)) want = VK_PRESENT_MODE_IMMEDIATE_KHR;
         if (want != VK_PRESENT_MODE_MAX_ENUM_KHR) {
-            BDEX_INFO("presenting with %s instead of %s (present_mode=app keeps the game's mode)",
+            CHUDS_FG_INFO("presenting with %s instead of %s (present_mode=app keeps the game's mode)",
                       presentModeName(want), presentModeName(ci.presentMode));
             ci.presentMode = want;
         } else {
-            BDEX_WARN("neither mailbox nor immediate present modes are available; keeping %s (may hang some games)",
+            CHUDS_FG_WARN("neither mailbox nor immediate present modes are available; keeping %s (may hang some games)",
                       presentModeName(ci.presentMode));
         }
     }
@@ -316,7 +316,7 @@ void VirtualSwapchain::createReal(const VkSwapchainCreateInfoKHR& appInfo) {
     ci.flags |= ptFlag;
     VkResult r = dev_.vt.CreateSwapchainKHR(dev_.device, &ci, nullptr, &real_);
     if (r < 0 && ptFlag) {
-        BDEX_WARN("real swapchain with present timing failed (%s); retrying without", vkResultName(r));
+        CHUDS_FG_WARN("real swapchain with present timing failed (%s); retrying without", vkResultName(r));
         ci.flags &= ~ptFlag;
         ptStage_ = 0;
         ptWanted_ = false;
@@ -337,7 +337,7 @@ uint32_t VirtualSwapchain::presentTimingFlags(VkSurfaceKHR surface) {
 #ifdef VK_EXT_present_timing
     if (!dev_.presentTiming || !dev_.presentFeedback) return 0;
     if (!dev_.inst->surfaceCaps2 || !dev_.inst->vt.GetPhysicalDeviceSurfaceCapabilities2KHR) {
-        BDEX_DBG("present timing: the application did not enable VK_KHR_get_surface_capabilities2");
+        CHUDS_FG_DBG("present timing: the application did not enable VK_KHR_get_surface_capabilities2");
         return 0;
     }
     VkPresentTimingSurfaceCapabilitiesEXT ptc{VK_STRUCTURE_TYPE_PRESENT_TIMING_SURFACE_CAPABILITIES_EXT};
@@ -347,7 +347,7 @@ uint32_t VirtualSwapchain::presentTimingFlags(VkSurfaceKHR surface) {
     info.surface = surface;
     if (dev_.inst->vt.GetPhysicalDeviceSurfaceCapabilities2KHR(dev_.physDev, &info, &caps) != VK_SUCCESS ||
         !ptc.presentTimingSupported) {
-        BDEX_INFO("present timing: not supported on this surface");
+        CHUDS_FG_INFO("present timing: not supported on this surface");
         return 0;
     }
     // The first pixel becoming visible (the eye's moment), else leaving the
@@ -380,7 +380,7 @@ void VirtualSwapchain::setupPresentTiming() {
     uint64_t counter = 0;
     if (dev_.vt.GetSwapchainTimingPropertiesEXT(dev_.device, real_, &tp, &counter) == VK_SUCCESS && tp.refreshDuration > 0)
         ptRefreshHz_ = 1e9 / double(tp.refreshDuration);
-    BDEX_INFO("present timing: refresh %s, display times %s", tp.refreshDuration ? (std::to_string(1e9 / double(tp.refreshDuration)).substr(0, 6) + " Hz").c_str() : "variable or unknown",
+    CHUDS_FG_INFO("present timing: refresh %s, display times %s", tp.refreshDuration ? (std::to_string(1e9 / double(tp.refreshDuration)).substr(0, 6) + " Hz").c_str() : "variable or unknown",
               ptStage_ ? "from the driver" : "not reported on this surface");
     if (!ptStage_ || dev_.vt.SetSwapchainPresentTimingQueueSizeEXT(dev_.device, real_, 64) != VK_SUCCESS) return;
     VkSwapchainTimeDomainPropertiesEXT dp{VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT};
@@ -404,7 +404,7 @@ void VirtualSwapchain::setupPresentTiming() {
             ptDomainId_ = ids[i];
             ptActive_ = true;
         }
-    if (!ptActive_) BDEX_INFO("present timing: no time domain shared with the steady clock (display times from present waits)");
+    if (!ptActive_) CHUDS_FG_INFO("present timing: no time domain shared with the steady clock (display times from present waits)");
 #endif
 }
 
@@ -497,7 +497,7 @@ void VirtualSwapchain::followSurface() {
     try {
         fg = makeFrameGen(generating);
     } catch (const VkError& e) {
-        BDEX_WARN("surface resized to %ux%u but the output stage could not be rebuilt (%s)", cur.width, cur.height, e.what());
+        CHUDS_FG_WARN("surface resized to %ux%u but the output stage could not be rebuilt (%s)", cur.width, cur.height, e.what());
         displayExtent_ = old;
         upscaling_ = (old.width != extent_.width || old.height != extent_.height);
         std::lock_guard<std::mutex> wlock(workerMutex_);
@@ -517,7 +517,7 @@ void VirtualSwapchain::followSurface() {
     if (r < 0) {
         // The old swapchain may have been retired by the failed call: the
         // application has to rebuild from scratch.
-        BDEX_WARN("surface resized to %ux%u but the real swapchain could not be re-created: %s", cur.width, cur.height, vkResultName(r));
+        CHUDS_FG_WARN("surface resized to %ux%u but the real swapchain could not be re-created: %s", cur.width, cur.height, vkResultName(r));
         displayExtent_ = old;
         upscaling_ = (old.width != extent_.width || old.height != extent_.height);
         std::lock_guard<std::mutex> wlock(workerMutex_);
@@ -540,14 +540,14 @@ void VirtualSwapchain::followSurface() {
         setupPresentTiming();
         prepareStaging();
     } catch (const VkError& e) {
-        BDEX_WARN("real swapchain images unavailable after resize (%s)", e.what());
+        CHUDS_FG_WARN("real swapchain images unavailable after resize (%s)", e.what());
         std::lock_guard<std::mutex> wlock(workerMutex_);
         pendingResult_ = VK_ERROR_OUT_OF_DATE_KHR;
         acquireCv_.notify_all();
     }
     destroyRealImages(oldImages);
     dev_.vt.DestroySwapchainKHR(dev_.device, oldReal, nullptr);
-    BDEX_INFO("surface resized %ux%u -> %ux%u: real swapchain re-created (render %ux%u, %s)", old.width, old.height,
+    CHUDS_FG_INFO("surface resized %ux%u -> %ux%u: real swapchain re-created (render %ux%u, %s)", old.width, old.height,
               cur.width, cur.height, extent_.width, extent_.height, upscaling_ ? "resampled" : "1:1");
 }
 
@@ -720,8 +720,8 @@ bool VirtualSwapchain::importDepth(uint32_t slot, VkQueue queue, uint32_t imageI
         }
     }
     if (why != depthWhy_) {
-        if (!why.empty()) BDEX_INFO("depth: none for now (%s)", why.c_str());
-        else if (!depthWhy_.empty()) BDEX_INFO("depth: read again");
+        if (!why.empty()) CHUDS_FG_INFO("depth: none for now (%s)", why.c_str());
+        else if (!depthWhy_.empty()) CHUDS_FG_INFO("depth: read again");
         depthWhy_ = why;
     }
     return ok;
@@ -922,7 +922,7 @@ VkResult VirtualSwapchain::acquire(uint64_t timeout, VkSemaphore semaphore, VkFe
         if (r < 0) {
             vi.acquired = false;
             acquireCv_.notify_all();
-            BDEX_ERR("failed to signal acquire semaphore: %s", vkResultName(r));
+            CHUDS_FG_ERR("failed to signal acquire semaphore: %s", vkResultName(r));
             return r;
         }
     }
@@ -985,8 +985,8 @@ void VirtualSwapchain::dumpFrame(FrameSlot& slot, bool generated, float t, uint3
     snprintf(name, sizeof(name), "/sc%u_%ux%u_%04d_%s_t%.2f.ppm", dumpId_, extent_.width, extent_.height, dumpCount_,
              generated ? "gen" : "real", t);
     const std::string path = cfg_.dumpDir + name;
-    if (fg_->writeDump(path, generated ? output : fg_->outputCount())) BDEX_DBG("dumped %s", path.c_str());
-    else BDEX_WARN("could not write %s", path.c_str());
+    if (fg_->writeDump(path, generated ? output : fg_->outputCount())) CHUDS_FG_DBG("dumped %s", path.c_str());
+    else CHUDS_FG_WARN("could not write %s", path.c_str());
     ++dumpCount_;
 }
 
@@ -1147,7 +1147,7 @@ bool VirtualSwapchain::fastGame(double hz) {
     bool toggled = false;
     const bool idle = fastGate_.update(cfg_.skipFast, frameIntervalMs_, hz, msOf(clock::now()), toggled);
     if (toggled)
-        BDEX_INFO("game at %.0f fps on a %.0f Hz screen: generation %s (skip_fast)", 1000.0 / frameIntervalMs_, hz,
+        CHUDS_FG_INFO("game at %.0f fps on a %.0f Hz screen: generation %s (skip_fast)", 1000.0 / frameIntervalMs_, hz,
                   idle ? "idle" : "back");
     return idle;
 }
@@ -1186,7 +1186,7 @@ double VirtualSwapchain::limitFrameRate() {
     if (capsAtWait(nowMs)) {
         if (!capAtWaitLogged_) {
             capAtWaitLogged_ = true;
-            BDEX_INFO("fps_limit: the game is held where it waits for its earlier frames (its present wait), before it "
+            CHUDS_FG_INFO("fps_limit: the game is held where it waits for its earlier frames (its present wait), before it "
                       "reads its input");
         }
         return waitCap_.release(nowMs, 1000.0 / fps);
@@ -1205,7 +1205,7 @@ double VirtualSwapchain::limitFrameRate() {
 // use; without either, the game's waits on the GPU alone decide.
 void VirtualSwapchain::updateHeadroom(bool active, double waitedMs) {
     if (!active || !(cfg_.gpuHeadroom > 0.f)) {
-        if (headroomCap_.capFps > 0.0) BDEX_INFO("gpu_headroom: game no longer held (generation off)");
+        if (headroomCap_.capFps > 0.0) CHUDS_FG_INFO("gpu_headroom: game no longer held (generation off)");
         headroomCap_.reset();
         return;
     }
@@ -1214,7 +1214,7 @@ void VirtualSwapchain::updateHeadroom(bool active, double waitedMs) {
         gpuLoadTried_ = true;
         gpuLoad_ = GpuLoad::open(dev_.props.vendorID, dev_.props.deviceID, dev_.haveUuid ? dev_.deviceUuid : nullptr,
                                  dev_.props.deviceName);
-        BDEX_INFO("gpu_headroom: GPU load from %s", gpuLoad_ ? gpuLoad_->source() : "nowhere (the game's waits on the GPU decide)");
+        CHUDS_FG_INFO("gpu_headroom: GPU load from %s", gpuLoad_ ? gpuLoad_->source() : "nowhere (the game's waits on the GPU decide)");
     }
     int busy = -1;
     if (gpuLoad_ && nowMs - gpuBusyReadMs_ >= 200.0) {
@@ -1229,12 +1229,12 @@ void VirtualSwapchain::updateHeadroom(bool active, double waitedMs) {
     if (gpuBusy_ >= 0) snprintf(load, sizeof load, "%d %% busy", gpuBusy_);
     else snprintf(load, sizeof load, "load not measured");
     if (before <= 0.0)
-        BDEX_INFO("gpu_headroom: GPU saturated (%s, the game waits for it): game held under %.1f fps from %.1f",
+        CHUDS_FG_INFO("gpu_headroom: GPU saturated (%s, the game waits for it): game held under %.1f fps from %.1f",
                   load, cap, frameIntervalMs_ > 0.0 ? 1000.0 / frameIntervalMs_ : 0.0);
     else if (cap <= 0.0)
-        BDEX_INFO("gpu_headroom: room again (GPU %s): game no longer held", load);
+        CHUDS_FG_INFO("gpu_headroom: room again (GPU %s): game no longer held", load);
     else
-        BDEX_DBG("gpu_headroom: GPU %s, cap %.1f -> %.1f fps", load, before, cap);
+        CHUDS_FG_DBG("gpu_headroom: GPU %s, cap %.1f -> %.1f fps", load, before, cap);
 }
 
 // gpu_budget: about once a second, compare the generation's GPU time with the
@@ -1270,12 +1270,12 @@ void VirtualSwapchain::applyGpuBudget() {
             prepareStaging();
             historyLost_ = true;
         } catch (const VkError& e) {
-            BDEX_WARN("gpu budget: output stage not rebuilt (%s)", e.what());
+            CHUDS_FG_WARN("gpu budget: output stage not rebuilt (%s)", e.what());
             flowScaleFactor_ = oldFactor;
         }
     }
     fg_->setQualityLevel(level);
-    BDEX_INFO("gpu budget: generation %.2f ms for a %.1f%% budget of %.1f ms: quality level %d -> %d (flow 1/%d)",
+    CHUDS_FG_INFO("gpu budget: generation %.2f ms for a %.1f%% budget of %.1f ms: quality level %d -> %d (flow 1/%d)",
               gpuMs, 100.0 * cfg_.gpuBudget, frameIntervalMs_, before, level, fg_->flowScale());
 }
 
@@ -1300,10 +1300,10 @@ void VirtualSwapchain::rebuildOutput() {
         historyLost_ = true;
         dynMult_ = 0;
     } catch (const VkError& e) {
-        BDEX_WARN("settings changed: output stage not rebuilt (%s)", e.what());
+        CHUDS_FG_WARN("settings changed: output stage not rebuilt (%s)", e.what());
         return;
     }
-    BDEX_INFO("settings changed: output stage rebuilt (x%d %s, generation %s)", cfg_.multiplier, cfg_.modeName(),
+    CHUDS_FG_INFO("settings changed: output stage rebuilt (x%d %s, generation %s)", cfg_.multiplier, cfg_.modeName(),
               generating_ && !cfg_.paused ? "on" : "paused");
 }
 
@@ -1352,11 +1352,11 @@ VkResult VirtualSwapchain::present(uint32_t imageIndex, const VkPresentInfoKHR& 
     if (const bool limited = gsLimited_.load(); limited != gsLimitLogged_) {
         gsLimitLogged_ = limited;
         if (limited)
-            BDEX_INFO("gamescope frame limit on (Steam's framerate limit, %.0f fps): the screen shows no more, "
+            CHUDS_FG_INFO("gamescope frame limit on (Steam's framerate limit, %.0f fps): the screen shows no more, "
                       "so frames are generated only up to it; set it to Off or to the refresh rate to generate above",
                       gsHz_.load());
         else
-            BDEX_INFO("gamescope frame limit off: display %.1f Hz", gsHz_.load());
+            CHUDS_FG_INFO("gamescope frame limit off: display %.1f Hz", gsHz_.load());
     }
     if (surfaceChanged_.exchange(false)) followSurface();
     if (cfg_.rebuildGen != outputGen_) rebuildOutput();
@@ -1451,9 +1451,9 @@ VkResult VirtualSwapchain::present(uint32_t imageIndex, const VkPresentInfoKHR& 
             if (mult > 1) statsTrimmed_ += uint32_t(nominal - mult);
         }
         if (mult == 1) ++statsBehind_;
-        BDEX_DBG("catch up: keep %d output(s), worker wait %.3f ms, interval %.3f ms, persistent late %d, ready lag %.3f ms",
+        CHUDS_FG_DBG("catch up: keep %d output(s), worker wait %.3f ms, interval %.3f ms, persistent late %d, ready lag %.3f ms",
                  mult, workerWaitMs, frameIntervalMs_, int(lagging), ready);
-        if (recoverMiss) BDEX_DBG("catch up: newly missed refresh of the presentation plan");
+        if (recoverMiss) CHUDS_FG_DBG("catch up: newly missed refresh of the presentation plan");
     }
     // even_motion (pacing::EvenClock): the refreshes this present covers,
     // each a generated frame of its own moment; the real frame is the last
@@ -1498,7 +1498,7 @@ VkResult VirtualSwapchain::present(uint32_t imageIndex, const VkPresentInfoKHR& 
             fastOn_ = pacing::evenFastBand(frameIntervalMs_, g.periodMs, fastOn_, cfg_.evenFast >= 2 && mult >= 4);
             const bool allowed = fastOn_ && fastGuard_.allow(msOf(t0), workerWaitMs, frameIntervalMs_, fastPlanned_);
             if (fastOn_ && !allowed && fastPlanned_)
-                BDEX_INFO("even_fast: the game waited %.2f ms a present for the worker: pinned frames for a while", workerWaitMs);
+                CHUDS_FG_INFO("even_fast: the game waited %.2f ms a present for the worker: pinned frames for a while", workerWaitMs);
             if (allowed) {
                 g.valid = true;
                 if (g.lead == pacing::kX11Lead) g.readyMarginMs = pacing::kX11ReadyMarginMs;
@@ -1538,7 +1538,7 @@ VkResult VirtualSwapchain::present(uint32_t imageIndex, const VkPresentInfoKHR& 
                 const uint64_t missed = fbReplaced_ + fbClose_;
                 if (vgCheckMs_ > 0.0 && missed - vgReplacedSeen_ >= 3) {
                     vgAnchorMs_ += 0.5 * vgPeriodMs_;
-                    BDEX_DBG("virtual grid: %llu frames replaced in a second, phase moved", (unsigned long long)(missed - vgReplacedSeen_));
+                    CHUDS_FG_DBG("virtual grid: %llu frames replaced in a second, phase moved", (unsigned long long)(missed - vgReplacedSeen_));
                 }
                 vgReplacedSeen_ = missed;
                 vgCheckMs_ = nowMs;
@@ -1907,7 +1907,7 @@ VkResult VirtualSwapchain::present(uint32_t imageIndex, const VkPresentInfoKHR& 
         slot.readySubmitted = deferSynthesis && r >= 0;
     }
     if (r < 0) {
-        BDEX_ERR("synthesis submission failed: %s", vkResultName(r));
+        CHUDS_FG_ERR("synthesis submission failed: %s", vkResultName(r));
         consumeSemaphores(appWaits, appWaitCount);
         return r;
     }
@@ -2127,7 +2127,7 @@ VkResult VirtualSwapchain::present(uint32_t imageIndex, const VkPresentInfoKHR& 
             }
             statsGen_ = statsCutFull_ = statsCutFade_ = 0;
             statsCostSum_ = 0.0;
-            BDEX_INFO("game %.1f fps -> output %.1f fps (x%.2f), present call %.2f ms, real frame delayed %.1f ms%s%s",
+            CHUDS_FG_INFO("game %.1f fps -> output %.1f fps (x%.2f), present call %.2f ms, real frame delayed %.1f ms%s%s",
                       statsAppFrames_ / elapsed, out / elapsed, statsAppFrames_ ? double(out) / statsAppFrames_ : 0.0,
                       statsAppFrames_ ? statsCpuMs_ / statsAppFrames_ : 0.0,
                       statsAppFrames_ ? delayUs / 1000.0 / statsAppFrames_ : 0.0, skip, fg_->profileReport().c_str());
@@ -2191,7 +2191,7 @@ VkResult VirtualSwapchain::present(uint32_t imageIndex, const VkPresentInfoKHR& 
             ask = dev_.inst->fifoAsked.insert(surface_).second;
         }
         if (ask) {
-            BDEX_INFO("fps_limit_wait: a frame limit is set; asking the game for a new swapchain, in FIFO (where it waits "
+            CHUDS_FG_INFO("fps_limit_wait: a frame limit is set; asking the game for a new swapchain, in FIFO (where it waits "
                       "for each present: the limit then holds it there)");
             pending = VK_SUBOPTIMAL_KHR;
         }
@@ -2281,4 +2281,4 @@ void VirtualSwapchain::syncFrameStart(double waitedMs) {
     while (clock::now() < until) std::this_thread::yield();
 }
 
-} // namespace bdex
+} // namespace chuds_fg

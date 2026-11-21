@@ -1,11 +1,11 @@
-// bdex_capture — the Windows capture product (docs/windows-capture.md):
+// chuds_fg_capture — the Windows capture product (docs/windows-capture.md):
 // capture one game window with Windows.Graphics.Capture, share the frames
 // into Vulkan, run the layer's frame-generation engine on them (optical flow,
 // interpolation / extrapolation, upscaling, HUD) and present real + generated
 // frames in a borderless always-on-top overlay placed over (or instead of)
 // the game window. Console app: logs go to stderr.
 //
-//   bdex_capture [--title <substr> | --pid <n>] [--scale <f> | --fit]
+//   chuds_fg_capture [--title <substr> | --pid <n>] [--scale <f> | --fit]
 //                [--multiplier 1..8] [--adaptive]
 //                [--mode extrapolate|interpolate|hybrid]
 //                [--preset <name>] [--filter 0|1|2] [--sharpness <f>]
@@ -15,8 +15,8 @@
 // set the same options as the Linux control panel, press Démarrer. With
 // --title/--pid only, the foreground window 5 s after launch is captured
 // (alt-tab into the game). Ctrl+Alt+Q or closing the game window quits.
-// Everything else comes from %APPDATA%\bdex-framegen\bdex-framegen.conf and
-// the BDEX_FG_* environment, like the layer.
+// Everything else comes from %APPDATA%\chuds-fg\chuds-fg.conf and
+// the CHUDS_FG_* environment, like the layer.
 #include "capture.h"
 #include "config.h"
 #include "injection.h"
@@ -57,7 +57,7 @@ namespace {
 // was dropped in extrapolation) and the real frame came up to a period late.
 // main() raises the resolution to 1 ms; the waits below sleep until ~1.5 ms
 // before the deadline, then spin on the clock like limitFrameRate() does.
-using Clock = bdex::VkCtx::clock;
+using Clock = chuds_fg::VkCtx::clock;
 constexpr auto kSpin = std::chrono::microseconds(1500);
 
 DWORD coarseMs(Clock::time_point deadline) {
@@ -73,7 +73,7 @@ void sleepUntil(Clock::time_point deadline) {
 
 // Same, but returns true as soon as a captured frame is pending (the
 // predicted frames it would have been shown before are obsolete).
-bool frameBefore(bdex::Capture& cap, Clock::time_point deadline) {
+bool frameBefore(chuds_fg::Capture& cap, Clock::time_point deadline) {
     if (cap.waitPending(coarseMs(deadline))) return true;
     while (Clock::now() < deadline) {
         if (cap.waitPending(0)) return true;
@@ -104,7 +104,7 @@ struct Options {
 
 void usage() {
     std::puts(
-        "bdex_capture — capture a game window, generate frames in Vulkan, show it in an overlay\n"
+        "chuds_fg_capture — capture a game window, generate frames in Vulkan, show it in an overlay\n"
         "\n"
         "  --title <substr>   target window whose title contains <substr> (case-insensitive)\n"
         "  --pid <n>          target the main window of process <n>\n"
@@ -128,7 +128,7 @@ void usage() {
         "  --list             list capturable windows and exit\n"
         "\n"
         "Other options (levels, scene cut, pacing...) come from\n"
-        "%%APPDATA%%\\bdex-framegen\\bdex-framegen.conf and BDEX_FG_* variables.\n"
+        "%%APPDATA%%\\chuds-fg\\chuds-fg.conf and CHUDS_FG_* variables.\n"
         "A [game] section (the target's .exe name) overrides the globals for\n"
         "that title — a per-game profile; the launcher writes one on request.\n"
         "With no arguments, a launcher window opens (game picker + options);\n"
@@ -136,7 +136,7 @@ void usage() {
         "Ctrl+Alt+Q quits; Ctrl+Alt+G toggles generation on/off (set the\n"
         "'hotkey' config key, e.g. hotkey = ctrl+shift+f1, to rebind it).\n"
         "Closing the game window also quits.\n"
-        "Set BDEX_CAP_VALIDATION=1 to load the Khronos validation layer.\n");
+        "Set CHUDS_FG_CAP_VALIDATION=1 to load the Khronos validation layer.\n");
 }
 
 bool parse(int argc, char** argv, Options& o) {
@@ -240,10 +240,10 @@ bool parse(int argc, char** argv, Options& o) {
 
 HWND findTarget(const Options& o) {
     if (!o.title.empty() || o.pid) {
-        std::wstring want = bdex::wideLower(o.title);
-        for (auto& w : bdex::capturableWindows()) {
+        std::wstring want = chuds_fg::wideLower(o.title);
+        for (auto& w : chuds_fg::capturableWindows()) {
             if (o.pid && w.pid != o.pid) continue;
-            if (!want.empty() && bdex::wideLower(w.title).find(want) == std::wstring::npos) continue;
+            if (!want.empty() && chuds_fg::wideLower(w.title).find(want) == std::wstring::npos) continue;
             return w.hwnd;
         }
         LOGE("no visible window matches");
@@ -334,14 +334,14 @@ HWND createOverlay(const RECT& r) {
     wc.lpfnWndProc = overlayProc;
     wc.hInstance = GetModuleHandleW(nullptr);
     wc.hCursor = nullptr;  // see WM_SETCURSOR: mirror the game's cursor, if any
-    wc.lpszClassName = L"bdex_capture_overlay";
+    wc.lpszClassName = L"chuds_fg_capture_overlay";
     RegisterClassExW(&wc);
     // TOPMOST over the game, NOACTIVATE + TOOLWINDOW so it never takes focus
     // or a taskbar button, TRANSPARENT so mouse hit-testing skips it and
     // clicks land on the game underneath.
     HWND h = CreateWindowExW(
         WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT,
-        wc.lpszClassName, L"bdex capture", WS_POPUP, r.left, r.top, r.right - r.left,
+        wc.lpszClassName, L"chuds-fg capture", WS_POPUP, r.left, r.top, r.right - r.left,
         r.bottom - r.top, nullptr, nullptr, wc.hInstance, nullptr);
     return h;
 }
@@ -437,11 +437,11 @@ struct LayerView {
 
 LayerView layerView(DWORD pid) {
     LayerView v;
-    const std::string dir = bdex::platformStatusDir();
+    const std::string dir = chuds_fg::platformStatusDir();
     if (dir.empty() || !pid) return v;
     std::ifstream in(dir + "\\" + std::to_string(pid) + ".status");
     const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    for (const auto& sec : bdex::statusParse(text).sections) {
+    for (const auto& sec : chuds_fg::statusParse(text).sections) {
         auto get = [&](const char* k) {
             auto it = sec.values.find(k);
             return it == sec.values.end() ? std::string() : it->second;
@@ -470,7 +470,7 @@ std::string lowerAscii(std::string s) {
     return s;
 }
 
-template <typename C> const C* T(const C* fr, const C* en) { return bdex::launcherFrench() ? fr : en; }
+template <typename C> const C* T(const C* fr, const C* en) { return chuds_fg::launcherFrench() ? fr : en; }
 
 // What to run for a game. Injection by default (the user's choice, 03/10):
 // the Vulkan layer inside the game's own presentation adds no frame of
@@ -488,7 +488,7 @@ struct Plan {
     bool injection = false;  // the anti-cheat warning's wording
 };
 
-Plan planRun(int method, const std::string& gpu, const bdex::GameInfo& g) {
+Plan planRun(int method, const std::string& gpu, const chuds_fg::GameInfo& g) {
     const LayerView v = layerView(g.pid);
     Plan p;
     std::string antiCheat = g.antiCheat;
@@ -526,20 +526,20 @@ Plan planRun(int method, const std::string& gpu, const bdex::GameInfo& g) {
                            "Choose Auto or Capture."));
         return p;
     }
-    const bool registered = bdex::layerRegistered() || (bdex::registerLayerForUser(err) && (bdex::armLayer(), true));
+    const bool registered = chuds_fg::layerRegistered() || (chuds_fg::registerLayerForUser(err) && (chuds_fg::armLayer(), true));
     if (!registered) {
         p.why = "capture (the Vulkan layer could not be registered: " + err + ")";
         p.notice = utf16(std::string(T("Injection impossible : la couche Vulkan n'a pas pu être enregistrée (",
                                        "Injection impossible: the Vulkan layer could not be registered (")) + err + ").");
-    } else if (g.api == bdex::GameInfo::Vulkan || g.translated) {
+    } else if (g.api == chuds_fg::GameInfo::Vulkan || g.translated) {
         p.why = std::string("the layer does not have ") + g.name + " yet (started before it was registered)";
         p.notice = utf16(g.name) + T(L" : l'injection sera active au prochain lancement du jeu (relance-le).",
                                      L": injection will be active from the game's next start (restart it).");
         p.injection = true;
-    } else if (!bdex::translationFiles(g.api).empty()) {
-        if (bdex::installTranslation(g, err)) {
-            p.why = std::string("injection prepared: ") + bdex::apiName(g.api) + " -> Vulkan next to " + g.name;
-            p.notice = utf16(g.name) + T(L" (", L" (") + utf16(bdex::apiName(g.api)) +
+    } else if (!chuds_fg::translationFiles(g.api).empty()) {
+        if (chuds_fg::installTranslation(g, err)) {
+            p.why = std::string("injection prepared: ") + chuds_fg::apiName(g.api) + " -> Vulkan next to " + g.name;
+            p.notice = utf16(g.name) + T(L" (", L" (") + utf16(chuds_fg::apiName(g.api)) +
                        T(L") : injection installée (DXVK à côté du jeu). Relance le jeu pour en profiter : "
                          L"la latence de la capture disparaît.",
                          L"): injection installed (DXVK next to the game). Restart the game to use it: "
@@ -550,10 +550,10 @@ Plan planRun(int method, const std::string& gpu, const bdex::GameInfo& g) {
             p.notice = utf16(std::string(T("Injection impossible : ", "Injection impossible: ")) + err);
         }
     } else {
-        p.why = std::string("no injection for ") + bdex::apiName(g.api) + " games";
+        p.why = std::string("no injection for ") + chuds_fg::apiName(g.api) + " games";
         if (method == 1)
             p.notice = utf16(std::string(T("Pas d'injection possible pour un jeu ", "No injection for a game in ")) +
-                             bdex::apiName(g.api) + T(" : choisis Auto ou Capture.", ": choose Auto or Capture."));
+                             chuds_fg::apiName(g.api) + T(" : choisis Auto ou Capture.", ": choose Auto or Capture."));
     }
     // Meanwhile: captured (auto), or back to the launcher (injection forced).
     p.run = method == 1 ? Run::Back : Run::Capture;
@@ -569,7 +569,7 @@ Plan planRun(int method, const std::string& gpu, const bdex::GameInfo& g) {
 int runInjection(HWND target) {
     DWORD pid = 0;
     GetWindowThreadProcessId(target, &pid);
-    const std::string dir = bdex::platformStatusDir();
+    const std::string dir = chuds_fg::platformStatusDir();
     if (dir.empty()) {
         LOGE("no status directory (TEMP unset): injection impossible");
         return 1;
@@ -582,11 +582,11 @@ int runInjection(HWND target) {
     if (!RegisterHotKey(nullptr, HK_QUIT, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'Q'))
         LOGW("Ctrl+Alt+Q hotkey unavailable; close the game or Ctrl+C to stop");
     Hotkey toggle{MOD_CONTROL | MOD_ALT, 'G'};
-    const std::string toggleSpec = bdex::globalConfigValue("hotkey");
+    const std::string toggleSpec = chuds_fg::globalConfigValue("hotkey");
     if (!toggleSpec.empty() && !parseHotkey(toggleSpec, toggle))
         LOGW("could not parse hotkey '%s'; using Ctrl+Alt+G", toggleSpec.c_str());
     const bool toggleOk = RegisterHotKey(nullptr, HK_TOGGLE, toggle.mods | MOD_NOREPEAT, toggle.vk) != 0;
-    bdex::Tray tray;
+    chuds_fg::Tray tray;
     if (!tray.create()) LOGW("notification-area icon unavailable");
     bool on = true;
     tray.setGeneration(on);
@@ -600,20 +600,20 @@ int runInjection(HWND target) {
         MSG msg;
         while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT || (msg.message == WM_HOTKEY && msg.wParam == HK_QUIT) ||
-                msg.message == bdex::Tray::kMsgQuit) {
+                msg.message == chuds_fg::Tray::kMsgQuit) {
                 g_running = false;
-            } else if ((msg.message == WM_HOTKEY && msg.wParam == HK_TOGGLE) || msg.message == bdex::Tray::kMsgToggle) {
+            } else if ((msg.message == WM_HOTKEY && msg.wParam == HK_TOGGLE) || msg.message == chuds_fg::Tray::kMsgToggle) {
                 on = !on;
                 tray.setGeneration(on);
                 last = 0;  // (written at once)
                 LOGI("frame generation %s", on ? "on" : "off");
-            } else if (msg.message == bdex::Tray::kMsgRecord && recording.empty()) {
+            } else if (msg.message == chuds_fg::Tray::kMsgRecord && recording.empty()) {
                 // The layer records the game's next real frames (<pid>.record,
                 // DeviceData::pollRecordRequest), for the evaluation corpus.
                 char stamp[32];
                 const std::time_t now = std::time(nullptr);
                 std::strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", std::localtime(&now));
-                const std::string rel = std::string("rec-") + bdex::narrow(bdex::processName(pid)) + "-" + stamp;
+                const std::string rel = std::string("rec-") + chuds_fg::narrow(chuds_fg::processName(pid)) + "-" + stamp;
                 std::ofstream req(dir + "\\" + std::to_string(pid) + ".record", std::ios::trunc);
                 req << 150 << " " << rel << "\n";
                 recording = dir + "\\" + rel;
@@ -627,13 +627,13 @@ int runInjection(HWND target) {
         if (!recording.empty() && now - recordStart > 1000) {
             std::error_code rec;
             if (std::filesystem::exists(recording + "\\DONE", rec)) {
-                // Done: kept under %LOCALAPPDATA%\bdex-framegen\recordings
+                // Done: kept under %LOCALAPPDATA%\chuds-fg\recordings
                 // (tools/corpus_pack.py packs it for the corpus).
                 char buf[MAX_PATH];
                 const DWORD n = GetEnvironmentVariableA("LOCALAPPDATA", buf, MAX_PATH);
                 std::string dest = recording;
                 if (n && n < MAX_PATH) {
-                    const std::filesystem::path d = std::filesystem::path(std::string(buf, n)) / "bdex-framegen" / "recordings";
+                    const std::filesystem::path d = std::filesystem::path(std::string(buf, n)) / "chuds-fg" / "recordings";
                     std::filesystem::create_directories(d, rec);
                     const std::filesystem::path to = d / std::filesystem::path(recording).filename().string().substr(4);
                     std::filesystem::rename(recording, to, rec);
@@ -641,7 +641,7 @@ int runInjection(HWND target) {
                 }
                 LOGI("recording ready: %s", dest.c_str());
                 MessageBoxW(nullptr, (T(L"Enregistrement prêt :\n", L"Recording ready:\n") + utf16(dest)).c_str(),
-                            L"bdex framegen", MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+                            L"chuds-fg", MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
                 recording.clear();
             } else if (now - recordStart > 120000) {
                 LOGW("the recording did not finish");
@@ -658,7 +658,7 @@ int runInjection(HWND target) {
             std::filesystem::rename(tmp, session, ec);
             if (ec) LOGW("could not write %s", session.c_str());
             const LayerView v = layerView(pid);
-            tray.setStatus(on ? L"bdex framegen — injection" : L"bdex framegen — injection (off)",
+            tray.setStatus(on ? L"chuds-fg — injection" : L"chuds-fg — injection (off)",
                            std::wstring(L"Vulkan layer: ") + (v.armed ? L"armed" : L"not armed") +
                                L"\nGPU: " + utf16(v.device) +
                                (v.antiCheatKept.empty() ? std::wstring()
@@ -675,7 +675,7 @@ int runInjection(HWND target) {
 
 // One capture session: overlay + engine + presentation loop. `choice` (the
 // launcher) overrides the config file and the command line; nullptr = CLI.
-int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) {
+int runCapture(const Options& o, HWND target, const chuds_fg::LaunchChoice* choice) {
     g_running = true;
     std::string gameProc;  // target's executable name, for the config's [game] section
     {
@@ -683,8 +683,8 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
         GetWindowTextW(target, title, 256);
         DWORD pid = 0;
         GetWindowThreadProcessId(target, &pid);
-        gameProc = bdex::narrow(bdex::processName(pid));
-        LOGI("target: \"%s\" (%s, pid %lu)", bdex::narrow(title).c_str(), gameProc.c_str(),
+        gameProc = chuds_fg::narrow(chuds_fg::processName(pid));
+        LOGI("target: \"%s\" (%s, pid %lu)", chuds_fg::narrow(title).c_str(), gameProc.c_str(),
              static_cast<unsigned long>(pid));
     }
 
@@ -703,7 +703,7 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
     // The game's process name is added to the section matcher, so a [game]
     // profile in the config file overrides the globals for this title — the
     // per-game profiles the launcher writes and hand-edited sections alike.
-    bdex::Config cfg = bdex::Config::load(gameProc);
+    chuds_fg::Config cfg = chuds_fg::Config::load(gameProc);
     cfg.enabled = true;
     if (!o.preset.empty() && !cfg.apply("preset", o.preset)) {
         LOGE("unknown preset '%s' (performance, balanced, quality)", o.preset.c_str());
@@ -739,15 +739,15 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
         const double hz = monitorHz(overlay);
         cfg.multiplier = std::max(cfg.multiplier, hz > 250.0 ? 8 : hz > 165.0 ? 6 : 4);
     }
-    bdex::VkCtx vk;
-    bdex::Capture cap;
+    chuds_fg::VkCtx vk;
+    chuds_fg::Capture cap;
     // The GPU that generates: --gpu, else the launcher's choice, else the
     // config key gpu (a part of its name; "" = the best, the discrete one).
     std::string gpuName = !o.gpuName.empty() ? o.gpuName : choice ? choice->gpu : cfg.gpu;
     if (!vk.init(overlay, o.gpu, fifo, cfg, o.gpu >= 0 ? std::string() : gpuName)) return 1;
     // HDR when the game's display is in HDR mode (capture_hdr = auto) or when
     // forced, and the GPU / overlay surface can carry scRGB end to end.
-    const bool wantHdr = cfg.captureHdr == 1 || (cfg.captureHdr < 0 && bdex::Capture::displayIsHdr(target));
+    const bool wantHdr = cfg.captureHdr == 1 || (cfg.captureHdr < 0 && chuds_fg::Capture::displayIsHdr(target));
     if (wantHdr && !vk.hdrCapable()) LOGW("HDR display, but no scRGB path on this GPU/driver: capturing in SDR");
     vk.setHdr(wantHdr);
     LUID luid{};
@@ -768,7 +768,7 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
     if (!RegisterHotKey(nullptr, HK_QUIT, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'Q'))
         LOGW("Ctrl+Alt+Q hotkey unavailable; close the game window or Ctrl+C to quit");
     Hotkey toggle{MOD_CONTROL | MOD_ALT, 'G'};
-    const std::string toggleSpec = bdex::globalConfigValue("hotkey");
+    const std::string toggleSpec = chuds_fg::globalConfigValue("hotkey");
     if (!toggleSpec.empty() && !parseHotkey(toggleSpec, toggle))
         LOGW("could not parse hotkey '%s'; using Ctrl+Alt+G", toggleSpec.c_str());
     const bool toggleOk =
@@ -786,7 +786,7 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
     vk.setDisplayHz(monitorHz(overlay));
 
     // Notification-area icon: the live status and a menu (toggle, quit).
-    bdex::Tray tray;
+    chuds_fg::Tray tray;
     if (!tray.create()) LOGW("notification-area icon unavailable");
     tray.setGeneration(vk.generation());
     auto wide = [](const std::string& s) {
@@ -804,9 +804,9 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
         MSG msg;
         while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT || (msg.message == WM_HOTKEY && msg.wParam == HK_QUIT) ||
-                msg.message == bdex::Tray::kMsgQuit) {
+                msg.message == chuds_fg::Tray::kMsgQuit) {
                 g_running = false;
-            } else if ((msg.message == WM_HOTKEY && msg.wParam == HK_TOGGLE) || msg.message == bdex::Tray::kMsgToggle) {
+            } else if ((msg.message == WM_HOTKEY && msg.wParam == HK_TOGGLE) || msg.message == chuds_fg::Tray::kMsgToggle) {
                 const bool on = vk.toggleGeneration();
                 tray.setGeneration(on);
                 LOGI("frame generation %s", on ? "on" : "off");
@@ -847,7 +847,7 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
             }
         }
 
-        bdex::Capture::Frame frame;
+        chuds_fg::Capture::Frame frame;
         if (!cap.pop(frame, 20)) continue;
         if (hidden) {
             cap.recycle(frame, false);
@@ -869,7 +869,7 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
         }
         if (r != 0) continue;
         const double synthLatencyMs = std::chrono::duration<double, std::milli>(
-            bdex::VkCtx::clock::now() - frame.dequeuedAt).count();
+            chuds_fg::VkCtx::clock::now() - frame.dequeuedAt).count();
 
         // Presentation of the job, paced like the layer's worker
         // (VirtualSwapchain::runJob): with FIFO the display paces; otherwise
@@ -880,11 +880,11 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
         // timed from the submission then reach the display together. A
         // predicted frame is obsolete as soon as the next real frame has
         // arrived: skip it rather than delay the real one.
-        const bdex::VkCtx::Job job = vk.job();
+        const chuds_fg::VkCtx::Job job = vk.job();
         const bool paced = cfg.pacing && !vk.fifo() && job.frames > 1;
         Clock::time_point origin = job.start;
         if (paced && job.realIndex > 0) origin = vk.waitSynthesis();
-        auto framePending = [](void* c) { return static_cast<bdex::Capture*>(c)->waitPending(0); };
+        auto framePending = [](void* c) { return static_cast<chuds_fg::Capture*>(c)->waitPending(0); };
         for (int i = 0; i < job.frames && g_running; ++i) {
             if (i > 0) {
                 // Frames past the real one are predictions: obsolete, and
@@ -923,7 +923,7 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
                 ++presentedReal;
                 arrivalToSubmitMs.push_back(synthLatencyMs);
                 arrivalToPresentMs.push_back(std::chrono::duration<double, std::milli>(
-                    bdex::VkCtx::clock::now() - frame.dequeuedAt).count());
+                    chuds_fg::VkCtx::clock::now() - frame.dequeuedAt).count());
             }
         }
 
@@ -955,7 +955,7 @@ int runCapture(const Options& o, HWND target, const bdex::LaunchChoice* choice) 
                 const auto lines = vk.statusLines();
                 std::wstring details;
                 for (const auto& l : lines) details += wide(l) + L"\n";
-                tray.setStatus(L"bdex framegen\n" + (lines.empty() ? std::wstring() : wide(lines[0])), details);
+                tray.setStatus(L"chuds-fg\n" + (lines.empty() ? std::wstring() : wide(lines[0])), details);
             }
             presented = presentedReal = 0;
             statsT0 = now;
@@ -979,20 +979,20 @@ int main(int argc, char** argv) {
     // The capture product owns its Vulkan swapchain and drives FrameGen itself.
     // Never load the implicit layer into this process, even when a global
     // enabled=1 profile is active for games.
-    SetEnvironmentVariableA("BDEX_FG_DISABLE", "1");
+    SetEnvironmentVariableA("CHUDS_FG_DISABLE", "1");
     // Injection is the default (03/10): the Vulkan layer registered for this
     // user and Vulkan games armed, unless capture is chosen.
-    if (bdex::Config::load("").method != 2) {
+    if (chuds_fg::Config::load("").method != 2) {
         std::string err;
-        if (bdex::registerLayerForUser(err)) bdex::armLayer();
+        if (chuds_fg::registerLayerForUser(err)) chuds_fg::armLayer();
         else LOGW("Vulkan layer not registered (%s): capture only", err.c_str());
     }
     // Generating is this program's purpose: its config is read as explicitly
     // enabled, so that require_app (the layer's arming, for injection) does
     // not pause it nor turn its HUD off. The CRT's copy of the environment,
     // which getenv reads (SetEnvironmentVariable does not update it).
-    _putenv_s("BDEX_FG", "1");
-    bdex::platformEnvForget();  // (the engine reads a copy of the environment, taken by the load above)
+    _putenv_s("CHUDS_FG", "1");
+    chuds_fg::platformEnvForget();  // (the engine reads a copy of the environment, taken by the load above)
     SetConsoleOutputCP(CP_UTF8);
     setDpiAware();
     // 1 ms timer resolution for the pacing waits (see sleepUntil); per
@@ -1000,10 +1000,10 @@ int main(int argc, char** argv) {
     timeBeginPeriod(1);
 
     if (o.list) {
-        for (auto& w : bdex::capturableWindows())
+        for (auto& w : chuds_fg::capturableWindows())
             std::printf("%6lu  %-24s  %s\n", static_cast<unsigned long>(w.pid),
-                        bdex::narrow(bdex::processName(w.pid)).c_str(),
-                        bdex::narrow(w.title).c_str());
+                        chuds_fg::narrow(chuds_fg::processName(w.pid)).c_str(),
+                        chuds_fg::narrow(w.title).c_str());
         return 0;
     }
 
@@ -1013,10 +1013,10 @@ int main(int argc, char** argv) {
     // chosen capture runs; when it stops we come back to the launcher until
     // the user quits. With arguments the CLI path runs once, as before.
     const bool useLauncher = argc == 1;
-    bdex::LaunchChoice choice;
+    chuds_fg::LaunchChoice choice;
     HWND target = nullptr;
     if (useLauncher) {
-        const bdex::Config d = bdex::Config::load("");
+        const chuds_fg::Config d = chuds_fg::Config::load("");
         choice.multiplier = std::max(1, d.multiplier);
         choice.extrapolate = d.extrapolate;
         choice.hybrid = d.hybrid;
@@ -1024,8 +1024,8 @@ int main(int argc, char** argv) {
         choice.filter = d.upscaleFilter;
         choice.sharpness = d.sharpness;
         choice.hud = d.overlayMode;
-        choice.preset = bdex::globalConfigValue("preset");
-        choice.fifo = bdex::globalConfigValue("present_mode") == "fifo";
+        choice.preset = chuds_fg::globalConfigValue("preset");
+        choice.fifo = chuds_fg::globalConfigValue("present_mode") == "fifo";
         choice.gradWeight = d.gradWeight;
         choice.smoothness = d.smoothness;
         choice.zeroBias = d.zeroBias;
@@ -1035,7 +1035,7 @@ int main(int argc, char** argv) {
         choice.sceneCutHigh = d.sceneCutHigh;
         choice.gpu = d.gpu;
         choice.method = d.method;
-        if (!bdex::runLauncher(choice)) return 0;
+        if (!chuds_fg::runLauncher(choice)) return 0;
         target = choice.target;
         if (!target) return 1;
         o.scale = choice.scale;
@@ -1048,33 +1048,33 @@ int main(int argc, char** argv) {
     for (;;) {
         DWORD pid = 0;
         GetWindowThreadProcessId(target, &pid);
-        const bdex::GameInfo game = bdex::inspectGame(pid);
-        const bdex::Config d = bdex::Config::load(game.name);
+        const chuds_fg::GameInfo game = chuds_fg::inspectGame(pid);
+        const chuds_fg::Config d = chuds_fg::Config::load(game.name);
         const int method = useLauncher ? choice.method : o.method >= 0 ? o.method : d.method;
         const std::string gpu = useLauncher ? choice.gpu : !o.gpuName.empty() ? o.gpuName : d.gpu;
         Plan plan = o.gpu >= 0 ? Plan{Run::Capture, "capture (--gpu index)", {}, false} : planRun(method, gpu, game);
-        LOGI("%s (%s): %s", game.name.c_str(), bdex::apiName(game.api), plan.why.c_str());
+        LOGI("%s (%s): %s", game.name.c_str(), chuds_fg::apiName(game.api), plan.why.c_str());
         auto show = [&](const std::wstring& text, UINT icon) {
-            if (useLauncher) MessageBoxW(nullptr, text.c_str(), L"bdex framegen", MB_OK | icon | MB_SETFOREGROUND);
-            else LOGW("%s", bdex::narrow(text).c_str());
+            if (useLauncher) MessageBoxW(nullptr, text.c_str(), L"chuds-fg", MB_OK | icon | MB_SETFOREGROUND);
+            else LOGW("%s", chuds_fg::narrow(text).c_str());
         };
         if (!plan.notice.empty()) show(plan.notice, MB_ICONINFORMATION);
         // Prevention, the launch going ahead: a game with an anti-cheat.
         const LayerView lv = layerView(pid);
         if (plan.run != Run::Back && (!game.antiCheat.empty() || lv.antiCheat || !lv.antiCheatKept.empty())) {
-            bdex::GameInfo shown = game;
+            chuds_fg::GameInfo shown = game;
             if (shown.antiCheat.empty()) shown.antiCheat = !lv.antiCheatKept.empty() ? lv.antiCheatKept : "anti-cheat";
-            show(bdex::antiCheatWarning(shown, plan.run == Run::Injection), MB_ICONWARNING);
+            show(chuds_fg::antiCheatWarning(shown, plan.run == Run::Injection), MB_ICONWARNING);
         }
         if (plan.run == Run::Back) {
             if (!useLauncher) return 1;
-            if (!bdex::runLauncher(choice)) return 0;
+            if (!chuds_fg::runLauncher(choice)) return 0;
             target = choice.target;
             continue;
         }
         const int rc = plan.run == Run::Injection ? runInjection(target) : runCapture(o, target, useLauncher ? &choice : nullptr);
         if (!useLauncher || rc != 0) return rc;
-        if (!bdex::runLauncher(choice)) return 0;
+        if (!chuds_fg::runLauncher(choice)) return 0;
         target = choice.target;
     }
 }

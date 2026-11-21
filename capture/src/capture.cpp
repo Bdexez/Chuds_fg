@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 namespace wgc = winrt::Windows::Graphics::Capture;
 namespace wgdx = winrt::Windows::Graphics::DirectX;
 namespace wgd11 = winrt::Windows::Graphics::DirectX::Direct3D11;
@@ -438,4 +438,4 @@ void Capture::releaseGraveyard(uint32_t generation) {
 
 float Capture::captureFps() const { return impl_ ? impl_->fps.load() : 0.0f; }
 
-} // namespace bdex
+} // namespace chuds_fg

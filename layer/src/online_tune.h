@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // online_tune: per-game automatic choice of the opt-in flow options, from a
 // self-evaluation the engine runs while the game plays.
@@ -127,4 +127,4 @@ private:
     int deviant_ = 0, sinceRestart_ = 0, restarts_ = 0;
 };
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Pack a recorded game sequence for the evaluation corpus.
 
-Takes the frames a game was recorded with (`bdex-framegen --record DIR`, or
+Takes the frames a game was recorded with (`chuds-fg --record DIR`, or
 any directory of consecutive .ppm/.png frames), keeps a window of them,
 downscales them (the CI runs on a software Vulkan driver: the synthetic
 corpus is 480x272) and writes a compact archive of PNGs plus meta.json,
@@ -13,7 +13,7 @@ A recording made with the `depth` option keeps each frame's depth
 
 Archives attached to the repository's GitHub release named "corpus" are
 fetched and scored by the Linux CI on every push (tests/test_corpus.py with
-BDEX_CORPUS_DIR); add their references with `test_corpus.py build --update`.
+CHUDS_FG_CORPUS_DIR); add their references with `test_corpus.py build --update`.
 """
 import argparse
 import csv

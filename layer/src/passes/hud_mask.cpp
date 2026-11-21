@@ -5,7 +5,7 @@
 #include "framegen_internal.h"
 #include "shaders.h"
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct HudMaskPC { int32_t size[2]; int32_t slot; uint32_t moving; float flowInv[2]; float flowScale; };
@@ -85,4 +85,4 @@ private:
 
 std::unique_ptr<FgPass> makeHudMaskPass() { return std::make_unique<HudMaskPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

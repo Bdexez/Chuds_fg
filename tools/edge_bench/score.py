@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""score.py SEQ OUT [--flow]: bdex_offline's output on a make_sequence.py
+"""score.py SEQ OUT [--flow]: chuds_fg_offline's output on a make_sequence.py
 sequence. PSNR of the whole frame, of the band of +-6 px around object
 boundaries and of the rest, and the band's share of the squared error. With
---flow (bdex_offline --dump-flow OUT/flow): band pixels split by whether the
+--flow (chuds_fg_offline --dump-flow OUT/flow): band pixels split by whether the
 true vector is among the 2x2 / 4x4 flow texels the synthesis can try, and the
 occluded ones (visible in one input only) by the side they are visible on —
 the share of the error each class holds (2026-10-05: occlusions ~60 %)."""

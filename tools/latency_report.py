@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Input-to-screen latency, from the demo's flashes and the layer's display log.
 
-    bdex_demo --latency-test [auto] --latency-log demo.log      (with the layer:)
-    BDEX_FG_LATENCY_LOG=layer.log ... bdex_demo ...
+    chuds_fg_demo --latency-test [auto] --latency-log demo.log      (with the layer:)
+    CHUDS_FG_LATENCY_LOG=layer.log ... chuds_fg_demo ...
     tools/latency_report.py demo.log layer.log [--label NAME] [--json]
 
 The demo writes "flash <input ms> <present ms>" for every input it answered
@@ -53,11 +53,11 @@ def read_layer(path):
     return shown
 
 
-def join(flashes, shown, tolerance_ms=float(os.environ.get("BDEX_LATENCY_JOIN_MS", "2.0"))):
+def join(flashes, shown, tolerance_ms=float(os.environ.get("CHUDS_FG_LATENCY_JOIN_MS", "2.0"))):
     """Per flash: (input->present, first photon, real frame) in ms (None unknown).
     The layer stamps a present when it takes it in hand: a layer that makes
     the call wait first (a frame limiter) stamps it later — widen the join
-    with BDEX_LATENCY_JOIN_MS to see that wait in the totals."""
+    with CHUDS_FG_LATENCY_JOIN_MS to see that wait in the totals."""
     keys = [s[0] for s in shown]
     out = []
     for inp, pres in flashes:

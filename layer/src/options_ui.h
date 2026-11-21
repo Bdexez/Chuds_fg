@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 struct UiOption {
     std::string kind;   // "switch", "spin", "choice", "text"
@@ -43,8 +43,8 @@ void applyOptionsUiEnglish(const std::string& text, std::vector<UiSection>& sect
 // The texts shown: the English ones swapped in when `english`.
 void localizeOptionsUi(std::vector<UiSection>& sections, bool english);
 
-// The sections as JSON (tools/options/bdex_options.cpp, for the GTK panel),
+// The sections as JSON (tools/options/chuds_fg_options.cpp, for the GTK panel),
 // English texts in "<field>_en".
 std::string optionsUiJson(const std::vector<UiSection>& sections);
 
-} // namespace bdex
+} // namespace chuds_fg

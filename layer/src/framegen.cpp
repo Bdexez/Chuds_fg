@@ -12,7 +12,7 @@
 #include <cstdio>
 #include <cstring>
 
-namespace bdex {
+namespace chuds_fg {
 
 using namespace fg;
 
@@ -65,14 +65,14 @@ FrameGen::FrameGen(DeviceData& dev, VkFormat format, VkExtent2D renderExtent, Vk
         throw;
     }
     if (outputs_ > 0)
-        BDEX_INFO("frame generation ready: render %ux%u, %d flow levels (finest %ux%u blocks, scale %.0f), output %s%s; "
+        CHUDS_FG_INFO("frame generation ready: render %ux%u, %d flow levels (finest %ux%u blocks, scale %.0f), output %s%s; "
                   "%.0f MiB of GPU memory held by the layer",
                   extent_.width, extent_.height, levels_, levels_v_[0].blocks.width, levels_v_[0].blocks.height,
                   flowScale_, enc_.is64 ? "rg32ui" : "r32ui",
                   upscaling_ ? " (upscaled)" : "", double(dev_.memoryInUse.load()) / (1 << 20));
     if (upscaling_) {
         static const char* filt[] = {"bilinear", "Catmull-Rom", "Lanczos-2"};
-        BDEX_INFO("upscaling %ux%u -> %ux%u (%.0f%%, %s%s)", extent_.width, extent_.height, displayExtent_.width,
+        CHUDS_FG_INFO("upscaling %ux%u -> %ux%u (%.0f%%, %s%s)", extent_.width, extent_.height, displayExtent_.width,
                   displayExtent_.height, 100.0 * extent_.width / displayExtent_.width,
                   filt[std::clamp((*cfgp_).upscaleFilter, 0, 2)],
                   sharpen_ ? ", CAS sharpening" : "");
@@ -199,10 +199,10 @@ VkPipeline FrameGen::synthesisVariant(const Pass& p, uint32_t features) {
     VkPipeline pipe = VK_NULL_HANDLE;
     const auto t0 = std::chrono::steady_clock::now();
     if (dev_.vt.CreateComputePipelines(dev_.device, dev_.pipelineCache(), 1, &ci, nullptr, &pipe) != VK_SUCCESS) {
-        BDEX_WARN("synthesis variant 0x%x unavailable: the full one is used", features);
+        CHUDS_FG_WARN("synthesis variant 0x%x unavailable: the full one is used", features);
         pipe = p.pipeline;  // (kept as the entry: not retried every frame)
     } else {
-        BDEX_DBG("synthesis variant 0x%x built in %.1f ms", features,
+        CHUDS_FG_DBG("synthesis variant 0x%x built in %.1f ms", features,
                  std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
     }
     p.variants.emplace_back(features, pipe);
@@ -260,7 +260,7 @@ void FrameGen::createPipelines() {
     // built, and those terms stay off (effectiveConfig).
     matcherFull_ = dev_.props.limits.maxComputeSharedMemorySize == 0 || dev_.props.limits.maxComputeSharedMemorySize >= 32768;
     if (!matcherFull_)
-        BDEX_INFO("%u KB of shared memory: the block matcher's optional terms are off", dev_.props.limits.maxComputeSharedMemorySize / 1024);
+        CHUDS_FG_INFO("%u KB of shared memory: the block matcher's optional terms are off", dev_.props.limits.maxComputeSharedMemorySize / 1024);
     if (outputs_ > 0) {
         if (lumaFormat_ == VK_FORMAT_R16_SFLOAT) {
             downsample_ = makePass(downsample_comp_f16, downsample_comp_f16_size, {CIS, SI});
@@ -326,7 +326,7 @@ void FrameGen::createResources() {
         lv.blocks = {divUp(size.width, kBlockSize), divUp(size.height, kBlockSize)};
         lv.fine = {divUp(size.width, kFineBlock), divUp(size.height, kFineBlock)};
         if (l > 0 && (lv.blocks.width < 2 || lv.blocks.height < 2)) break;
-        // (Level 0 readable: bdex_offline --dump-flow.)
+        // (Level 0 readable: chuds_fg_offline --dump-flow.)
         for (int p = 0; p < 2; ++p)
             lv.pyr[p] = dev_.createImage(lumaFormat_, lv.size, storageSampled | (l == 0 ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0), true);
         if (chroma_)
@@ -967,7 +967,7 @@ static float pqDecodeNits(float e) {  // SMPTE ST 2084 EOTF: code value -> nits
 bool FrameGen::writeDump(const std::string& path, uint32_t which, uint32_t downscale) {
     if (!dumpMapped_[which]) return false;
     if (which < outputs_ && costMapped_)
-        BDEX_DBG("%s: mean matching cost %.4f, histogram distance %.4f", path.c_str(), static_cast<const float*>(costMapped_)[0],
+        CHUDS_FG_DBG("%s: mean matching cost %.4f, histogram distance %.4f", path.c_str(), static_cast<const float*>(costMapped_)[0],
                  static_cast<const float*>(costMapped_)[7]);
     return writePpm(path, dumpMapped_[which], displayExtent_, enc_, downscale);
 }
@@ -1526,7 +1526,7 @@ void FrameGen::recordInterpolate(VkCommandBuffer cmd, uint32_t prev, uint32_t cu
             if (other != output && r.written && r.prev == prev && r.cur == cur && r.predicted == predicted &&
                 outputDisplayMs_[other] == outputDisplayMs_[output]) {
                 copyRecordedOutput(cmd, other, output);
-                BDEX_DBG("output %u reuses output %u at display +%.3f ms", output, other, outputDisplayMs_[output]);
+                CHUDS_FG_DBG("output %u reuses output %u at display +%.3f ms", output, other, outputDisplayMs_[output]);
                 recordedOutputs_[output] = {true, predicted, prev, cur};
                 ++reusedOutputs_;
                 return;
@@ -1731,9 +1731,9 @@ void FrameGen::recordCopySource(VkCommandBuffer cmd, uint32_t src, VkImage dst) 
     vt.CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 2, post);
 }
 
-} // namespace bdex
+} // namespace chuds_fg
 
-namespace bdex {
+namespace chuds_fg {
 
 void FrameGen::profileBegin(VkCommandBuffer cmd, uint32_t slot, bool passHooks) {
     // The slot's previous submission has completed (online_tune reads back).
@@ -1927,4 +1927,4 @@ std::string FrameGen::profileReport() {
     return out;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

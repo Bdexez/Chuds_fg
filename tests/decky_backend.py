@@ -41,7 +41,7 @@ def layer_view(lines, key):
 
 
 # The panel's file: globals under [*], a game section after.
-panel = ["# bdex-framegen — written by the control panel (bdex-framegen-gui).", "", "[*]", "enabled = 1",
+panel = ["# chuds-fg — written by the control panel (chuds-fg-gui).", "", "[*]", "enabled = 1",
          "require_app = 1", "multiplier = 4", "target_fps = auto", "mode = interpolate", "", "[kenshi]",
          "multiplier = 3"]
 s = m.state_from(panel)
@@ -122,7 +122,7 @@ with tempfile.TemporaryDirectory() as d:
     check(m.read_status(os.path.join(d, "missing")) is None, "no directory")
 
     # The Plugin's calls, on a private home.
-    os.environ["BDEX_FG_CONFIG"] = os.path.join(d, "conf", "bdex-framegen.conf")
+    os.environ["CHUDS_FG_CONFIG"] = os.path.join(d, "conf", "chuds-fg.conf")
     p = m.Plugin()
     r = asyncio.run(p.set_state({"generate": True, "multiplier": "2"}))
     check(r["generate"] and r["multiplier"] == "2", f"set_state {r}")

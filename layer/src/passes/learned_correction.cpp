@@ -8,7 +8,7 @@
 #include "framegen_internal.h"
 #include "shaders.h"
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct LcPC { int32_t size[2]; uint32_t encoding; int32_t mode; float t; float strength; };
@@ -97,4 +97,4 @@ private:
 
 std::unique_ptr<FgPass> makeLearnedCorrectionPass() { return std::make_unique<LearnedCorrectionPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

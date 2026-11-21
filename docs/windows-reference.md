@@ -1,25 +1,25 @@
-# bdex-framegen on Windows — detailed reference
+# chuds-fg on Windows — detailed reference
 
 [Windows overview](windows-README.md) · [Main project](../README.md)
 
-This folder (the `bdex-framegen-windows-<arch>` zip built by the `windows`
+This folder (the `chuds-fg-windows-<arch>` zip built by the `windows`
 GitHub Actions workflow) contains **two products**:
 
 | File | What it is | Works with |
 |---|---|---|
-| `VkLayer_bdex_framegen.dll` + `register-layer.ps1` | **Mode 1** — the Vulkan layer (frame generation + upscaling) | **native-Vulkan** games and emulators only (Doom, Baldur's Gate 3 in Vulkan mode, RPCS3, Dolphin, yuzu…) |
-| `bdex_capture.exe` (x64 zip only) | **Launcher** — automatic injection or capture-based generation | Windowed/borderless D3D9–12, OpenGL and Vulkan; capture mode does not inject the layer |
+| `VkLayer_chuds_fg.dll` + `register-layer.ps1` | **Mode 1** — the Vulkan layer (frame generation + upscaling) | **native-Vulkan** games and emulators only (Doom, Baldur's Gate 3 in Vulkan mode, RPCS3, Dolphin, yuzu…) |
+| `chuds_fg_capture.exe` (x64 zip only) | **Launcher** — automatic injection or capture-based generation | Windowed/borderless D3D9–12, OpenGL and Vulkan; capture mode does not inject the layer |
 
 Both need a Vulkan-capable GPU driver (any NVIDIA / AMD / Intel driver from
 the last few years). Mode 2 has been validated on real hardware (D3D9/11/12
 games); mode 1 is CI-built but not yet validated on a real machine — see the
 checklist in `windows-port.md` §3. Please report what happens.
 
-## Mode 2 — `bdex_capture.exe` (any game)
+## Mode 2 — `chuds_fg_capture.exe` (any game)
 
 1. Put the game in **windowed or borderless** mode (exclusive fullscreen cannot
    be overlaid — same limitation as Lossless Scaling).
-2. Double-click `bdex_capture.exe` (or run it with no arguments): a
+2. Double-click `chuds_fg_capture.exe` (or run it with no arguments): a
    **launcher window** opens — pick the game's window in the list, set the
    options (generation on/off, ×2 to ×8 or **Adaptatif** — as many frames per
    captured frame as the monitor's refresh rate allows, 50 fps on 144 Hz
@@ -53,7 +53,7 @@ checklist in `windows-port.md` §3. Please report what happens.
    - OpenGL games: capture.
 
    **Calibration du GPU** (measured by itself at the first start,
-   `bdex-calibrate.exe`): the recommended preset and multiplier for this
+   `chuds-fg-calibrate.exe`): the recommended preset and multiplier for this
    GPU and screen; *Appliquer* sets them. **Signaler un problème…** writes
    the diagnostic report, copies it and opens the pre-filled issue form.
    During an injection, the tray icon's menu has *Enregistrer quelques
@@ -62,15 +62,15 @@ checklist in `windows-port.md` §3. Please report what happens.
    *Injection* / *Capture* force one. **GPU de génération**: *Auto* is the
    game's (the discrete one); another GPU makes the capture generate on it
    while the game renders on its own (two-GPU setup). The choices are saved to
-   `%APPDATA%\bdex-framegen\bdex-framegen.conf` (the same keys as the Linux
+   `%APPDATA%\chuds-fg\chuds-fg.conf` (the same keys as the Linux
    control panel); when the capture stops (Ctrl+Alt+Q, game closed) the
    launcher reopens. Its **En cours** frame lists, refreshed every second,
-   what is running with bdex-framegen: Vulkan games through the layer
+   what is running with chuds-fg: Vulkan games through the layer
    (mode 1) and captures — fps, mode, latency, the optional passes at work
    and `online_tune`'s decisions or current trial. While a capture runs,
    its **notification-area icon** shows the same status in its tooltip; its
    menu toggles generation, opens the detailed status and quits (as
-   Ctrl+Alt+G / Ctrl+Alt+Q). The files are `%TEMP%\bdex-framegen\<pid>.status`.
+   Ctrl+Alt+G / Ctrl+Alt+Q). The files are `%TEMP%\chuds-fg\<pid>.status`.
 3. An always-on-top overlay appears over (or, with "Ajustée à l'écran",
    centred on the monitor of) the game window, showing the game with
    generated frames in between: x2 by default, **interpolation** by default, as on Linux
@@ -84,13 +84,13 @@ checklist in `windows-port.md` §3. Please report what happens.
    Command line (same options, scriptable — giving any argument keeps the
    old behaviour of capturing without the window):
    ```
-   bdex_capture.exe --list                            # which windows can be captured
-   bdex_capture.exe --title "Kenshi" --fit --hud 2    # by title, fill the monitor, fps HUD
-   bdex_capture.exe --pid 1234 --multiplier 3         # by process id, x3
-   bdex_capture.exe --title "Kenshi" --mode interpolate
-   bdex_capture.exe --title "Kenshi" --adaptive       # fill the monitor's refresh rate
-   bdex_capture.exe --title "Kenshi" --mode hybrid --multiplier 4
-   bdex_capture.exe --hud 2                           # no --title/--pid: foreground, 5 s
+   chuds_fg_capture.exe --list                            # which windows can be captured
+   chuds_fg_capture.exe --title "Kenshi" --fit --hud 2    # by title, fill the monitor, fps HUD
+   chuds_fg_capture.exe --pid 1234 --multiplier 3         # by process id, x3
+   chuds_fg_capture.exe --title "Kenshi" --mode interpolate
+   chuds_fg_capture.exe --title "Kenshi" --adaptive       # fill the monitor's refresh rate
+   chuds_fg_capture.exe --title "Kenshi" --mode hybrid --multiplier 4
+   chuds_fg_capture.exe --hud 2                           # no --title/--pid: foreground, 5 s
    ```
 4. **Ctrl+Alt+Q** quits, and so does closing the game. **Ctrl+Alt+G**
    toggles frame generation on and off without stopping the capture (off = the
@@ -102,14 +102,14 @@ checklist in `windows-port.md` §3. Please report what happens.
 Démarrer to save the options into a `[game]` section (named after the target's
 executable) instead of the global ones; selecting a game that already has a
 profile loads it and ticks the box automatically. On the command line the same
-sections apply — `bdex_capture` reads the config as the *target* game, so a
+sections apply — `chuds_fg_capture` reads the config as the *target* game, so a
 hand-written `[DarkSoulsIII]` section overrides the globals for that title. A
 per-game section overrides the global one only for the game it names.
 
 The frame-generation engine is the Linux layer's (`framegen.cpp` and its
 shaders, unchanged): the quality presets, `--filter`, `--sharpness`, and every
-other option of `bdex-framegen.conf` (`%APPDATA%\bdex-framegen\`) or the
-`BDEX_FG_*` environment apply. The GPU is the discrete one by default
+other option of `chuds-fg.conf` (`%APPDATA%\chuds-fg\`) or the
+`CHUDS_FG_*` environment apply. The GPU is the discrete one by default
 (`--gpu n` to choose; the list is logged at start), and the D3D11 capture
 device is created on the same adapter.
 **HDR.** When the game's monitor is in HDR mode (Windows "Use HDR"), the
@@ -120,7 +120,7 @@ scRGB format, it stays in SDR as before. `capture_hdr = 0` forces SDR, `1`
 HDR where possible (launcher: "Couleur HDR"). Not yet run on HDR hardware.
 
 For capture, `mode` defaults to interpolation (as in the layer), then the config file and
-`BDEX_FG_MODE` take precedence. An explicit `--mode` wins over those settings
+`CHUDS_FG_MODE` take precedence. An explicit `--mode` wins over those settings
 and over `--preset`; the mode selected in the launcher wins over all of them.
 
 After registering the layer, run `powershell -File .\validate-windows.ps1` to
@@ -140,28 +140,28 @@ Known limits: capture itself costs about one frame of latency (see
 takes focus) but mouse clicks pass through only where Windows honours
 `WS_EX_TRANSPARENT` hit-testing — if the game stops reacting to the mouse,
 run without `--fit` or use `--scale` < 1 so part of the game window stays
-uncovered. Set `BDEX_CAP_VALIDATION=1` to load the Khronos validation layer
+uncovered. Set `CHUDS_FG_CAP_VALIDATION=1` to load the Khronos validation layer
 when reporting a problem.
 
 ## Mode 1 — the Vulkan layer (native-Vulkan games)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\register-layer.ps1 -Dll .\VkLayer_bdex_framegen.dll
+powershell -ExecutionPolicy Bypass -File .\register-layer.ps1 -Dll .\VkLayer_chuds_fg.dll
 # 32-bit games: use the Win32 zip and add -Wow6432
 ```
 
-Then create `%APPDATA%\bdex-framegen\bdex-framegen.conf`:
+Then create `%APPDATA%\chuds-fg\chuds-fg.conf`:
 
 ```ini
 enabled=1
-log_file=%TEMP%\bdex-fg.log
+log_file=%TEMP%\chuds-fg.log
 multiplier=2
 hud=2
 ```
 
-`vulkaninfo --summary` should list `VK_LAYER_BDEX_framegen`. Launch a Vulkan
+`vulkaninfo --summary` should list `VK_LAYER_CHUDS_fg`. Launch a Vulkan
 game: the HUD shows `game > output`. `unregister-layer.ps1` removes the layer;
-`BDEX_FG_DISABLE=1` in the environment skips it for one launch. Details and
+`CHUDS_FG_DISABLE=1` in the environment skips it for one launch. Details and
 the full option list: `windows-port.md` and the main README.
 
 **Known limitation (mode 1, not yet validated on hardware):** the layer
@@ -177,18 +177,18 @@ switch it to borderless.
 
 To turn the layer on for a single game there is nothing to write in the
 config file: put this in the game's Steam launch options. Steam executes
-them through cmd on Windows, so the `BDEX_FG=1 %command%` syntax used on
+them through cmd on Windows, so the `CHUDS_FG=1 %command%` syntax used on
 Linux is not valid there — `set` defines the environment the game process
 inherits, which is what the layer reads:
 
 ```
-cmd /c "set BDEX_FG=1 && %command%"
-cmd /c "set BDEX_FG=1 && set BDEX_FG_MULTIPLIER=3 && set BDEX_FG_MODE=extrapolate && %command%"
+cmd /c "set CHUDS_FG=1 && %command%"
+cmd /c "set CHUDS_FG=1 && set CHUDS_FG_MULTIPLIER=3 && set CHUDS_FG_MODE=extrapolate && %command%"
 ```
 
-Any `BDEX_FG_*` option works this way and overrides the config file; add
-`log_file=%TEMP%\bdex-fg.log` to the config file once, since game stderr
-goes nowhere on Windows. `cmd /c "set BDEX_FG=0 && %command%"` forces the
+Any `CHUDS_FG_*` option works this way and overrides the config file; add
+`log_file=%TEMP%\chuds-fg.log` to the config file once, since game stderr
+goes nowhere on Windows. `cmd /c "set CHUDS_FG=0 && %command%"` forces the
 layer off for one game. Per-game `[name]` sections in the config file are
 the third way and need no launch options at all.
 

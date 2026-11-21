@@ -10,8 +10,8 @@
 // narrow set of engine resources passes use.
 //
 // Adding one: a class in layer/src/passes/, one line in createOptionalPasses
-// (passes/registry.cpp), its source in BDEX_ENGINE_SOURCES
-// (layer/CMakeLists.txt, shared by the layer, bdex_offline and bdex_capture),
+// (passes/registry.cpp), its source in CHUDS_FG_ENGINE_SOURCES
+// (layer/CMakeLists.txt, shared by the layer, chuds_fg_offline and chuds_fg_capture),
 // its option in the registry of config.cpp.
 #include "config.h"
 #include "device.h"
@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // What the passes contribute to a synthesis (beforeSynthesis).
 struct SynthesisInputs {
@@ -212,4 +212,4 @@ public:
 std::vector<std::unique_ptr<FgPass>> createOptionalPasses(const Config& cfg, DeviceData& dev, uint32_t outputs,
                                                           bool upscaling, VkExtent2D display);
 
-} // namespace bdex
+} // namespace chuds_fg

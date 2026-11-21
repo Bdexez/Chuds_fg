@@ -1,18 +1,18 @@
 {
   "file_format_version": "1.1.2",
   "layer": {
-    "name": "@BDEX_LAYER_NAME@",
+    "name": "@CHUDS_FG_LAYER_NAME@",
     "type": "GLOBAL",
-    "library_path": "@BDEX_LAYER_LIBRARY_PATH@",
-    "library_arch": "@BDEX_LIBRARY_ARCH@",
+    "library_path": "@CHUDS_FG_LAYER_LIBRARY_PATH@",
+    "library_arch": "@CHUDS_FG_LIBRARY_ARCH@",
     "api_version": "1.4.0",
     "implementation_version": "1",
-    "description": "BDEX frame generation: interpolates extra frames between the game's frames",
+    "description": "CHUDS FG frame generation: interpolates extra frames between the game's frames",
     "functions": {
       "vkGetInstanceProcAddr": "vkGetInstanceProcAddr",
       "vkGetDeviceProcAddr": "vkGetDeviceProcAddr",
       "vkNegotiateLoaderLayerInterfaceVersion": "vkNegotiateLoaderLayerInterfaceVersion"
     },
-    "disable_environment": { "BDEX_FG_DISABLE": "1" }
+    "disable_environment": { "CHUDS_FG_DISABLE": "1" }
   }
 }

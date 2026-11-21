@@ -18,7 +18,7 @@
 // Results go to the online_tune slot counters (probe_compare.comp).
 #include "fg_pass.h"
 
-namespace bdex {
+namespace chuds_fg {
 
 class SynthesisProbe {
 public:
@@ -53,4 +53,4 @@ private:
     uint64_t probeFrame_ = ~0ull;  // extrapolation: frame at which the prediction was synthesised
 };
 
-} // namespace bdex
+} // namespace chuds_fg

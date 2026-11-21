@@ -1,7 +1,7 @@
 #include "budget.h"
 #include "test.h"
 
-using namespace bdex;
+using namespace chuds_fg;
 
 TEST(budget_steps_down_after_two_windows) {
     GpuBudget b;

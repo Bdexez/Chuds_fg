@@ -32,7 +32,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 struct DeviceData;
 
@@ -173,4 +173,4 @@ private:
     uint64_t picked_ = 0;
 };
 
-} // namespace bdex
+} // namespace chuds_fg

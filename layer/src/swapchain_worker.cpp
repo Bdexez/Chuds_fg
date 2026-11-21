@@ -22,7 +22,7 @@
 #include <cstring>
 #include <functional>
 
-namespace bdex {
+namespace chuds_fg {
 
 // ---------------------------------------------------------------------------
 // Worker side
@@ -47,7 +47,7 @@ void VirtualSwapchain::workerLoop() {
         const std::string got = raiseThreadPriority();
         static std::atomic<bool> logged{false};
         if (!logged.exchange(true))
-            BDEX_INFO("presentation thread priority: %s", got.empty() ? "normal (not permitted)" : got.c_str());
+            CHUDS_FG_INFO("presentation thread priority: %s", got.empty() ? "normal (not permitted)" : got.c_str());
     }
     for (;;) {
         Job job;
@@ -238,7 +238,7 @@ void VirtualSwapchain::runJob(const Job& job) {
             const double readyMs = std::chrono::duration<double, std::milli>(origin - job.start).count();
             if (slipped && readyMs < 0.5 * job.intervalMs) {
                 smoothCatchupRequested_.store(true, std::memory_order_relaxed);
-                BDEX_DBG("presentation plan slipped: first output %.3f ms late, ready lag %.3f ms",
+                CHUDS_FG_DBG("presentation plan slipped: first output %.3f ms late, ready lag %.3f ms",
                          lastLandMs_ - job.planned[0], readyMs);
             }
             // (Or the job itself began a refresh late: the worker was still
@@ -527,7 +527,7 @@ void latencyLogLine(const std::string& path, double presentMs, double displayMs,
     if (!file && !failed) {
         file = fopen(path.c_str(), "w");
         failed = !file;
-        if (failed) BDEX_WARN("latency_log: cannot write %s", path.c_str());
+        if (failed) CHUDS_FG_WARN("latency_log: cannot write %s", path.c_str());
     }
     if (!file) return;
     fprintf(file, "%.3f %.3f %d %.3f%s\n", presentMs, displayMs, real ? 1 : 0, plannedMs, more);
@@ -618,7 +618,7 @@ void VirtualSwapchain::feedbackLoop() {
             } else if (r == VK_TIMEOUT && !fbPaused_ && !fbEverDisplayed_ && ++fbTimeouts_ >= 30) {
                 // Nothing ever reported displayed: the driver or compositor
                 // does not implement present waits usefully here.
-                BDEX_INFO("present feedback unavailable on this surface; disabled");
+                CHUDS_FG_INFO("present feedback unavailable on this surface; disabled");
                 feedback_ = false;
                 quit = true;
             }
@@ -693,7 +693,7 @@ void VirtualSwapchain::pollGamescope() {
         gsFailed_ = true;
         gsHz_ = 0.0;
         gsLimited_ = false;
-        BDEX_WARN("gamescope's WSI layer gave no refresh cycle for this swapchain: measuring the display instead");
+        CHUDS_FG_WARN("gamescope's WSI layer gave no refresh cycle for this swapchain: measuring the display instead");
         return;
     }
     uint64_t ns = cycle.refreshDuration;
@@ -763,7 +763,7 @@ VkResult VirtualSwapchain::submitDeferredSynthesis(const Job& job) {
     std::lock_guard<std::mutex> qlock(dev_.queueMutex(queue));
     VkResult r = dev_.vt.QueueSubmit(queue, 1, &si, s.fence);
     if (r < 0) {
-        BDEX_ERR("synthesis submission failed: %s", vkResultName(r));
+        CHUDS_FG_ERR("synthesis submission failed: %s", vkResultName(r));
         // Still signal the fence (and the semaphores the presents wait) so
         // nothing waits forever; the waits above are consumed too.
         VkSubmitInfo empty = si;
@@ -928,26 +928,26 @@ VkResult VirtualSwapchain::presentCopied(const Job& job, const Copied& c) {
     pi.swapchainCount = 1;
     pi.pSwapchains = &real_;
     pi.pImageIndices = &ri;
-    const void** tail = bdexNext(pi);
+    const void** tail = chudsFgNext(pi);
     uint64_t feedbackId = 0;
     if (c.real && job.presentId) {
         presentId.swapchainCount = 1;
         presentId.pPresentIds = &job.presentId;
         *tail = &presentId;
-        tail = bdexNext(presentId);
+        tail = chudsFgNext(presentId);
     } else if (feedback_ && !job.presentId) {
         // Our own ids (the game cannot use present ids: they are hidden).
         feedbackId = ++presentCounter_;
         presentId.swapchainCount = 1;
         presentId.pPresentIds = &feedbackId;
         *tail = &presentId;
-        tail = bdexNext(presentId);
+        tail = chudsFgNext(presentId);
     }
     if (job.presentMode >= 0) {
         presentMode.swapchainCount = 1;
         presentMode.pPresentModes = &presentModeValue;
         *tail = &presentMode;
-        tail = bdexNext(presentMode);
+        tail = chudsFgNext(presentMode);
     }
 #ifdef VK_EXT_present_timing
     // The driver times this frame's display (the feedback thread reads it).
@@ -962,7 +962,7 @@ VkResult VirtualSwapchain::presentCopied(const Job& job, const Copied& c) {
         timings.pTimingInfos = &timingInfo;
         timingsLink = tail;
         *tail = &timings;
-        tail = bdexNext(timings);
+        tail = chudsFgNext(timings);
     }
 #endif
     // Steam's framerate limit (gamescope): gamescope shows one frame per
@@ -995,7 +995,7 @@ VkResult VirtualSwapchain::presentCopied(const Job& job, const Copied& c) {
             // paused): present without them from now on.
             ptActive_ = false;
             *timingsLink = nullptr;
-            BDEX_WARN("present timing queue full: display times from present waits only");
+            CHUDS_FG_WARN("present timing queue full: display times from present waits only");
             r = dev_.vt.QueuePresentKHR(dev_.queue, &pi);
         }
 #endif
@@ -1059,4 +1059,4 @@ VkResult VirtualSwapchain::presentCopied(const Job& job, const Copied& c) {
     return VK_SUCCESS;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

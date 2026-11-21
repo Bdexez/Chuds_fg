@@ -1,13 +1,13 @@
-# bdex_add_shaders(<target_name> OUT_HEADER <path> SHADERS <file>[:<variant>:<defines...>] ... [DEPENDS <files>])
+# chuds_fg_add_shaders(<target_name> OUT_HEADER <path> SHADERS <file>[:<variant>:<defines...>] ... [DEPENDS <files>])
 #
 # Compiles every GLSL file with glslc to SPIR-V and embeds the words in a
 # generated header as `static const uint32_t <symbol>[]` + `<symbol>_size`.
 # The symbol is derived from the file name (dots/dashes -> underscores) plus an
 # optional variant suffix; extra defines are passed to glslc.
 
-set(BDEX_EMBED_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/embed_spv.cmake")
+set(CHUDS_FG_EMBED_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/embed_spv.cmake")
 
-function(bdex_add_shaders target)
+function(chuds_fg_add_shaders target)
   cmake_parse_arguments(ARG "" "OUT_HEADER" "SHADERS;DEPENDS" ${ARGN})
   set(spv_files)
   set(symbols)
@@ -35,8 +35,8 @@ function(bdex_add_shaders target)
     endforeach()
     # glslc, else glslangValidator, else a precompiled file (see the top-level
     # CMakeLists.txt). Both compilers target SPIR-V 1.0 / Vulkan 1.0.
-    if(BDEX_SPIRV_DIR)
-      set(compile ${CMAKE_COMMAND} -E copy "${BDEX_SPIRV_DIR}/${sym}.spv" "${spv}")
+    if(CHUDS_FG_SPIRV_DIR)
+      set(compile ${CMAKE_COMMAND} -E copy "${CHUDS_FG_SPIRV_DIR}/${sym}.spv" "${spv}")
       set(tool "precompiled")
     elseif(GLSLC)
       set(compile ${GLSLC} --target-env=vulkan1.0 -O ${defflags} -o "${spv}" "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
@@ -63,8 +63,8 @@ function(bdex_add_shaders target)
       "-DOUT=${ARG_OUT_HEADER}"
       "-DSPV_FILES=${spv_files}"
       "-DSYMBOLS=${symbols}"
-      -P "${BDEX_EMBED_SCRIPT}"
-    DEPENDS ${spv_files} "${BDEX_EMBED_SCRIPT}"
+      -P "${CHUDS_FG_EMBED_SCRIPT}"
+    DEPENDS ${spv_files} "${CHUDS_FG_EMBED_SCRIPT}"
     COMMENT "Embedding SPIR-V into ${ARG_OUT_HEADER}"
     VERBATIM)
   add_custom_target(${target} DEPENDS "${ARG_OUT_HEADER}")

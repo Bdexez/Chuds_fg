@@ -23,7 +23,7 @@ struct pw_context;
 struct pw_core;
 struct pw_stream;
 
-namespace bdex {
+namespace chuds_fg {
 
 class PwCapture {
 public:
@@ -91,4 +91,4 @@ private:
     double fps_ = 0.0;
 };
 
-} // namespace bdex
+} // namespace chuds_fg

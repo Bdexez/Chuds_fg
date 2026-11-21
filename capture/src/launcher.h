@@ -1,7 +1,7 @@
-// bdex_capture's native launcher (docs/windows-capture.md phase 3): running
-// bdex_capture without arguments opens this window instead of capturing the
+// chuds_fg_capture's native launcher (docs/windows-capture.md phase 3): running
+// chuds_fg_capture without arguments opens this window instead of capturing the
 // foreground one. Pick the game window, set the frame-generation options —
-// the same ones as the Linux control panel (tools/bdex-framegen-gui) — and
+// the same ones as the Linux control panel (tools/chuds-fg-gui) — and
 // press Démarrer; the choices persist to the shared config file.
 #pragma once
 #include <windows.h>
@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // A capturable top-level window (what --list prints).
 struct WindowInfo {
@@ -29,7 +29,7 @@ std::string narrow(const std::wstring& w);
 std::wstring wideLower(std::wstring s);
 
 // The interfaces' language: French when Windows' display language is
-// (GetUserDefaultUILanguage), English otherwise; BDEX_LANG=fr|en chooses.
+// (GetUserDefaultUILanguage), English otherwise; CHUDS_FG_LANG=fr|en chooses.
 bool launcherFrench();
 
 // Base name of a process image (…\DarkSoulsIII.exe -> DarkSoulsIII.exe).
@@ -75,7 +75,7 @@ struct LaunchChoice {
 // The launcher opens on its basic page (the game, the multiplier, the mode,
 // the game's frame cap, the FPS counter, what runs) or, once « Mode avancé »
 // has been ticked, on every option (remembered in
-// %LOCALAPPDATA%\bdex-framegen\launcher-mode).
+// %LOCALAPPDATA%\chuds-fg\launcher-mode).
 // Runs the launcher modally (its own message loop). `choice` carries both
 // the defaults shown and the result; on Démarrer the options are persisted
 // to the config file's [*] section (game sections and unknown keys are
@@ -84,7 +84,7 @@ bool runLauncher(LaunchChoice& choice);
 
 // The Vulkan GPUs of this machine (software renderers left out), by name.
 std::vector<std::string> vulkanGpuNames();
-// The Vulkan layer (VkLayer_bdex_framegen.dll) is registered as an implicit
+// The Vulkan layer (VkLayer_chuds_fg.dll) is registered as an implicit
 // layer (register-layer.ps1): Vulkan games load it, and the launcher can
 // generate in them by injection.
 bool layerRegistered();
@@ -97,4 +97,4 @@ void armLayer();
 // when unset. Lets the launcher prefill from a hand-written config.
 std::string globalConfigValue(const std::string& key);
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -5,7 +5,7 @@
 #include "framegen_internal.h"
 #include "shaders.h"
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct LfPC { int32_t size[2]; int32_t luma[2]; int32_t block; int32_t stage; float strength; };
@@ -60,4 +60,4 @@ private:
 
 std::unique_ptr<FgPass> makeLearnedFlowPass() { return std::make_unique<LearnedFlowPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

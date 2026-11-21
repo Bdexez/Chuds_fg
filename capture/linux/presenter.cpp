@@ -11,13 +11,13 @@
 #include <cctype>
 #include <cstring>
 
-namespace bdex {
+namespace chuds_fg {
 
 #define VKC(x)                                                             \
     do {                                                                   \
         VkResult r_ = (x);                                                 \
         if (r_ != VK_SUCCESS) {                                            \
-            BDEX_ERR("%s failed (%s)", #x, vkResultName(r_));              \
+            CHUDS_FG_ERR("%s failed (%s)", #x, vkResultName(r_));              \
             return false;                                                  \
         }                                                                  \
     } while (0)
@@ -87,13 +87,13 @@ bool makeInstance(VkInstance& inst) {
     const char* want[] = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME};
     for (const char* e : want)
         if (!hasExt(e, exts)) {
-            BDEX_ERR("instance extension %s missing", e);
+            CHUDS_FG_ERR("instance extension %s missing", e);
             return false;
         }
     std::vector<const char*> layers;
-    if (std::getenv("BDEX_CAP_VALIDATION")) layers.push_back("VK_LAYER_KHRONOS_validation");
+    if (std::getenv("CHUDS_FG_CAP_VALIDATION")) layers.push_back("VK_LAYER_KHRONOS_validation");
     VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    app.pApplicationName = "bdex-capture";  // (the layer stays out of it: a non-game, platform.cpp)
+    app.pApplicationName = "chuds-fg-capture";  // (the layer stays out of it: a non-game, platform.cpp)
     app.apiVersion = VK_API_VERSION_1_1;
     VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     ici.pApplicationInfo = &app;
@@ -137,17 +137,17 @@ bool Presenter::init(Display* dpy, Window overlay, const std::string& gpu, bool 
 
     const auto gpus = usableGpus(inst_, surface_);
     if (gpus.empty()) {
-        BDEX_ERR("no GPU can present to the overlay window");
+        CHUDS_FG_ERR("no GPU can present to the overlay window");
         return false;
     }
     for (size_t i = 0; i < gpus.size(); ++i)
-        BDEX_INFO("gpu %zu: %s (%s%s)", i, gpus[i].props.deviceName, kindName(gpus[i].props.deviceType),
+        CHUDS_FG_INFO("gpu %zu: %s (%s%s)", i, gpus[i].props.deviceName, kindName(gpus[i].props.deviceType),
                   gpus[i].hostImport ? ", host memory import" : "");
     size_t pick = 0;
     if (!gpu.empty() && std::all_of(gpu.begin(), gpu.end(), [](char c) { return std::isdigit(static_cast<unsigned char>(c)); })) {
         pick = std::stoul(gpu);
         if (pick >= gpus.size()) {
-            BDEX_ERR("--gpu %s: only %zu usable GPU(s)", gpu.c_str(), gpus.size());
+            CHUDS_FG_ERR("--gpu %s: only %zu usable GPU(s)", gpu.c_str(), gpus.size());
             return false;
         }
     } else if (!gpu.empty()) {
@@ -155,7 +155,7 @@ bool Presenter::init(Display* dpy, Window overlay, const std::string& gpu, bool 
         for (size_t i = 0; i < gpus.size() && pick == gpus.size(); ++i)
             if (lower(gpus[i].props.deviceName).find(lower(gpu)) != std::string::npos) pick = i;
         if (pick == gpus.size()) {
-            BDEX_ERR("--gpu %s: no GPU of that name", gpu.c_str());
+            CHUDS_FG_ERR("--gpu %s: no GPU of that name", gpu.c_str());
             return false;
         }
     } else {
@@ -170,7 +170,7 @@ bool Presenter::init(Display* dpy, Window overlay, const std::string& gpu, bool 
     phys_ = g.pd;
     qf_ = g.qf;
     gpuName_ = g.props.deviceName;
-    hostImportExt_ = g.hostImport && !std::getenv("BDEX_CAP_NO_HOST_IMPORT");
+    hostImportExt_ = g.hostImport && !std::getenv("CHUDS_FG_CAP_NO_HOST_IMPORT");
 
     float prio = 1.0f;
     VkDeviceQueueCreateInfo dq{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
@@ -220,7 +220,7 @@ bool Presenter::init(Display* dpy, Window overlay, const std::string& gpu, bool 
     }
 
     // The layer's DeviceData over our plain device (as the Windows capture's
-    // VkCtx and bdex_offline do): FrameGen works on it unchanged.
+    // VkCtx and chuds_fg_offline do): FrameGen works on it unchanged.
     layerInst_.vt.load(inst_, vkGetInstanceProcAddr);
     layerInst_.instance = inst_;
     layerInst_.apiVersion = VK_API_VERSION_1_1;
@@ -239,7 +239,7 @@ bool Presenter::init(Display* dpy, Window overlay, const std::string& gpu, bool 
     layerDev_.cmdPool = cpool_;
     layerDev_.config.autoConfigure(layerDev_.props, layerDev_.memProps);
     const Config& fc = layerDev_.config;
-    BDEX_INFO("using gpu %zu: %s; frame generation x%d %s, preset %s", pick, gpuName_.c_str(), fc.multiplier,
+    CHUDS_FG_INFO("using gpu %zu: %s; frame generation x%d %s, preset %s", pick, gpuName_.c_str(), fc.multiplier,
               fc.modeName(), fc.autoTunedTo.empty() ? "(explicit)" : fc.autoTunedTo.c_str());
     return true;
 }
@@ -287,7 +287,7 @@ bool Presenter::createSwapchain(uint32_t w, uint32_t h) {
     for (auto& f : fmts)
         if (f.format == scFormat_ && f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) found = true;
     if (!found) {
-        BDEX_ERR("B8G8R8A8_UNORM surface format not supported");
+        CHUDS_FG_ERR("B8G8R8A8_UNORM surface format not supported");
         return false;
     }
     uint32_t imageCount = caps.minImageCount + 1;
@@ -315,7 +315,7 @@ bool Presenter::createSwapchain(uint32_t w, uint32_t h) {
     VkSemaphoreCreateInfo sem{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     semDone_.assign(nImg, VK_NULL_HANDLE);
     for (auto& s : semDone_) VKC(vkCreateSemaphore(dev_, &sem, nullptr, &s));
-    BDEX_INFO("overlay swapchain %ux%u, %u images, %s", width_, height_, nImg, presentModeName());
+    CHUDS_FG_INFO("overlay swapchain %ux%u, %u images, %s", width_, height_, nImg, presentModeName());
     if (captureW_ && (width_ != engineW_ || height_ != engineH_) && !rebuildEngine(captureW_, captureH_)) return false;
     return true;
 }
@@ -379,13 +379,13 @@ bool Presenter::rebuildEngine(uint32_t cw, uint32_t ch) {
         fg_ = std::make_unique<FrameGen>(layerDev_, scFormat_, VkExtent2D{cw, ch}, VkExtent2D{width_, height_},
                                          outputs, sources);
     } catch (const std::exception& e) {
-        BDEX_ERR("frame generation setup failed: %s", e.what());
+        CHUDS_FG_ERR("frame generation setup failed: %s", e.what());
         destroyEngine();
         return false;
     }
     engineW_ = width_;
     engineH_ = height_;
-    BDEX_INFO("engine: capture %ux%u -> display %ux%u, %d frame(s) per capture", cw, ch, width_, height_,
+    CHUDS_FG_INFO("engine: capture %ux%u -> display %ux%u, %d frame(s) per capture", cw, ch, width_, height_,
               std::max(1, layerDev_.config.multiplier));
     return true;
 }
@@ -445,20 +445,20 @@ bool Presenter::prepareUpload(Upload& u, const X11Capture::Frame& f, size_t byte
                 u.buffer.size = size;
                 u.imported = true;
                 u.generation = f.generation;
-                if (!hostImport_) BDEX_INFO("captured frames read in place (host memory import)");
+                if (!hostImport_) CHUDS_FG_INFO("captured frames read in place (host memory import)");
                 hostImport_ = true;
                 return true;
             }
             if (mem) vkFreeMemory(dev_, mem, nullptr);
             vkDestroyBuffer(dev_, buf, nullptr);
         }
-        BDEX_INFO("host memory import refused: captured frames copied");
+        CHUDS_FG_INFO("host memory import refused: captured frames copied");
         hostImportExt_ = false;
     }
     try {
         u.buffer = layerDev_.createBuffer(bytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true);
     } catch (const std::exception& e) {
-        BDEX_ERR("staging buffer: %s", e.what());
+        CHUDS_FG_ERR("staging buffer: %s", e.what());
         return false;
     }
     if (vkMapMemory(dev_, u.buffer.memory, 0, VK_WHOLE_SIZE, 0, &u.mapped) != VK_SUCCESS) return false;
@@ -575,7 +575,7 @@ int Presenter::synthesize(const X11Capture::Frame& f) {
     vkResetFences(dev_, 1, &s.fence);
     const VkResult sr = vkQueueSubmit(queue_, 1, &sub, s.fence);
     if (sr != VK_SUCCESS) {
-        BDEX_ERR("synthesis submit failed (%s)", vkResultName(sr));
+        CHUDS_FG_ERR("synthesis submit failed (%s)", vkResultName(sr));
         return -1;
     }
     lastSynthFence_ = s.fence;
@@ -604,7 +604,7 @@ int Presenter::present(int index) {
     const VkResult ar = vkAcquireNextImageKHR(dev_, swapchain_, UINT64_MAX, s.acquireSem, VK_NULL_HANDLE, &img);
     if (ar == VK_ERROR_OUT_OF_DATE_KHR) return 1;
     if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR) {
-        BDEX_ERR("vkAcquireNextImageKHR failed (%s)", vkResultName(ar));
+        CHUDS_FG_ERR("vkAcquireNextImageKHR failed (%s)", vkResultName(ar));
         return -1;
     }
     VkCommandBuffer cb = s.cmd;
@@ -626,7 +626,7 @@ int Presenter::present(int index) {
     vkResetFences(dev_, 1, &s.fence);
     const VkResult sr = vkQueueSubmit(queue_, 1, &sub, s.fence);
     if (sr != VK_SUCCESS) {
-        BDEX_ERR("present submit failed (%s)", vkResultName(sr));
+        CHUDS_FG_ERR("present submit failed (%s)", vkResultName(sr));
         return -1;
     }
     lastCopyFence_ = s.fence;
@@ -644,7 +644,7 @@ int Presenter::present(int index) {
         pr = VK_SUCCESS;
     }
     if (pr != VK_SUCCESS) {
-        BDEX_ERR("vkQueuePresentKHR failed (%s)", vkResultName(pr));
+        CHUDS_FG_ERR("vkQueuePresentKHR failed (%s)", vkResultName(pr));
         return -1;
     }
     return 0;
@@ -720,4 +720,4 @@ void Presenter::shutdown() {
     phys_ = VK_NULL_HANDLE;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

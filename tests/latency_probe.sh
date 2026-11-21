@@ -7,9 +7,9 @@
 # Skipped (77) without gamescope.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export BDEX_BUILD="${1:?usage: latency_probe.sh <build dir>}"
+export CHUDS_FG_BUILD="${1:?usage: latency_probe.sh <build dir>}"
 command -v gamescope >/dev/null || { echo "gamescope not found: skipped"; exit 77; }
-out="$("$ROOT/tools/latency_bench.sh" --seconds 6 x1=BDEX_FG_MULTIPLIER=1 interpolate=)" || exit $?
+out="$("$ROOT/tools/latency_bench.sh" --seconds 6 x1=CHUDS_FG_MULTIPLIER=1 interpolate=)" || exit $?
 echo "$out"
 row() { grep "^$1 " <<<"$out" | awk '{ print $6, $10 }'; }  # first photon, real frame medians
 read -r x1first x1real <<<"$(row x1)"
@@ -23,7 +23,7 @@ awk -v f="$ifirst" -v r="$ireal" -v x="$x1real" 'BEGIN { exit !(r >= f && r > x)
 # uncapped demo capped at 40 fps by the layer must reach the screen as fast
 # as the demo capping itself (until 13/10: +23 ms; the layer then stamped
 # the present after its wait, and the join found no flash at all).
-cap="$("$ROOT/tools/latency_bench.sh" --fps 1000 --seconds 6 x1cap=BDEX_FG_MULTIPLIER=1,BDEX_FG_FPS_LIMIT=40)" || exit $?
+cap="$("$ROOT/tools/latency_bench.sh" --fps 1000 --seconds 6 x1cap=CHUDS_FG_MULTIPLIER=1,CHUDS_FG_FPS_LIMIT=40)" || exit $?
 echo "$cap"
 capreal="$(grep "^x1cap " <<<"$cap" | awk '{ print $10 }')"
 [[ "$capreal" =~ ^[0-9.]+$ ]] || { echo "FAIL: fps_limit: no displayed flash (the limiter holds the present?)"; exit 1; }
@@ -35,9 +35,9 @@ awk -v c="$capreal" -v x="$x1real" 'BEGIN { exit !(c <= x + 4.0) }' ||
 # fast as when it caps itself — held at its present thread, it read its
 # input two frames early (+50 ms at 40 fps).
 pt="--present-thread 3 --mode immediate"
-own="$("$ROOT/tools/latency_bench.sh" --fps 40 --seconds 6 --demo-args "$pt" ptown=BDEX_FG_MULTIPLIER=1)" || exit $?
+own="$("$ROOT/tools/latency_bench.sh" --fps 40 --seconds 6 --demo-args "$pt" ptown=CHUDS_FG_MULTIPLIER=1)" || exit $?
 echo "$own"
-wait="$("$ROOT/tools/latency_bench.sh" --fps 1000 --seconds 6 --demo-args "$pt" ptwait=BDEX_FG_MULTIPLIER=1,BDEX_FG_FPS_LIMIT=40)" || exit $?
+wait="$("$ROOT/tools/latency_bench.sh" --fps 1000 --seconds 6 --demo-args "$pt" ptwait=CHUDS_FG_MULTIPLIER=1,CHUDS_FG_FPS_LIMIT=40)" || exit $?
 echo "$wait"
 ownreal="$(grep "^ptown " <<<"$own" | awk '{ print $10 }')"
 waitreal="$(grep "^ptwait " <<<"$wait" | awk '{ print $10 }')"
@@ -56,18 +56,18 @@ awk -v c="$waitreal" -v x="$ownreal" 'BEGIN { exit !(c <= x + 4.0) }' ||
 devices="$(vulkaninfo 2>/dev/null || true)"
 if grep -q VK_NV_low_latency2 <<<"$devices"; then
   sim="$pt --sim-thread"
-  simown="$("$ROOT/tools/latency_bench.sh" --fps 40 --seconds 6 --demo-args "$sim" simown=BDEX_FG_MULTIPLIER=1)" || exit $?
+  simown="$("$ROOT/tools/latency_bench.sh" --fps 40 --seconds 6 --demo-args "$sim" simown=CHUDS_FG_MULTIPLIER=1)" || exit $?
   echo "$simown"
   # (--reflex-lock: VKD3D-Proton makes the sleep holding the lock its every
   # marker takes, the render thread's too — a sleep of the layer's in it held
   # that thread: until 31/10, a frame more from the simulation to the present)
   reflex="$("$ROOT/tools/latency_bench.sh" --fps 1000 --seconds 6 --demo-args "$sim --reflex --reflex-lock" \
-    simreflex=BDEX_FG_MULTIPLIER=1,BDEX_FG_FPS_LIMIT=40)" || exit $?
+    simreflex=CHUDS_FG_MULTIPLIER=1,CHUDS_FG_FPS_LIMIT=40)" || exit $?
   echo "$reflex"
   # With Reflex on, Unreal hands its own frame rate limit to Reflex (the
   # driver's limiter, minimumIntervalUs): the reference of its in-game limit.
   rlimit="$("$ROOT/tools/latency_bench.sh" --fps 40 --seconds 6 --demo-args "$sim --reflex --reflex-limit --reflex-lock" \
-    simrlimit=BDEX_FG_MULTIPLIER=1)" || exit $?
+    simrlimit=CHUDS_FG_MULTIPLIER=1)" || exit $?
   echo "$rlimit"
   simownreal="$(grep "^simown " <<<"$simown" | awk '{ print $10 }')"
   reflexreal="$(grep "^simreflex " <<<"$reflex" | awk '{ print $10 }')"

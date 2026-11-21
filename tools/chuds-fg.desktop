@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=bdex-framegen
+Name=chuds-fg
 GenericName=Frame Generation Launcher
 Comment=Choose frame-generation and upscaling options, then launch a game
-Exec=bdex-framegen-gui
+Exec=chuds-fg-gui
 Icon=applications-games
 Terminal=false
 Categories=Game;Utility;Settings;

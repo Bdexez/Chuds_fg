@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace depth = bdex::depth;
+namespace depth = chuds_fg::depth;
 
 namespace {
 depth::Usage use(uint64_t image, uint32_t w, uint32_t h, uint32_t passes, bool sampleable = true) {

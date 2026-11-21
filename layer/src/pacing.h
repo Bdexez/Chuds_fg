@@ -11,7 +11,7 @@
 #include <cmath>
 #include <cstdint>
 
-namespace bdex {
+namespace chuds_fg {
 namespace pacing {
 
 // Keep the historical EMA for jitter and isolated slow frames. Two similar
@@ -695,4 +695,4 @@ struct FastGate {
 };
 
 } // namespace pacing
-} // namespace bdex
+} // namespace chuds_fg

@@ -8,7 +8,7 @@
 #include <dlfcn.h>
 #endif
 
-namespace bdex {
+namespace chuds_fg {
 
 std::string nvmlUuidString(const uint8_t* u) {
     char s[48];
@@ -131,4 +131,4 @@ std::unique_ptr<GpuLoad> GpuLoad::open(uint32_t, uint32_t, const uint8_t*, const
 
 #endif
 
-} // namespace bdex
+} // namespace chuds_fg

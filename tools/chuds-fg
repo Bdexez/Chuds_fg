@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Launcher: runs a program with the BDEX frame generation layer enabled.
+# Launcher: runs a program with the CHUDS FG frame generation layer enabled.
 #
-#   bdex-framegen [options] -- <command> [args...]
+#   chuds-fg [options] -- <command> [args...]
 #
-# Options map to BDEX_FG_* environment variables (see README.md):
+# Options map to CHUDS_FG_* environment variables (see README.md):
 #   -m, --multiplier N     frames per real frame: 2 (default), 3 or 4
 #   -x, --extrapolate      predict frames instead of interpolating: no added latency
 #   -P, --preset NAME      quality | balanced (default) | performance | latency (min input lag)
@@ -42,10 +42,10 @@
 #                          not see the system's layers — run it once after
 #                          installing a distribution package
 #       --report [FILE]    write a diagnostic report for bug reports (default:
-#                          ./bdex-framegen-report.txt)
+#                          ./chuds-fg-report.txt)
 #       --issue-url [FILE] the link to a pre-filled bug report (GitHub issue form)
-#                          from a --report file (default ./bdex-framegen-report.txt)
-#       --calibrate [--apply]  what generation costs on this GPU (bdex-calibrate):
+#                          from a --report file (default ./chuds-fg-report.txt)
+#       --calibrate [--apply]  what generation costs on this GPU (chuds-fg-calibrate):
 #                          the recommended preset and multiplier; --apply writes them
 #       --record DIR [N]   record the game's real frames into DIR (N, default
 #                          240; generation off) for the evaluation corpus:
@@ -125,20 +125,20 @@ flatpak_dirs() {
   for app in com.valvesoftware.Steam com.heroicgameslauncher.hgl net.lutris.Lutris com.usebottles.bottles; do
     d="$HOME/.var/app/$app"
     # (a copy of the layer, or flatpak.sh's mark: the Flatpak extension loads it)
-    [ -f "$d/data/vulkan/implicit_layer.d/VK_LAYER_BDEX_framegen.json" ] ||
-      [ -f "$d/data/bdex-framegen/extension" ] || continue
+    [ -f "$d/data/vulkan/implicit_layer.d/VK_LAYER_CHUDS_fg.json" ] ||
+      [ -f "$d/data/chuds-fg/extension" ] || continue
     case "${1:-}" in
-      run) echo "$d/.cache/bdex-framegen/run" ;;
-      config) echo "$d/config/bdex-framegen.conf" ;;
+      run) echo "$d/.cache/chuds-fg/run" ;;
+      config) echo "$d/config/chuds-fg.conf" ;;
       *) echo "$d" ;;
     esac
   done
   # Snaps (Steam's): HOME is ~/snap/<name>/current.
   d="$HOME/snap/steam/current"
-  if [ -f "$d/.local/share/vulkan/implicit_layer.d/VK_LAYER_BDEX_framegen.json" ]; then
+  if [ -f "$d/.local/share/vulkan/implicit_layer.d/VK_LAYER_CHUDS_fg.json" ]; then
     case "${1:-}" in
-      run) echo "$d/.cache/bdex-framegen/run" ;;
-      config) echo "$d/.config/bdex-framegen.conf" ;;
+      run) echo "$d/.cache/chuds-fg/run" ;;
+      config) echo "$d/.config/chuds-fg.conf" ;;
     esac
   fi
 }
@@ -236,11 +236,11 @@ quick_read() {
       if [ -n "$outputs" ] && [ "$gv" != "?" ] &&
          ! echo "$outputs" | while read -r _ _ drv; do [ "$(gpu_vendor "$drv")" = "$gv" ] && echo y; done | grep -q y; then
         echo "  → le jeu tourne sur $dev mais aucun écran n'est branché sur ce GPU : les images passent par l'autre GPU"
-        echo "    (copie PRIME ; brancher l'écran sur la carte graphique du jeu, ou lancer le jeu sur le GPU de l'écran : bdex-framegen --gpu screen -- jeu)"
+        echo "    (copie PRIME ; brancher l'écran sur la carte graphique du jeu, ou lancer le jeu sur le GPU de l'écran : chuds-fg --gpu screen -- jeu)"
       fi
     done
   done
-  [ "$found" = 1 ] || echo "aucun jeu ne publie d'état : jeu non lancé, ou couche non chargée dans le jeu (bdex-framegen --check)"
+  [ "$found" = 1 ] || echo "aucun jeu ne publie d'état : jeu non lancé, ou couche non chargée dans le jeu (chuds-fg --check)"
   # The scene-cut fallback: generated frames replaced by the real one are
   # displayed but show nothing new (x2 then looks exactly like x1).
   local log="$2" cut
@@ -286,15 +286,15 @@ hide_home() {
 
 # Everything a bug report needs, in one file to attach to an issue.
 report() {
-  out="${1:-bdex-framegen-report.txt}"
-  cfg="${BDEX_FG_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdex-framegen.conf}"
-  sdir="${BDEX_FG_STATUS_DIR:-${HOME:+$HOME/.cache/bdex-framegen/run}}"
-  sdir="${sdir:-/tmp/bdex-framegen-$(id -u)}"
+  out="${1:-chuds-fg-report.txt}"
+  cfg="${CHUDS_FG_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/chuds-fg.conf}"
+  sdir="${CHUDS_FG_STATUS_DIR:-${HOME:+$HOME/.cache/chuds-fg/run}}"
+  sdir="${sdir:-/tmp/chuds-fg-$(id -u)}"
   {
-    echo "== bdex-framegen diagnostic report, $(date -u '+%Y-%m-%d %H:%M UTC')"
+    echo "== chuds-fg diagnostic report, $(date -u '+%Y-%m-%d %H:%M UTC')"
     echo; echo "== lecture rapide (à faire pendant que le jeu tourne, après « Démarrer »)"
     log="$(grep -hE '^\s*log_file\s*=' "$cfg" 2>/dev/null | tail -1 | cut -d= -f2- | xargs || true)"
-    log="${BDEX_FG_LOG_FILE:-$log}"
+    log="${CHUDS_FG_LOG_FILE:-$log}"
     log="${log/#\~/$HOME}"
     quick_read "$sdir" "$log"
     echo; echo "== system"
@@ -303,45 +303,45 @@ report() {
     echo "session: ${XDG_SESSION_TYPE:-?}  desktop: ${XDG_CURRENT_DESKTOP:-?}  WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-}  DISPLAY=${DISPLAY:-}"
     echo; echo "== layer"
     if command -v vulkaninfo >/dev/null; then
-      BDEX_FG=1 BDEX_FG_LOG=2 BDEX_FG_STATS=0 vulkaninfo --summary 2>&1 |
-        grep -E "bdex-fg|VK_LAYER_BDEX|deviceName|driverName|driverInfo|apiVersion|deviceType" | head -40
+      CHUDS_FG=1 CHUDS_FG_LOG=2 CHUDS_FG_STATS=0 vulkaninfo --summary 2>&1 |
+        grep -E "chuds-fg|VK_LAYER_CHUDS|deviceName|driverName|driverInfo|apiVersion|deviceType" | head -40
     else
       echo "vulkaninfo not found (install vulkan-tools)"
     fi
     echo; echo "== Vulkan layer order (application at the top, driver at the bottom)"
     if command -v vulkaninfo >/dev/null; then
-      ENABLE_VK_LAYER_VALVE_steam_overlay_1=1 BDEX_FG_STATS=0 VK_LOADER_DEBUG=layer vulkaninfo --summary 2>&1 |
+      ENABLE_VK_LAYER_VALVE_steam_overlay_1=1 CHUDS_FG_STATS=0 VK_LOADER_DEBUG=layer vulkaninfo --summary 2>&1 |
         sed -n '/vkCreateDevice layer callstack/,/<Device>/p' | grep -E '^\[Vulkan Loader\] [A-Z]+: +(VK_LAYER|<)' |
         sed -E 's/^\[Vulkan Loader\] [A-Z]+: +/  /' | awk '!seen[$0]++' | head -20
     fi
     echo; echo "== installed manifests"
     for d in /usr/share/vulkan/implicit_layer.d /etc/vulkan/implicit_layer.d \
              "${XDG_DATA_HOME:-$HOME/.local/share}/vulkan/implicit_layer.d"; do
-      ls -ln "$d"/*BDEX* 2>/dev/null || true
+      ls -ln "$d"/*CHUDS FG* 2>/dev/null || true
     done
     for d in $(flatpak_dirs); do
-      echo "Flatpak $(basename "$d"):"; ls -ln "$d"/data/vulkan/implicit_layer.d/*BDEX* 2>/dev/null || true
+      echo "Flatpak $(basename "$d"):"; ls -ln "$d"/data/vulkan/implicit_layer.d/*CHUDS FG* 2>/dev/null || true
     done
     for app in com.valvesoftware.Steam com.heroicgameslauncher.hgl net.lutris.Lutris com.usebottles.bottles; do
-      if [ -f "$HOME/.var/app/$app/data/bdex-framegen/extension" ]; then
-        echo "Flatpak $app: layer from the Flatpak extension (runtime $(cat "$HOME/.var/app/$app/data/bdex-framegen/extension"))"
-      elif [ -d "$HOME/.var/app/$app" ] && [ ! -f "$HOME/.var/app/$app/data/vulkan/implicit_layer.d/VK_LAYER_BDEX_framegen.json" ]; then
-        echo "Flatpak $app: layer NOT installed there (bdex-framegen --sandboxes)"
+      if [ -f "$HOME/.var/app/$app/data/chuds-fg/extension" ]; then
+        echo "Flatpak $app: layer from the Flatpak extension (runtime $(cat "$HOME/.var/app/$app/data/chuds-fg/extension"))"
+      elif [ -d "$HOME/.var/app/$app" ] && [ ! -f "$HOME/.var/app/$app/data/vulkan/implicit_layer.d/VK_LAYER_CHUDS_fg.json" ]; then
+        echo "Flatpak $app: layer NOT installed there (chuds-fg --sandboxes)"
       fi
     done
     if [ -d "$HOME/snap/steam" ]; then
-      echo "Snap steam:"; ls -ln "$HOME"/snap/steam/current/.local/share/vulkan/implicit_layer.d/*BDEX* 2>/dev/null ||
-        echo "  layer NOT installed there (bdex-framegen --sandboxes)"
+      echo "Snap steam:"; ls -ln "$HOME"/snap/steam/current/.local/share/vulkan/implicit_layer.d/*CHUDS FG* 2>/dev/null ||
+        echo "  layer NOT installed there (chuds-fg --sandboxes)"
     fi
     stale="$(stale_sandboxes)"
-    [ -z "$stale" ] || echo "$stale" | sed 's/^/OUTDATED copy (layer updated since; bdex-framegen --sandboxes): /'
+    [ -z "$stale" ] || echo "$stale" | sed 's/^/OUTDATED copy (layer updated since; chuds-fg --sandboxes): /'
     if command -v flatpak >/dev/null; then
       echo "Flatpak extension: $(flatpak list --runtime --columns=application,branch 2>/dev/null |
-        awk '$1 == "org.freedesktop.Platform.VulkanLayer.BdexFramegen" { printf "%s ", $2 }')"
+        awk '$1 == "org.freedesktop.Platform.VulkanLayer.ChudsFg" { printf "%s ", $2 }')"
     fi
     echo; echo "== crash journals (crash_log: crashes inside the layer)"
     local cj found_cj=0
-    for cj in $(ls -t "${XDG_CACHE_HOME:-$HOME/.cache}"/bdex-framegen/crash-*.txt $(flatpak_dirs run | sed 's#/run$##' | sed 's#$#/crash-*.txt#') 2>/dev/null | head -3); do
+    for cj in $(ls -t "${XDG_CACHE_HOME:-$HOME/.cache}"/chuds-fg/crash-*.txt $(flatpak_dirs run | sed 's#/run$##' | sed 's#$#/crash-*.txt#') 2>/dev/null | head -3); do
       [ -f "$cj" ] || continue
       found_cj=1
       echo "-- $cj ($(date -r "$cj" '+%F %T' 2>/dev/null))"; cat "$cj"
@@ -353,7 +353,7 @@ report() {
       echo "AppArmor: $(cat /sys/module/apparmor/parameters/enabled)"
     fi
     echo; echo "== environment"
-    env | grep -E '^(BDEX_FG|VK_|PROTON_|DXVK_|VKD3D_|MESA_|RADV_|__GL)' | sort || true
+    env | grep -E '^(CHUDS_FG|VK_|PROTON_|DXVK_|VKD3D_|MESA_|RADV_|__GL)' | sort || true
     echo; echo "== screens"
     if in_kde && command -v kscreen-doctor >/dev/null; then
       kscreen -o 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -E '^Output:|^\s*(enabled|disabled|connected|Vrr:|Geometry:)|Modes:' |
@@ -387,7 +387,7 @@ report() {
     [ "$found" = 1 ] || echo "(none: start the game, then run --report while it runs)"
     [ "$stale" = 0 ] || echo "($stale status file(s) of processes gone skipped)"
     echo; echo "== online_tune decisions (per game and mode)"
-    cdir="${BDEX_FG_CACHE_DIR-${XDG_CACHE_HOME:-$HOME/.cache}/bdex-framegen}"
+    cdir="${CHUDS_FG_CACHE_DIR-${XDG_CACHE_HOME:-$HOME/.cache}/chuds-fg}"
     found=0
     for f in "$cdir"/online-tune-*.txt; do
       [ -f "$f" ] || continue
@@ -431,7 +431,7 @@ urlencode() {
 issue_url() {
   local r="$1" version distro gpu session install quick title
   local -; set +eo pipefail  # (a field missing from the report stays empty)
-  version="$(grep -o 'VK_LAYER_BDEX_framegen v[0-9][0-9.]*' "$r" | head -1 | sed 's/.* v//')"
+  version="$(grep -o 'VK_LAYER_CHUDS_fg v[0-9][0-9.]*' "$r" | head -1 | sed 's/.* v//')"
   distro="$(sed -n 's/^PRETTY_NAME="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$r" | head -1), $(sed -n '/^== system/{n;p;}' "$r" | head -1)"
   gpu="$(grep -m1 'deviceName' "$r" | sed 's/.*= *//'), $(grep -m1 'driverInfo' "$r" | sed 's/.*= *//')"
   session="$(grep -m1 '^session:' "$r" | sed 's/  WAYLAND_DISPLAY.*//')"
@@ -442,29 +442,29 @@ issue_url() {
   # (the home's path names the user: ~ in the link)
   install="${install//$HOME/\~}"; quick="${quick//$HOME/\~}"
   title="[$distro] "
-  printf 'https://github.com/Bdexez/bdex_frame_gen/issues/new?template=bug_report.yml&title=%s&version=%s&distro=%s&gpu=%s&session=%s&install=%s&quick=%s\n' \
+  printf 'https://github.com/Bdexez/Chuds_fg/issues/new?template=bug_report.yml&title=%s&version=%s&distro=%s&gpu=%s&session=%s&install=%s&quick=%s\n' \
     "$(urlencode "$title")" "$(urlencode "$version")" "$(urlencode "$distro")" "$(urlencode "$gpu")" \
     "$(urlencode "$session")" "$(urlencode "$install")" "$(urlencode "$quick")"
 }
 
-# What frame generation costs on this GPU, before any game (bdex-calibrate:
+# What frame generation costs on this GPU, before any game (chuds-fg-calibrate:
 # the engine on synthetic frames at the screen's size and refresh): the
 # recommended preset and multiplier, saved in the cache directory;
 # --apply writes them to [*] of the configuration.
 calibrate() {
   local apply="${1:-}" bin line size hz out
-  bin="$(dirname "$(realpath "$0")")/bdex-calibrate"
-  [ -x "$bin" ] || bin="$(dirname "$(realpath "$0")")/../build/tools/calibrate/bdex-calibrate"
-  [ -x "$bin" ] || bin="$(command -v bdex-calibrate || true)"
-  [ -n "$bin" ] && [ -x "$bin" ] || { echo "bdex-calibrate not found (installed with the layer, or build/tools/calibrate)" >&2; return 1; }
+  bin="$(dirname "$(realpath "$0")")/chuds-fg-calibrate"
+  [ -x "$bin" ] || bin="$(dirname "$(realpath "$0")")/../build/tools/calibrate/chuds-fg-calibrate"
+  [ -x "$bin" ] || bin="$(command -v chuds-fg-calibrate || true)"
+  [ -n "$bin" ] && [ -x "$bin" ] || { echo "chuds-fg-calibrate not found (installed with the layer, or build/tools/calibrate)" >&2; return 1; }
   line="$(screens | head -1)"
   size="$(grep -oE '[0-9]+x[0-9]+' <<<"$line" | head -1)"; size="${size:-1920x1080}"
   hz="$(grep -oE '@[0-9.]+' <<<"$line" | head -1 | tr -d @)"; hz="${hz:-60}"
-  out="${XDG_CACHE_HOME:-$HOME/.cache}/bdex-framegen/calibration.json"
+  out="${XDG_CACHE_HOME:-$HOME/.cache}/chuds-fg/calibration.json"
   mkdir -p "$(dirname "$out")"
   echo "Calibration on ${size} at ${hz} Hz (${line:-screen unknown: 1920x1080 at 60 Hz})..."
   "$bin" --size "$size" --refresh "$hz" --json "$out" || return 1
-  cfg="${BDEX_FG_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdex-framegen.conf}"
+  cfg="${CHUDS_FG_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/chuds-fg.conf}"
   python3 - "$out" "$cfg" "$apply" <<'PY'
 import json, re, sys
 from pathlib import Path
@@ -476,7 +476,7 @@ for name, p in d["presets"].items():
 print(f"{d['gpu']}: preset {r['preset']}, up to x{r['multiplier']} ({r['cost_ms']:.2f} ms a game frame at x{r['multiplier']},"
       f" within {int(d['budget'] * 100)} % of the GPU)")
 if sys.argv[3] != "--apply":
-    print("  bdex-framegen --calibrate --apply writes them to the configuration")
+    print("  chuds-fg --calibrate --apply writes them to the configuration")
     sys.exit(0)
 p = Path(sys.argv[2])
 lines = p.read_text().splitlines() if p.exists() else []
@@ -501,11 +501,11 @@ PY
 
 # online_tune's cached decisions for a game as a [game] config section.
 tuned_profile() {
-  BDEX_TP_CACHE="${BDEX_FG_CACHE_DIR-${XDG_CACHE_HOME:-$HOME/.cache}/bdex-framegen}" \
-  BDEX_TP_CONFIG="${BDEX_FG_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdex-framegen.conf}" \
+  CHUDS_FG_TP_CACHE="${CHUDS_FG_CACHE_DIR-${XDG_CACHE_HOME:-$HOME/.cache}/chuds-fg}" \
+  CHUDS_FG_TP_CONFIG="${CHUDS_FG_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/chuds-fg.conf}" \
   python3 - "$@" <<'PY'
 import os, re, sys, time
-cache, config = os.environ["BDEX_TP_CACHE"], os.environ["BDEX_TP_CONFIG"]
+cache, config = os.environ["CHUDS_FG_TP_CACHE"], os.environ["CHUDS_FG_TP_CONFIG"]
 args = sys.argv[1:]
 apply = "--apply" in args
 mode = args[args.index("--mode") + 1] if "--mode" in args else None
@@ -569,7 +569,7 @@ PY
 # pick the change up within ~0.5 s (the layer reloads live settings when the
 # file changes) and present only their real frames while paused.
 toggle() {
-  cfg="${BDEX_FG_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdex-framegen.conf}"
+  cfg="${CHUDS_FG_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/chuds-fg.conf}"
   python3 - "$cfg" <<'PY'
 import re, sys
 from pathlib import Path
@@ -605,7 +605,7 @@ PY
 flatpak_script() {
   local prefix script
   prefix="$(cd "$(dirname "$(realpath "$0")")/.." && pwd)"
-  for script in "$prefix/share/bdex-framegen/flatpak.sh" "$prefix/packaging/linux/flatpak.sh"; do
+  for script in "$prefix/share/chuds-fg/flatpak.sh" "$prefix/packaging/linux/flatpak.sh"; do
     [ -f "$script" ] && { echo "$prefix $script"; return 0; }
   done
   return 1
@@ -614,7 +614,7 @@ sandboxes() {
   local prefix script
   read -r prefix script <<<"$(flatpak_script)"
   if [ -z "$script" ]; then
-    echo "bdex-framegen: flatpak.sh not found next to this installation" >&2
+    echo "chuds-fg: flatpak.sh not found next to this installation" >&2
     return 1
   fi
   if [ "${1:-}" = --remove ]; then bash "$script" --remove; else bash "$script" "$prefix"; fi
@@ -632,7 +632,7 @@ stale_sandboxes() {
 # every game (the panel's « Mode Jeu — sans le panneau »).
 always() {
   local on="$1" game="${2:-}"
-  cfg="${BDEX_FG_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdex-framegen.conf}"
+  cfg="${CHUDS_FG_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/chuds-fg.conf}"
   python3 - "$cfg" "$on" "$game" <<'PY'
 import re, sys
 from pathlib import Path
@@ -713,30 +713,30 @@ check() {
   if ! command -v vulkaninfo >/dev/null; then
     echo "vulkaninfo not found (install vulkan-tools)"; exit 1
   fi
-  out="$(BDEX_FG=1 BDEX_FG_LOG=2 BDEX_FG_STATS=0 vulkaninfo --summary 2>&1)"
-  if grep -q "VK_LAYER_BDEX_framegen.*loaded" <<<"$out"; then  # no pipe: pipefail + SIGPIPE
-    echo "layer loaded: $(echo "$out" | grep -o "VK_LAYER_BDEX_framegen v[0-9.]*" | head -1)"
+  out="$(CHUDS_FG=1 CHUDS_FG_LOG=2 CHUDS_FG_STATS=0 vulkaninfo --summary 2>&1)"
+  if grep -q "VK_LAYER_CHUDS_fg.*loaded" <<<"$out"; then  # no pipe: pipefail + SIGPIPE
+    echo "layer loaded: $(echo "$out" | grep -o "VK_LAYER_CHUDS_fg v[0-9.]*" | head -1)"
     echo "$out" | grep -o "device '.*" | head -1
     stale="$(stale_sandboxes)"
     if [ -n "$stale" ]; then
       echo "$stale" | sed 's/^/OUTDATED sandbox copy: /'
-      echo "  → bdex-framegen --sandboxes (games in that launcher still run the old layer)"
+      echo "  → chuds-fg --sandboxes (games in that launcher still run the old layer)"
       exit 2
     fi
     exit 0
   fi
   echo "layer NOT loaded. Manifests known to the loader:"
-  echo "$out" | grep -i "bdex" || echo "  (none: run tools/install.sh, or set VK_ADD_IMPLICIT_LAYER_PATH=<build>/layer)"
+  echo "$out" | grep -i "chuds" || echo "  (none: run tools/install.sh, or set VK_ADD_IMPLICIT_LAYER_PATH=<build>/layer)"
   exit 1
 }
 
 # The Vulkan GPUs: "<vendorID> <deviceID> <type> <name>" per line (vulkaninfo,
-# without our layer), the CPU ones left out; BDEX_GPU_LIST stands in for it
+# without our layer), the CPU ones left out; CHUDS_FG_GPU_LIST stands in for it
 # (tests).
 gpu_list() {
-  if [ -n "${BDEX_GPU_LIST:-}" ]; then printf '%s\n' "$BDEX_GPU_LIST"; return; fi
+  if [ -n "${CHUDS_FG_GPU_LIST:-}" ]; then printf '%s\n' "$CHUDS_FG_GPU_LIST"; return; fi
   command -v vulkaninfo >/dev/null || return 0
-  BDEX_FG_DISABLE=1 vulkaninfo --summary 2>/dev/null | awk -F' = ' '
+  CHUDS_FG_DISABLE=1 vulkaninfo --summary 2>/dev/null | awk -F' = ' '
     /^GPU[0-9]+:/ { if (v != "") print v, d, t, n; v = d = t = n = "" }
     /vendorID/ { v = $2 } /deviceID/ { d = $2 }
     /deviceType/ { t = $2; sub(/PHYSICAL_DEVICE_TYPE_/, "", t); sub(/_GPU/, "", t) }
@@ -745,13 +745,13 @@ gpu_list() {
 }
 
 # The PCI ids (vendor device, 0x...) of the GPUs driving a connected screen;
-# BDEX_DRM_DIR stands in for /sys/class/drm (tests).
+# CHUDS_FG_DRM_DIR stands in for /sys/class/drm (tests).
 screen_gpus() {
   local c card dev
-  for c in "${BDEX_DRM_DIR:-/sys/class/drm}"/card*-*; do
+  for c in "${CHUDS_FG_DRM_DIR:-/sys/class/drm}"/card*-*; do
     [ "$(cat "$c/status" 2>/dev/null)" = connected ] || continue
     card="${c##*/}"; card="${card%%-*}"
-    dev="${BDEX_DRM_DIR:-/sys/class/drm}/$card/device"
+    dev="${CHUDS_FG_DRM_DIR:-/sys/class/drm}/$card/device"
     echo "$(cat "$dev/vendor" 2>/dev/null) $(cat "$dev/device" 2>/dev/null)"
   done | awk 'NF == 2' | sort -u
 }
@@ -763,7 +763,7 @@ screen_gpus() {
 gpu_env() {
   local which="$1" line pick="" v d t n
   local gpus; gpus="$(gpu_list)"
-  if [ -z "$gpus" ]; then echo "bdex-framegen: no GPU listed (vulkaninfo missing?)" >&2; return 1; fi
+  if [ -z "$gpus" ]; then echo "chuds-fg: no GPU listed (vulkaninfo missing?)" >&2; return 1; fi
   if [ "$which" = list ]; then
     local screens; screens="$(screen_gpus)"
     while read -r v d t n; do
@@ -780,11 +780,11 @@ gpu_env() {
       nvidia) [ "$v" = 0x10de ] && pick="$v $d $t $n" ;;
       amd) [ "$v" = 0x1002 ] && pick="$v $d $t $n" ;;
       intel) [ "$v" = 0x8086 ] && pick="$v $d $t $n" ;;
-      *) echo "bdex-framegen: --gpu screen | discrete | integrated | nvidia | amd | intel | list" >&2; return 2 ;;
+      *) echo "chuds-fg: --gpu screen | discrete | integrated | nvidia | amd | intel | list" >&2; return 2 ;;
     esac
     [ -n "$pick" ] && break
   done <<<"$gpus"
-  if [ -z "$pick" ]; then echo "bdex-framegen: no $which GPU (bdex-framegen --gpu list)" >&2; return 1; fi
+  if [ -z "$pick" ]; then echo "chuds-fg: no $which GPU (chuds-fg --gpu list)" >&2; return 1; fi
   read -r v d t n <<<"$pick"
   env_vars+=("MESA_VK_DEVICE_SELECT=${v#0x}:${d#0x}" "MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1"
              "DXVK_FILTER_DEVICE_NAME=$n" "VKD3D_FILTER_DEVICE_NAME=$n")
@@ -794,7 +794,7 @@ gpu_env() {
     # (NVIDIA's own layer otherwise lists its GPU first)
     env_vars+=("__VK_LAYER_NV_optimus=non_NVIDIA_only" "DRI_PRIME=${v#0x}:${d#0x}")
   fi
-  echo "bdex-framegen: game on $n" >&2
+  echo "chuds-fg: game on $n" >&2
 }
 
 # OpenGL through Zink. MESA_LOADER_DRIVER_OVERRIDE alone only reaches Mesa's
@@ -810,7 +810,7 @@ gl_env() {
   done
 }
 
-env_vars=(BDEX_FG=1)
+env_vars=(CHUDS_FG=1)
 while [ $# -gt 0 ]; do
   case "$1" in
     --toggle)          toggle; exit 0 ;;
@@ -818,34 +818,34 @@ while [ $# -gt 0 ]; do
     --always-off)      always 0 "${2:-}"; exit 0 ;;
     --sandboxes)       sandboxes "${2:-}"; exit $? ;;
     --report)          report "${2:-}"; exit 0 ;;
-    --issue-url)       issue_url "${2:-bdex-framegen-report.txt}"; exit 0 ;;
+    --issue-url)       issue_url "${2:-chuds-fg-report.txt}"; exit 0 ;;
     --tuned-profile)   shift; tuned_profile "$@"; exit $? ;;
     --calibrate)       calibrate "${2:-}"; exit $? ;;
     --record)          rec="$2"; mkdir -p "$rec"; rec="$(realpath "$rec")"
                        n=240; case "${3:-}" in ''|*[!0-9]*) shift 2 ;; *) n="$3"; shift 3 ;; esac
-                       env_vars+=("BDEX_FG_MULTIPLIER=1" "BDEX_FG_DUMP=$rec" "BDEX_FG_DUMP_FRAMES=$n") ;;
-    -m|--multiplier)   env_vars+=("BDEX_FG_MULTIPLIER=$2"); shift 2 ;;
-    -x|--extrapolate)  env_vars+=("BDEX_FG_MODE=extrapolate"); shift ;;
-    -P|--preset)       env_vars+=("BDEX_FG_PRESET=$2"); shift 2 ;;
-    -f|--fullres)      env_vars+=("BDEX_FG_FULLRES=1"); shift ;;
-    -u|--upscale)      env_vars+=("BDEX_FG_UPSCALE=$2"); shift 2 ;;
-    --upscale-filter)  env_vars+=("BDEX_FG_UPSCALE_FILTER=$2"); shift 2 ;;
-    -s|--sharpness)    env_vars+=("BDEX_FG_SHARPNESS=$2"); shift 2 ;;
-    -p|--present-mode) env_vars+=("BDEX_FG_PRESENT_MODE=$2"); shift 2 ;;
-    -o|--hud)          env_vars+=("BDEX_FG_OVERLAY=$2"); shift 2 ;;
-    -d|--debug)        env_vars+=("BDEX_FG_DEBUG=$2"); shift 2 ;;
-    -l|--log)          env_vars+=("BDEX_FG_LOG=$2"); shift 2 ;;
-    --profile)         env_vars+=("BDEX_FG_PROFILE=1"); shift ;;
-    --no-stats)        env_vars+=("BDEX_FG_STATS=0"); shift ;;
+                       env_vars+=("CHUDS_FG_MULTIPLIER=1" "CHUDS_FG_DUMP=$rec" "CHUDS_FG_DUMP_FRAMES=$n") ;;
+    -m|--multiplier)   env_vars+=("CHUDS_FG_MULTIPLIER=$2"); shift 2 ;;
+    -x|--extrapolate)  env_vars+=("CHUDS_FG_MODE=extrapolate"); shift ;;
+    -P|--preset)       env_vars+=("CHUDS_FG_PRESET=$2"); shift 2 ;;
+    -f|--fullres)      env_vars+=("CHUDS_FG_FULLRES=1"); shift ;;
+    -u|--upscale)      env_vars+=("CHUDS_FG_UPSCALE=$2"); shift 2 ;;
+    --upscale-filter)  env_vars+=("CHUDS_FG_UPSCALE_FILTER=$2"); shift 2 ;;
+    -s|--sharpness)    env_vars+=("CHUDS_FG_SHARPNESS=$2"); shift 2 ;;
+    -p|--present-mode) env_vars+=("CHUDS_FG_PRESENT_MODE=$2"); shift 2 ;;
+    -o|--hud)          env_vars+=("CHUDS_FG_OVERLAY=$2"); shift 2 ;;
+    -d|--debug)        env_vars+=("CHUDS_FG_DEBUG=$2"); shift 2 ;;
+    -l|--log)          env_vars+=("CHUDS_FG_LOG=$2"); shift 2 ;;
+    --profile)         env_vars+=("CHUDS_FG_PROFILE=1"); shift ;;
+    --no-stats)        env_vars+=("CHUDS_FG_STATS=0"); shift ;;
     --gl)              gl_env; shift ;;
     --mangohud)        # Both implicit layers named in order, app side first:
                        # ours, then MangoHud's (64- and 32-bit names; the loader
                        # skips the one of the other width).
-                       env_vars+=("MANGOHUD=1" "VK_INSTANCE_LAYERS=VK_LAYER_BDEX_framegen:VK_LAYER_MANGOHUD_overlay_x86_64:VK_LAYER_MANGOHUD_overlay_x86${VK_INSTANCE_LAYERS:+:$VK_INSTANCE_LAYERS}")
+                       env_vars+=("MANGOHUD=1" "VK_INSTANCE_LAYERS=VK_LAYER_CHUDS_fg:VK_LAYER_MANGOHUD_overlay_x86_64:VK_LAYER_MANGOHUD_overlay_x86${VK_INSTANCE_LAYERS:+:$VK_INSTANCE_LAYERS}")
                        shift ;;
     --gpu)             gpu_env "${2:?--gpu needs screen, discrete, integrated, a vendor or list}" || exit $?; shift 2 ;;
-    --off)             env_vars+=("BDEX_FG=0"); shift ;;
-    --gui)             exec "$(dirname "$0")/bdex-framegen-gui" ;;
+    --off)             env_vars+=("CHUDS_FG=0"); shift ;;
+    --gui)             exec "$(dirname "$0")/chuds-fg-gui" ;;
     --check)           check ;;
     -h|--help)         usage; exit 0 ;;
     --)                shift; break ;;

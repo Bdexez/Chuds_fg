@@ -34,7 +34,7 @@
 #include <string>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 class FrameGen;
 
@@ -108,7 +108,7 @@ public:
     // The refresh rate of the monitor the overlay is on (target_fps = auto,
     // adaptive); 0 when unknown.
     void setDisplayHz(double hz) { displayHz_ = hz; }
-    // Live status for the launcher's "En cours" view and bdex-framegen
+    // Live status for the launcher's "En cours" view and chuds-fg
     // tools (layer/src/status.h): `target` is the captured game.
     void publishStatus(const std::string& target, double captureFps, double outFps, double latencyMs);
     // The status published last, in French, a line per point (the tray).
@@ -207,4 +207,4 @@ private:
     SlotVk slots_[Capture::kRingSize];
 };
 
-} // namespace bdex
+} // namespace chuds_fg

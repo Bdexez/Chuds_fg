@@ -12,7 +12,7 @@
 #include <cstring>
 #include <vector>
 
-using namespace bdex;
+using namespace chuds_fg;
 
 namespace {
 void check(VkResult r) {

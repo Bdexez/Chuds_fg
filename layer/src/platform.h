@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // Executable names of the current process, lower-cased, without directory or
 // extension ("BEService64.exe" -> "beservice64"); used for [game] config
@@ -20,22 +20,22 @@ std::vector<std::string> platformProcessNames();
 // `name`, nullptr when unset (valid for the process's life).
 // platformEnviron: the copy as a NULL-terminated list of "KEY=VALUE".
 // platformEnvForget: this program changed its own environment (the capture
-// tools and bdex_offline before Config::load, the tests) — copied again at
+// tools and chuds_fg_offline before Config::load, the tests) — copied again at
 // the next use.
 const char* platformEnv(const char* name);
 char** platformEnviron();
 void platformEnvForget();
 
 // Full path of the user config file (Linux: $XDG_CONFIG_HOME or
-// ~/.config; Windows: %APPDATA%\bdex-framegen), or "" when no location
-// is known. The BDEX_FG_CONFIG override is handled by the caller.
+// ~/.config; Windows: %APPDATA%\chuds-fg), or "" when no location
+// is known. The CHUDS_FG_CONFIG override is handled by the caller.
 std::string platformConfigPath();
 // Per-game profiles shipped with the build (loaded before the user's file);
-// BDEX_FG_PROFILES overrides the location, an empty value disables them.
+// CHUDS_FG_PROFILES overrides the location, an empty value disables them.
 std::string platformBundledProfilesPath();
 
 // Expands environment references in a path the user wrote in the config file,
-// so e.g. `log_file=%TEMP%\bdex-fg.log` resolves to a real path instead of
+// so e.g. `log_file=%TEMP%\chuds-fg.log` resolves to a real path instead of
 // being opened verbatim. Windows expands `%VAR%` (via the OS); Linux expands
 // `$VAR`, `${VAR}` and a leading `~`. Unknown variables are left as-is, and a
 // string with nothing to expand is returned unchanged.
@@ -61,7 +61,7 @@ std::string platformAntiCheatRunning();
 
 // The machine runs on its battery: 1, on mains: 0, unknown (a desktop, no
 // power supply information): -1. Linux /sys/class/power_supply, Windows
-// GetSystemPowerStatus; BDEX_POWER=battery|mains pretends (tests).
+// GetSystemPowerStatus; CHUDS_FG_POWER=battery|mains pretends (tests).
 int platformOnBattery();
 // Windows: QueryPerformanceFrequency (counts a second); elsewhere 1e9.
 double platformPerformanceFrequency();
@@ -90,14 +90,14 @@ std::string platformExeName();
 bool platformIsDesktopApp();
 
 // Directory of the per-process live status files (status.h): Linux
-// ~/.cache/bdex-framegen/run (shared with Steam's container; without a home
-// /tmp/bdex-framegen-<uid>, mode 0700 and owned by us, else ""), Windows
-// %TEMP%\bdex-framegen; BDEX_FG_STATUS_DIR overrides it, an empty value
+// ~/.cache/chuds-fg/run (shared with Steam's container; without a home
+// /tmp/chuds-fg-<uid>, mode 0700 and owned by us, else ""), Windows
+// %TEMP%\chuds-fg; CHUDS_FG_STATUS_DIR overrides it, an empty value
 // disables the files. "" when no location is known.
 std::string platformStatusDir();
 // Directory for small persistent caches (online_tune decisions): Linux
-// $XDG_CACHE_HOME/bdex-framegen (else ~/.cache/bdex-framegen), Windows
-// %LOCALAPPDATA%\bdex-framegen; BDEX_FG_CACHE_DIR overrides it, an empty
+// $XDG_CACHE_HOME/chuds-fg (else ~/.cache/chuds-fg), Windows
+// %LOCALAPPDATA%\chuds-fg; CHUDS_FG_CACHE_DIR overrides it, an empty
 // value disables the cache. "" when no location is known.
 std::string platformCacheDir();
 
@@ -128,4 +128,4 @@ long platformPid();
 // to run any more; true when it runs or cannot be told (no permission).
 bool platformProcessAlive(long pid);
 
-} // namespace bdex
+} // namespace chuds_fg

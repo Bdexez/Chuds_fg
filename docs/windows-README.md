@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="visuals/framegen-cover.webp" width="100%" alt="BDEX FRAMEGEN — conceptual cover artwork.">
+  <img src="visuals/framegen-cover.webp" width="100%" alt="CHUDS FG — conceptual cover artwork.">
 </p>
 
-# bdex-framegen · Windows
+# chuds-fg · Windows
 
 **The same Vulkan generation engine, with a Windows launcher and two integration paths.**
 
-The x64 package includes `bdex_capture.exe`, the Vulkan layer DLL and supporting tools. Despite its name, `bdex_capture.exe` is also the launcher for automatic layer injection; choose the method that suits the game.
+The x64 package includes `chuds_fg_capture.exe`, the Vulkan layer DLL and supporting tools. Despite its name, `chuds_fg_capture.exe` is also the launcher for automatic layer injection; choose the method that suits the game.
 
 [Main project](../README.md) · [Detailed Windows guide](windows-reference.md) · [Hardware validation notes](windows-capture.md)
 
@@ -22,12 +22,12 @@ Capture avoids loading the Vulkan layer into the target process. Compatibility w
 
 ## Start a session
 
-1. Obtain the `bdex-framegen-windows-x64` package from the repository's [Actions artifacts](https://github.com/Bdexez/bdex_frame_gen/actions/workflows/windows.yml) or [release assets](https://github.com/Bdexez/bdex_frame_gen/releases).
+1. Obtain the `chuds-fg-windows-x64` package from the repository's [Actions artifacts](https://github.com/Bdexez/Chuds_fg/actions/workflows/windows.yml) or [release assets](https://github.com/Bdexez/Chuds_fg/releases).
 2. Start the game in windowed or borderless mode if using capture.
-3. Run `bdex_capture.exe`, select the game window, pick the multiplier (start with ×2), the mode and, if you want one, the **game frame limit** (applied by the layer: injection), then **Démarrer** / **Start**.
+3. Run `chuds_fg_capture.exe`, select the game window, pick the multiplier (start with ×2), the mode and, if you want one, the **game frame limit** (applied by the layer: injection), then **Démarrer** / **Start**.
 4. Compare generation on/off, then adjust the preset and multiplier.
 
-The launcher opens on its **basic page** — the game, the frame-generation settings (preset, frames per frame, mode, game frame limit, FPS counter) and what is running. Tick **Mode avancé** / **Advanced mode** for every option: the method (**Auto**, **Injection** or **Capture**), the generation GPU, display and presentation, the flow tuning, the engine options of the advanced column, GPU calibration, removing the DXVK injections and the diagnostic report; the choice is remembered (`%LOCALAPPDATA%\bdex-framegen\launcher-mode`). Per-game profiles work on both pages. A different generation GPU uses the capture path.
+The launcher opens on its **basic page** — the game, the frame-generation settings (preset, frames per frame, mode, game frame limit, FPS counter) and what is running. Tick **Mode avancé** / **Advanced mode** for every option: the method (**Auto**, **Injection** or **Capture**), the generation GPU, display and presentation, the flow tuning, the engine options of the advanced column, GPU calibration, removing the DXVK injections and the diagnostic report; the choice is remembered (`%LOCALAPPDATA%\chuds-fg\launcher-mode`). Per-game profiles work on both pages. A different generation GPU uses the capture path.
 
 | Shortcut | Action |
 | :--- | :--- |
@@ -52,9 +52,9 @@ Replace `1234` with the game's process ID or use the exact window title. The [co
 
 | Item | Location or action |
 | :--- | :--- |
-| Shared settings | `%APPDATA%\bdex-framegen\bdex-framegen.conf` |
+| Shared settings | `%APPDATA%\chuds-fg\chuds-fg.conf` |
 | Per-game settings | A section named after the game's executable |
-| Runtime status | `%TEMP%\bdex-framegen\<pid>.status` |
+| Runtime status | `%TEMP%\chuds-fg\<pid>.status` |
 | Problem report | Use the launcher's diagnostic-report action |
 
 [Windows layer setup](windows-port.md) · [Capture architecture and validation](windows-capture.md) · [Roadmap](../ROADMAP.md)

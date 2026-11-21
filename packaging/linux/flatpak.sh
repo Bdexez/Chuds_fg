@@ -32,7 +32,7 @@ same() {
 # The layer's Flatpak extension (packaging/flatpak, Flathub), for the
 # Freedesktop runtime branch an app runs on: then the app needs no copy, the
 # extension loads (and `flatpak update` updates) the layer. Prints the branch.
-EXT=org.freedesktop.Platform.VulkanLayer.BdexFramegen
+EXT=org.freedesktop.Platform.VulkanLayer.ChudsFg
 covered_by_extension() {
   local app="$1" meta rt branch root
   for root in "$HOME/.local/share/flatpak" /var/lib/flatpak; do
@@ -52,31 +52,31 @@ covered_by_extension() {
 check_one() {
   local name="$1" dest="$2" suffix json so lib
   for suffix in "" _32; do
-    json="VK_LAYER_BDEX_framegen$suffix.json"
+    json="VK_LAYER_CHUDS_fg$suffix.json"
     [ -f "$arg/share/vulkan/implicit_layer.d/$json" ] || continue
     so="$(host_so "$json")"
     [ -f "$so" ] || continue
     lib=lib; [ -n "$suffix" ] && lib=lib32
-    [ -f "$dest/$lib/libVkLayer_bdex_framegen.so" ] || continue
-    if ! same "$so" "$dest/$lib/libVkLayer_bdex_framegen.so"; then
-      echo "$name $dest/$lib/libVkLayer_bdex_framegen.so"
+    [ -f "$dest/$lib/libVkLayer_chuds_fg.so" ] || continue
+    if ! same "$so" "$dest/$lib/libVkLayer_chuds_fg.so"; then
+      echo "$name $dest/$lib/libVkLayer_chuds_fg.so"
       stale=1
     fi
   done
 }
-cfg="${XDG_CONFIG_HOME:-$HOME/.config}/bdex-framegen.conf"
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/chuds-fg.conf"
 for app in "${APPS[@]}"; do
   d="$HOME/.var/app/$app"
   [ -d "$d" ] || continue
-  dest="$d/data/bdex-framegen"
+  dest="$d/data/chuds-fg"
   manifests="$d/data/vulkan/implicit_layer.d"
   if [ "$check" = 1 ]; then
-    [ -f "$manifests/VK_LAYER_BDEX_framegen.json" ] && check_one "$app" "$dest"
+    [ -f "$manifests/VK_LAYER_CHUDS_fg.json" ] && check_one "$app" "$dest"
     continue
   fi
   if [ "$arg" = --remove ]; then
     rm -rf "$dest"
-    rm -f "$manifests"/VK_LAYER_BDEX_framegen.json "$manifests"/VK_LAYER_BDEX_framegen_32.json
+    rm -f "$manifests"/VK_LAYER_CHUDS_fg.json "$manifests"/VK_LAYER_CHUDS_fg_32.json
     echo "  removed from $app (Flatpak)"
     continue
   fi
@@ -84,16 +84,16 @@ for app in "${APPS[@]}"; do
     # No copy beside the extension (a stale one would load first): only the
     # settings, and a mark for the panel (sessions, settings mirror).
     rm -rf "$dest/lib" "$dest/lib32"
-    rm -f "$manifests"/VK_LAYER_BDEX_framegen.json "$manifests"/VK_LAYER_BDEX_framegen_32.json
+    rm -f "$manifests"/VK_LAYER_CHUDS_fg.json "$manifests"/VK_LAYER_CHUDS_fg_32.json
     mkdir -p "$dest"; echo "$branch" > "$dest/extension"
-    if [ -f "$cfg" ]; then mkdir -p "$d/config"; put "$cfg" "$d/config/bdex-framegen.conf"; fi
+    if [ -f "$cfg" ]; then mkdir -p "$d/config"; put "$cfg" "$d/config/chuds-fg.conf"; fi
     echo "  $app (Flatpak): layer provided by the $EXT extension ($branch)"
     continue
   fi
   rm -f "$dest/extension"
-  mkdir -p "$dest/share/bdex-framegen" "$manifests"
+  mkdir -p "$dest/share/chuds-fg" "$manifests"
   for suffix in "" _32; do
-    json="VK_LAYER_BDEX_framegen$suffix.json"
+    json="VK_LAYER_CHUDS_fg$suffix.json"
     [ -f "$arg/share/vulkan/implicit_layer.d/$json" ] || continue
     # The library the manifest names: <prefix>/lib[32] for install.sh, the
     # distribution's library dir for a package (lib/x86_64-linux-gnu, lib64).
@@ -102,18 +102,18 @@ for app in "${APPS[@]}"; do
     lib=lib
     if [ -n "$suffix" ]; then lib=lib32; fi
     mkdir -p "$dest/$lib"
-    put "$so" "$dest/$lib/libVkLayer_bdex_framegen.so"
+    put "$so" "$dest/$lib/libVkLayer_chuds_fg.so"
     # The same absolute path inside the sandbox: Flatpak mounts the app's
     # directory where it is.
-    sed "s#\"library_path\": \"[^\"]*\"#\"library_path\": \"$dest/$lib/libVkLayer_bdex_framegen.so\"#" \
+    sed "s#\"library_path\": \"[^\"]*\"#\"library_path\": \"$dest/$lib/libVkLayer_chuds_fg.so\"#" \
       "$arg/share/vulkan/implicit_layer.d/$json" > "$manifests/$json"
   done
-  if [ -f "$arg/share/bdex-framegen/profiles.conf" ]; then
-    cp "$arg/share/bdex-framegen/profiles.conf" "$dest/share/bdex-framegen/"
+  if [ -f "$arg/share/chuds-fg/profiles.conf" ]; then
+    cp "$arg/share/chuds-fg/profiles.conf" "$dest/share/chuds-fg/"
   fi
   if [ -f "$cfg" ]; then
     mkdir -p "$d/config"
-    cp "$cfg" "$d/config/bdex-framegen.conf"
+    cp "$cfg" "$d/config/chuds-fg.conf"
   fi
   echo "  also installed for $app (Flatpak): $dest"
 done
@@ -123,37 +123,37 @@ done
 for app in steam; do
   base="$HOME/snap/$app"
   [ -d "$base/current" ] || continue
-  dest="$base/common/bdex-framegen"
+  dest="$base/common/chuds-fg"
   manifests="$base/current/.local/share/vulkan/implicit_layer.d"
   if [ "$check" = 1 ]; then
-    [ -f "$manifests/VK_LAYER_BDEX_framegen.json" ] && check_one "snap:$app" "$dest"
+    [ -f "$manifests/VK_LAYER_CHUDS_fg.json" ] && check_one "snap:$app" "$dest"
     continue
   fi
   if [ "$arg" = --remove ]; then
     rm -rf "$dest"
-    rm -f "$manifests"/VK_LAYER_BDEX_framegen.json "$manifests"/VK_LAYER_BDEX_framegen_32.json
+    rm -f "$manifests"/VK_LAYER_CHUDS_fg.json "$manifests"/VK_LAYER_CHUDS_fg_32.json
     echo "  removed from $app (Snap)"
     continue
   fi
-  mkdir -p "$dest/share/bdex-framegen" "$manifests"
+  mkdir -p "$dest/share/chuds-fg" "$manifests"
   for suffix in "" _32; do
-    json="VK_LAYER_BDEX_framegen$suffix.json"
+    json="VK_LAYER_CHUDS_fg$suffix.json"
     [ -f "$arg/share/vulkan/implicit_layer.d/$json" ] || continue
     so="$(host_so "$json")"
     [ -f "$so" ] || continue
     lib=lib
     if [ -n "$suffix" ]; then lib=lib32; fi
     mkdir -p "$dest/$lib"
-    put "$so" "$dest/$lib/libVkLayer_bdex_framegen.so"
-    sed "s#\"library_path\": \"[^\"]*\"#\"library_path\": \"$dest/$lib/libVkLayer_bdex_framegen.so\"#" \
+    put "$so" "$dest/$lib/libVkLayer_chuds_fg.so"
+    sed "s#\"library_path\": \"[^\"]*\"#\"library_path\": \"$dest/$lib/libVkLayer_chuds_fg.so\"#" \
       "$arg/share/vulkan/implicit_layer.d/$json" > "$manifests/$json"
   done
-  if [ -f "$arg/share/bdex-framegen/profiles.conf" ]; then
-    cp "$arg/share/bdex-framegen/profiles.conf" "$dest/share/bdex-framegen/"
+  if [ -f "$arg/share/chuds-fg/profiles.conf" ]; then
+    cp "$arg/share/chuds-fg/profiles.conf" "$dest/share/chuds-fg/"
   fi
   if [ -f "$cfg" ]; then
     mkdir -p "$base/current/.config"
-    cp "$cfg" "$base/current/.config/bdex-framegen.conf"
+    cp "$cfg" "$base/current/.config/chuds-fg.conf"
   fi
   echo "  also installed for $app (Snap): $dest"
 done

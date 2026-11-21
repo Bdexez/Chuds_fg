@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# bdex-capture (Linux) on the demo, the layer left out: the demo's window is
+# chuds-fg-capture (Linux) on the demo, the layer left out: the demo's window is
 # captured (XComposite + XDamage + MIT-SHM), frames are generated and shown in
 # the overlay above it. Checks the output/capture ratio (x2) and that the
 # overlay shows the game: its pixels against the game window's own content
 # (tests/x11_compare.py, through Xlib) — the same scene, not black.
-#   capture_linux.sh <bdex-capture> <bdex_demo>
+#   capture_linux.sh <chuds-fg-capture> <chuds_fg_demo>
 # Skips (77) without an X display (Xvfb in CI; never the user's desktop:
 # run it under xvfb-run or in Docker).
 set -u
@@ -17,16 +17,16 @@ if [ -z "${DISPLAY:-}" ]; then echo "no X display, skipping"; exit 77; fi
 unset ENABLE_GAMESCOPE_WSI
 LOG="$(mktemp)" DLOG="$(mktemp)"
 trap 'kill $demo 2>/dev/null; rm -f "$LOG" "$DLOG"' EXIT
-BDEX_FG=0 BDEX_FG_CONFIG=/dev/null timeout 120 "$DEMO" --fps 30 --size 640x400 --duration 90 >"$DLOG" 2>&1 &
+CHUDS_FG=0 CHUDS_FG_CONFIG=/dev/null timeout 120 "$DEMO" --fps 30 --size 640x400 --duration 90 >"$DLOG" 2>&1 &
 demo=$!
 sleep 2
 dpid=$(pgrep -n -P $demo || echo $demo)   # (the demo, child of timeout; its title changes every 2 s)
 status=0
-# BDEX_TEST_COMPOSITOR=1 (CI, on its own virtual display — it replaces the
+# CHUDS_FG_TEST_COMPOSITOR=1 (CI, on its own virtual display — it replaces the
 # window manager): a second pass under openbox and picom, the situation of
 # an X11 desktop, whose compositor already redirects every window.
 passes="plain"
-if [ "${BDEX_TEST_COMPOSITOR:-0}" = 1 ] && command -v openbox >/dev/null && command -v picom >/dev/null; then
+if [ "${CHUDS_FG_TEST_COMPOSITOR:-0}" = 1 ] && command -v openbox >/dev/null && command -v picom >/dev/null; then
   passes="plain compositor"
 fi
 for pass in $passes; do
@@ -47,11 +47,11 @@ for args in "-m 2" "-m 3 --mode hybrid" "-m 2 --mode extrapolate" "armed"; do
   # (The capture's own config only: the user's file and environment stay out.)
   conf=/dev/null
   [ "$args" = armed ] && { conf="$ARMED"; args=""; }
-  BDEX_FG_CONFIG="$conf" BDEX_FG_LOG=2 timeout 40 "$CAP" --pid "$dpid" --duration 7 $args \
+  CHUDS_FG_CONFIG="$conf" CHUDS_FG_LOG=2 timeout 40 "$CAP" --pid "$dpid" --duration 7 $args \
     >"$LOG" 2>&1 &
   cap=$!
   sleep 5
-  cmp="$(python3 "$(dirname "$0")/x11_compare.py" "demo" "bdex-capture overlay" 2>&1)"
+  cmp="$(python3 "$(dirname "$0")/x11_compare.py" "demo" "chuds-fg-capture overlay" 2>&1)"
   wait $cap
   rc=$?
   want=2; case "$args" in *"-m 3"*) want=3 ;; esac
@@ -62,7 +62,7 @@ for args in "-m 2" "-m 3 --mode hybrid" "-m 2 --mode extrapolate" "armed"; do
   if grep -q "(software" "$LOG"; then case "$args" in *hybrid*) want=2 ;; *extrapolate*) want=1 ;; esac; fi
   ratio=$(grep -E "game [0-9.]+ fps -> output" "$LOG" | tail -1 | sed -n 's/.*(x\([0-9.]*\)).*/\1/p')
   game=$(grep -E "game [0-9.]+ fps -> output" "$LOG" | tail -1 | sed -n 's/.*game \([0-9.]*\) fps.*/\1/p')
-  echo "bdex-capture ${args:-(require_app config)}: exit $rc, game ${game:-?} fps, x${ratio:-?} (want x$want); $cmp"
+  echo "chuds-fg-capture ${args:-(require_app config)}: exit $rc, game ${game:-?} fps, x${ratio:-?} (want x$want); $cmp"
   if [ $rc -ne 0 ] || ! awk -v r="${ratio:-0}" -v w="$want" -v g="${game:-0}" \
        'BEGIN { exit !(r >= 1 + (w - 1) * 0.7 && g >= 10) }'; then
     grep -E "ERROR|WARN|fps -> output|capturing|gpu|engine" "$LOG" | tail -12; status=1

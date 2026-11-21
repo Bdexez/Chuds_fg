@@ -1,4 +1,4 @@
-# Removes the bdex-framegen layer registration created by register-layer.ps1
+# Removes the chuds-fg layer registration created by register-layer.ps1
 # (current user only; a system-wide install would live under HKLM and is not
 # touched here).
 #
@@ -10,13 +10,13 @@
 param(
     [switch] $Wow6432,
     [switch] $RemoveFiles,
-    [string] $LayerName = 'VK_LAYER_BDEX_framegen'
+    [string] $LayerName = 'VK_LAYER_CHUDS_fg'
 )
 $ErrorActionPreference = 'Stop'
 
 if ($Wow6432) { $LayerName = "${LayerName}_32" }
 
-$dest = Join-Path $env:LOCALAPPDATA $(if ($Wow6432) { 'bdex-framegen32' } else { 'bdex-framegen' })
+$dest = Join-Path $env:LOCALAPPDATA $(if ($Wow6432) { 'chuds-fg32' } else { 'chuds-fg' })
 $json = Join-Path $dest "$LayerName.json"
 
 $keyPath = 'HKCU:\SOFTWARE\Khronos\Vulkan\ImplicitLayers'

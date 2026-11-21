@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-namespace bdex {
+namespace chuds_fg {
 
 // Where the frames of one present go on screen: m positions spread evenly
 // over the frame interval, the real frame at position `real`, generated
@@ -21,7 +21,7 @@ namespace bdex {
 //                  At x2 hybrid is interpolation. hybrid_predict N: N
 //                  predictions after the real frame (x4, 1: half a frame of
 //                  latency, one prediction a quarter of a frame ahead).
-// Shared by the layer (swapchain.cpp), the capture app and bdex_offline.
+// Shared by the layer (swapchain.cpp), the capture app and chuds_fg_offline.
 //
 // interp_hold (h < 1, the layer's present path only: `withHold`) shortens
 // the real frame's hold: the positions up to the real frame are h/m of an
@@ -66,4 +66,4 @@ struct FrameOrder {
     }
 };
 
-} // namespace bdex
+} // namespace chuds_fg

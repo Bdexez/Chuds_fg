@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-namespace bdex {
+namespace chuds_fg {
 
 using namespace fg;
 
@@ -48,4 +48,4 @@ void FrameGen::recordCas(VkCommandBuffer cmd, VkDescriptorSet set) {
     memoryBarrier(cmd);
 }
 
-} // namespace bdex
+} // namespace chuds_fg

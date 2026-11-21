@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-namespace bdex {
+namespace chuds_fg {
 
 // Crash journal (Linux): on SIGSEGV / SIGBUS / SIGILL / SIGFPE whose faulting
 // instruction — or one of its first callers — is in the object this code is
@@ -16,4 +16,4 @@ bool crashLogInstall(const std::string& dir, const std::string& tag, const std::
 // The file a crash of this process would be written to ("" before install).
 std::string crashLogPath();
 
-} // namespace bdex
+} // namespace chuds_fg

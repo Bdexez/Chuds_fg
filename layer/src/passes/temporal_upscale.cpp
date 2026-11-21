@@ -9,7 +9,7 @@
 
 #include <algorithm>
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct TaaPC { int32_t outSize[2]; int32_t srcSize[2]; float flowInvSize[2]; float flowScale; float weight; float cutLow; float cutHigh; int32_t filterMode; int32_t hasHistory; int32_t useDup; };
@@ -110,4 +110,4 @@ private:
 
 std::unique_ptr<FgPass> makeTemporalUpscalePass() { return std::make_unique<TemporalUpscalePass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

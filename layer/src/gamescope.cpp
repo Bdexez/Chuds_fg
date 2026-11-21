@@ -11,7 +11,7 @@
 #include <unistd.h>
 #endif
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace {
 bool envIs(const char* name, const char* value) {
@@ -48,4 +48,4 @@ bool gamescopeLimiterActive() {
 #endif
 }
 
-} // namespace bdex
+} // namespace chuds_fg

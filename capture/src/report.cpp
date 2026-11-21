@@ -17,11 +17,11 @@
 #include <string>
 #include <vector>
 
-#ifndef BDEX_VERSION_STR
-#define BDEX_VERSION_STR "?"
+#ifndef CHUDS_FG_VERSION_STR
+#define CHUDS_FG_VERSION_STR "?"
 #endif
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace fs = std::filesystem;
 
@@ -99,7 +99,7 @@ std::string hideProfile(std::string s) {
 
 std::string buildReport() {
     std::ostringstream o;
-    o << "bdex-framegen report (Windows launcher)\nVK_LAYER_BDEX_framegen v" << BDEX_VERSION_STR << "\n\n";
+    o << "chuds-fg report (Windows launcher)\nVK_LAYER_CHUDS_fg v" << CHUDS_FG_VERSION_STR << "\n\n";
     o << "== lecture rapide (what runs now)\n";
     const std::string dir = platformStatusDir();
     std::error_code ec;
@@ -130,9 +130,9 @@ std::string issueUrl(const std::string& r) {
     if (gpu.rfind("deviceName = ", 0) == 0) gpu = gpu.substr(13);
     std::string quick = section(r, "lecture rapide").substr(0, 1500);
     const std::string install = firstLine(section(r, "layer"));
-    return "https://github.com/Bdexez/bdex_frame_gen/issues/new?template=bug_report.yml&title=" +
-           urlencode("[" + system + "] ") + "&version=" + urlencode(BDEX_VERSION_STR) + "&distro=" + urlencode(system) +
-           "&gpu=" + urlencode(gpu) + "&session=" + urlencode("Windows launcher (bdex_capture.exe)") +
+    return "https://github.com/Bdexez/Chuds_fg/issues/new?template=bug_report.yml&title=" +
+           urlencode("[" + system + "] ") + "&version=" + urlencode(CHUDS_FG_VERSION_STR) + "&distro=" + urlencode(system) +
+           "&gpu=" + urlencode(gpu) + "&session=" + urlencode("Windows launcher (chuds_fg_capture.exe)") +
            "&install=" + urlencode(install) + "&quick=" + urlencode(quick);
 }
 
@@ -140,10 +140,10 @@ std::wstring writeReport(std::string& url) {
     wchar_t buf[MAX_PATH];
     const DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", buf, MAX_PATH);
     if (!n || n >= MAX_PATH) return L"";
-    const fs::path dir = fs::path(std::wstring(buf, n)) / L"bdex-framegen";
+    const fs::path dir = fs::path(std::wstring(buf, n)) / L"chuds-fg";
     std::error_code ec;
     fs::create_directories(dir, ec);
-    const fs::path path = dir / L"bdex-framegen-report.txt";
+    const fs::path path = dir / L"chuds-fg-report.txt";
     const std::string text = buildReport();
     {
         std::ofstream out(path, std::ios::binary | std::ios::trunc);
@@ -153,4 +153,4 @@ std::wstring writeReport(std::string& url) {
     return path.wstring();
 }
 
-} // namespace bdex
+} // namespace chuds_fg

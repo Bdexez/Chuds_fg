@@ -1,6 +1,6 @@
-# bdex-framegen — Decky Loader plugin
+# chuds-fg — Decky Loader plugin
 
-The Steam Deck's quick access menu (the « … » button) for the bdex-framegen
+The Steam Deck's quick access menu (the « … » button) for the chuds-fg
 frame generation layer, in Game Mode, where the desktop control panel cannot
 stay open beside the game:
 
@@ -14,11 +14,11 @@ stay open beside the game:
   configuration (off: back to the settings of every game);
 - the running game's frame rates, as the layer reports them.
 
-The plugin only edits `~/.config/bdex-framegen.conf` (the same lines as the
+The plugin only edits `~/.config/chuds-fg.conf` (the same lines as the
 panel; game sections are kept); the layer reads it again by itself, so the
 changes reach the running game within a second. The layer itself must be
 installed (`install.sh` from the release archive, in Desktop Mode).
 
 Build: `tools/ci/decky-check.sh` (Docker, Node 20, pnpm) writes
-`dist/bdex-framegen-decky.zip`; install it with Decky's « Install plugin
+`dist/chuds-fg-decky.zip`; install it with Decky's « Install plugin
 from ZIP » (developer mode).

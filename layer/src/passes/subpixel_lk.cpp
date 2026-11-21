@@ -4,7 +4,7 @@
 #include "framegen_internal.h"
 #include "shaders.h"
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct LkPC { int32_t size[2]; int32_t luma[2]; int32_t block; int32_t iterations; float minEigen; };
@@ -54,4 +54,4 @@ private:
 
 std::unique_ptr<FgPass> makeSubpixelLkPass() { return std::make_unique<SubpixelLkPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

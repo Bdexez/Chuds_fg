@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <sstream>
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 std::string trim(const std::string& s) {
@@ -232,4 +232,4 @@ std::string optionsUiJson(const std::vector<UiSection>& sections) {
     return o.str();
 }
 
-} // namespace bdex
+} // namespace chuds_fg

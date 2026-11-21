@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace {
 constexpr size_t kWindow = 96;         // display times kept
@@ -171,4 +171,4 @@ double DisplayClock::nextRefresh(double ms) const {
     return last + std::max(k, 0.0) * periodMs_;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

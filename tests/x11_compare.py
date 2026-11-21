@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """x11_compare.py GAME_TITLE OVERLAY_TITLE: reads the two windows' pixels
 through Xlib (ctypes, no module needed) — the game window's own content (it
-is redirected by bdex-capture, so XGetImage gives its pixmap, not the overlay
+is redirected by chuds-fg-capture, so XGetImage gives its pixmap, not the overlay
 above it) and what the overlay shows — and compares them: PSNR over the
 shared area, after a moment. Prints "same scene (PSNR N dB)" or why not."""
 import ctypes

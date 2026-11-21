@@ -3,7 +3,7 @@
 // options that may be toggled live create theirs whenever generation runs.
 #include "fg_pass.h"
 
-namespace bdex {
+namespace chuds_fg {
 
 std::unique_ptr<FgPass> makeFlowTemporalPass();
 std::unique_ptr<FgPass> makeOnlineTunePass();
@@ -73,4 +73,4 @@ std::vector<std::unique_ptr<FgPass>> createOptionalPasses(const Config& cfg, Dev
     return withHud();
 }
 
-} // namespace bdex
+} // namespace chuds_fg

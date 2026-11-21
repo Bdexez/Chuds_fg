@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+  echo "chuds-fg: Steam, Heroic, Lutris or Bottles installed as a Flatpak? Run once, as your user:"
+  echo "    chuds-fg --sandboxes"
+fi
+#DEBHELPER#

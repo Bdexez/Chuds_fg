@@ -12,7 +12,7 @@
 > retraction) — validated on Linux builds, pending on-hardware Windows
 > validation. See §3 for the checklist.
 
-Scoping document for making **bdex-framegen** run on Windows, based on an audit
+Scoping document for making **chuds-fg** run on Windows, based on an audit
 of the current tree (0.3.0 + unreleased). It states what already ports, the
 concrete blockers with file references and a fix for each, a phased plan, and
 the one decision that has to be made up front.
@@ -87,7 +87,7 @@ The audit is encouraging — the engine is mostly platform-agnostic:
 |---|---|---|
 | Warning/visibility flags | `-Wall -Wextra -Wno-missing-field-initializers -fvisibility=hidden` (GCC/Clang) | Wrap in `if(MSVC) ... /W4 ... else() ...`; `-fvisibility=hidden` has no MSVC equivalent (symbols are hidden by default, exported via `__declspec`/`.def`). |
 | Symbol export | `LINK_FLAGS "-Wl,--version-script=layer.map -Wl,-Bsymbolic"` | GNU-ld only. On Windows export the 3 entry points via a `.def` file (`EXPORTS vkGetInstanceProcAddr …`) or `__declspec(dllexport)`. Drop `-Bsymbolic` (it guards against libvulkan symbol interposition — a Linux-`dlopen` concern that doesn't exist on Windows). |
-| Output name | `PREFIX libVkLayer_`, suffix `.so` | Produce `VkLayer_bdex_framegen.dll`. The loader finds it via the manifest's `library_path`, so the exact name is free; keep it descriptive. |
+| Output name | `PREFIX libVkLayer_`, suffix `.so` | Produce `VkLayer_chuds_fg.dll`. The loader finds it via the manifest's `library_path`, so the exact name is free; keep it descriptive. |
 | 32-bit | `-m32` multilib flags | MSVC: a second configure with `-A Win32` (vs `-A x64`); MinGW: a separate i686 toolchain. Same "two builds, two manifests" shape as today, different switches. Register the 32-bit manifest under `WOW6432Node` (see 2.3). |
 | Vulkan / glslc | `find_package(Vulkan)`, `find_program(glslc)` | Both provided by the LunarG SDK on Windows; works unchanged. |
 | Demo | GLFW via `pkg_check_modules` | Not needed for the port. Gate it off on Windows, or wire GLFW via vcpkg later. |
@@ -95,7 +95,7 @@ The audit is encouraging — the engine is mostly platform-agnostic:
 ### 2.2 Source portability (a handful of `#ifdef _WIN32` shims)
 
 - **Export macro** — `layer.cpp:724`
-  `#define BDEX_EXPORT extern "C" __attribute__((visibility("default")))`
+  `#define CHUDS_FG_EXPORT extern "C" __attribute__((visibility("default")))`
   → `#ifdef _WIN32: extern "C" __declspec(dllexport)` (or rely on the `.def`).
 - **printf format attribute** — `log.h:12`
   `__attribute__((format(printf, 2, 3)))` → guard behind `#if defined(__GNUC__)`,
@@ -107,11 +107,11 @@ The audit is encouraging — the engine is mostly platform-agnostic:
   Windows, so it matters.
 - **Environment enumeration** — `config.cpp:10,253` uses `extern char** environ`.
   Windows has `_environ` (or `GetEnvironmentStringsW`); wrap in a small helper.
-  `getenv("BDEX_FG…")` reads are already portable.
+  `getenv("CHUDS_FG…")` reads are already portable.
 - **Config file location** — `config.cpp:275-276` uses `XDG_CONFIG_HOME` / `HOME`
-  → on Windows use `%APPDATA%\bdex-framegen\bdex-framegen.conf`
+  → on Windows use `%APPDATA%\chuds-fg\chuds-fg.conf`
   (`SHGetKnownFolderPath(FOLDERID_RoamingAppData)` or `getenv("APPDATA")`). Keep
-  `BDEX_FG_CONFIG` as the override on both.
+  `CHUDS_FG_CONFIG` as the override on both.
 
 None of these touch the hot path; they are startup/config code. Estimate: a
 single `platform.{h,cpp}` with three or four functions. — **Implemented** in
@@ -138,13 +138,13 @@ JSON in `…/vulkan/implicit_layer.d`. **Windows discovers them via the registry
   **data** = `0` (0 means "enabled"). System-wide is the same under
   `HKEY_LOCAL_MACHINE` (needs admin). 32-bit layers live under
   `…\WOW6432Node\Khronos\Vulkan\ImplicitLayers`.
-- The manifest `library_path` (`bdex_framegen.json.in`) should be `.\\VkLayer_
-  bdex_framegen.dll` relative to the JSON (keep DLL + JSON in the same folder),
+- The manifest `library_path` (`chuds_fg.json.in`) should be `.\\VkLayer_
+  chuds_fg.dll` relative to the JSON (keep DLL + JSON in the same folder),
   or an absolute path with escaped backslashes. The `configure_file` step just
   needs a Windows branch for the path.
 - **Deliverable:** a `register-layer.ps1` / `unregister-layer.ps1` PowerShell
-  pair (per-user, no admin) that copies `VkLayer_bdex_framegen.dll` +
-  `VkLayer_bdex_framegen.json` into e.g. `%LOCALAPPDATA%\bdex-framegen\` and
+  pair (per-user, no admin) that copies `VkLayer_chuds_fg.dll` +
+  `VkLayer_chuds_fg.json` into e.g. `%LOCALAPPDATA%\chuds-fg\` and
   writes/removes the registry value. This is the Windows equivalent of
   `tools/install.sh` / `uninstall.sh`. — **Implemented** in
   `tools/register-layer.ps1` / `tools/unregister-layer.ps1` (the script writes
@@ -155,11 +155,11 @@ JSON in `…/vulkan/implicit_layer.d`. **Windows discovers them via the registry
 
 ### 2.4 GUI
 
-`tools/bdex-framegen-gui` is Python + GTK4/libadwaita — Linux-only, and there is
+`tools/chuds-fg-gui` is Python + GTK4/libadwaita — Linux-only, and there is
 no `.desktop` concept on Windows. Options, cheapest first:
 
 1. **Ship no GUI initially.** The layer reads the config file directly, so a
-   documented `%APPDATA%\bdex-framegen\bdex-framegen.conf` + the register script
+   documented `%APPDATA%\chuds-fg\chuds-fg.conf` + the register script
    is a working v1. The control-panel model (global/per-game, all keys) is just
    an INI file.
 2. **Small native config tool** later (a tray app / simple window). Candidates:
@@ -208,7 +208,7 @@ on-hardware validation).**
   environment enumeration, config path (§2.2). ✅
 - CMake: MSVC branch, `__declspec(dllexport)`, drop `-Bsymbolic`/version-script
   on Windows, `.dll` output (§2.1); 32-bit follows the generator platform
-  (`-A Win32`) and the `VK_LAYER_BDEX_framegen_32` manifest. ✅
+  (`-A Win32`) and the `VK_LAYER_CHUDS_fg_32` manifest. ✅
 - `register-layer.ps1` / `unregister-layer.ps1` (§2.3). ✅
 
 **Windows validation checklist** (first run on a real machine):
@@ -216,21 +216,21 @@ on-hardware validation).**
 2. `cmake -S . -B build-win -G "Visual Studio 17 2022" -A x64` then
    `cmake --build build-win --config Release`.
    For 32-bit games repeat with `-A Win32` and register with `-Wow6432`.
-3. `powershell -File tools\register-layer.ps1 -Dll build-win\layer\Release\VkLayer_bdex_framegen.dll`
-4. `vulkaninfo --summary` → `VK_LAYER_BDEX_framegen` listed.
+3. `powershell -File tools\register-layer.ps1 -Dll build-win\layer\Release\VkLayer_chuds_fg.dll`
+4. `vulkaninfo --summary` → `VK_LAYER_CHUDS_fg` listed.
    `powershell -File tools\validate-windows.ps1` checks registration and loader
    discovery; use `-Wow6432 -VulkanInfo <32-bit-vulkaninfo.exe>` for Win32.
-5. Create `%APPDATA%\bdex-framegen\bdex-framegen.conf` with `enabled=1` (and
-   `log_file=%TEMP%\bdex-fg.log` — game stderr usually goes nowhere on Windows).
+5. Create `%APPDATA%\chuds-fg\chuds-fg.conf` with `enabled=1` (and
+   `log_file=%TEMP%\chuds-fg.log` — game stderr usually goes nowhere on Windows).
    Per-game instead of the config file: Steam launch options
-   `cmd /c "set BDEX_FG=1 && %command%"` (Steam runs launch options through
+   `cmd /c "set CHUDS_FG=1 && %command%"` (Steam runs launch options through
    cmd on Windows; `set` defines the environment the layer reads — the
    `VAR=1 %command%` shell syntax is Linux-only).
 6. Run a native-Vulkan title / emulator; check the HUD and the log for
    `generation on`. `validate-windows.ps1 -GameExe <path>` checks that log and
    keeps it under `%TEMP%` for inspection. Also verify resize, alt-tab,
    presentation mode and input by hand.
-7. Debug knobs: `BDEX_FG_DISABLE=1` (loader skips the layer entirely),
+7. Debug knobs: `CHUDS_FG_DISABLE=1` (loader skips the layer entirely),
    loader debug via `$env:VK_LOADER_DEBUG='all'`, config reload happens per
    Vulkan instance/device creation.
 

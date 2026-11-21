@@ -9,7 +9,7 @@
 #include <fstream>
 #include <iomanip>
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace {
 // Six frames in flight: the writer (about 10 ms for a 1080p frame) keeps up
@@ -74,7 +74,7 @@ VkBuffer FrameRecorder::next(VkExtent2D extent, const OutputEncoding& encoding, 
             VK_CHECK(dev_.vt.MapMemory(dev_.device, b.buf.memory, 0, VK_WHOLE_SIZE, 0, &b.mapped));
             b.size = bytes;
         } catch (const std::exception& e) {
-            BDEX_WARN("recording: no readback buffer (%s) — stopped", e.what());
+            CHUDS_FG_WARN("recording: no readback buffer (%s) — stopped", e.what());
             std::lock_guard<std::mutex> lock(mutex_);
             b.busy = false;
             b.size = 0;
@@ -104,7 +104,7 @@ VkBuffer FrameRecorder::depthBuffer(VkExtent2D extent, uint32_t texelBytes) {
             VK_CHECK(dev_.vt.MapMemory(dev_.device, b.depth.memory, 0, VK_WHOLE_SIZE, 0, &b.depthMapped));
             b.depthSize = bytes;
         } catch (const std::exception& e) {
-            BDEX_WARN("recording: no buffer for the depth (%s) — frames only", e.what());
+            CHUDS_FG_WARN("recording: no buffer for the depth (%s) — frames only", e.what());
             return VK_NULL_HANDLE;
         }
     }
@@ -190,7 +190,7 @@ void FrameRecorder::writerLoop() {
         lock.lock();
         buffers_[size_t(f.buffer)].busy = false;
         if (!ok) {
-            if (!failed_) BDEX_WARN("recording: could not write frame/timestamps in %s — stopped", dir_.c_str());
+            if (!failed_) CHUDS_FG_WARN("recording: could not write frame/timestamps in %s — stopped", dir_.c_str());
             failed_ = true;
         } else {
             ++written_;
@@ -199,11 +199,11 @@ void FrameRecorder::writerLoop() {
                 done << "frames=" << written_ << "\nwidth=" << f.extent.width / ds << "\nheight=" << f.extent.height / ds
                      << "\ngame_fps=" << f.gameFps << "\n";
                 if (depthWritten_) done << "depth=" << depthWritten_ << "\n";
-                BDEX_INFO("recording done: %d frames in %s (%d with the game's depth)", written_, dir_.c_str(), depthWritten_);
+                CHUDS_FG_INFO("recording done: %d frames in %s (%d with the game's depth)", written_, dir_.c_str(), depthWritten_);
             }
         }
         cv_.notify_all();
     }
 }
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -15,7 +15,7 @@
 #include <map>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // vk_util.h's VK_CHECK throws (the layer's convention); here init paths
 // return false with a log line instead.
@@ -72,10 +72,10 @@ bool VkCtx::init(HWND overlay, int gpuIndex, bool preferFifo, const Config& cfg,
     const bool colorspaceExt = hasExt(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME, instExts);
     if (colorspaceExt) wantInst.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
     std::vector<const char*> layers;
-    if (std::getenv("BDEX_CAP_VALIDATION")) layers.push_back("VK_LAYER_KHRONOS_validation");
+    if (std::getenv("CHUDS_FG_CAP_VALIDATION")) layers.push_back("VK_LAYER_KHRONOS_validation");
 
     VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    app.pApplicationName = "bdex_capture";
+    app.pApplicationName = "chuds_fg_capture";
     app.apiVersion = VK_API_VERSION_1_1;
     VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     ici.pApplicationInfo = &app;
@@ -875,4 +875,4 @@ void VkCtx::shutdown() {
     LOGI("vulkan shutdown");
 }
 
-} // namespace bdex
+} // namespace chuds_fg

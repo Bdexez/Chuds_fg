@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""bdex_offline end to end, without a display: a textured pattern translating
+"""chuds_fg_offline end to end, without a display: a textured pattern translating
 at constant speed must be interpolated (x2) and extrapolated (x2) far better
 than repeating the nearest input frame. On an irregular "game" — uneven frame
 times (--jitter), or every image presented twice (--dup 2) — frame_timing and
@@ -31,8 +31,8 @@ def frames(dir_, n=13, w=320, h=192, speed=3):
 
 def evaluate(build, frames_dir, extra_env=None, args=()):
     cmd = [sys.executable, str(ROOT / "tools" / "eval_sequence.py"), str(frames_dir), "--build", str(build), *args]
-    # (BDEX_FG_CONFIG: never the user's own settings file)
-    env = dict(os.environ, BDEX_FG_CONFIG="/dev/null", **(extra_env or {}))
+    # (CHUDS_FG_CONFIG: never the user's own settings file)
+    env = dict(os.environ, CHUDS_FG_CONFIG="/dev/null", **(extra_env or {}))
     out = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, text=True, env=env).stdout
     print(out)
     lines = out.splitlines()
@@ -46,14 +46,14 @@ def evaluate(build, frames_dir, extra_env=None, args=()):
 
 def main():
     build = Path(sys.argv[1])
-    if not (build / "tools" / "offline" / "bdex_offline").exists():
-        print("bdex_offline not built, skipping")
+    if not (build / "tools" / "offline" / "chuds_fg_offline").exists():
+        print("chuds_fg_offline not built, skipping")
         return 77
     with tempfile.TemporaryDirectory() as d:
         d = Path(d)
         frames(d)
         for mode in ("interpolate", "extrapolate"):
-            psnr, dup, n = evaluate(build, d, {"BDEX_FG_MODE": mode})
+            psnr, dup, n = evaluate(build, d, {"CHUDS_FG_MODE": mode})
             if n < 5 or not psnr > dup + 3.0:
                 print(f"{mode}: generation {psnr:.2f} dB is not clearly better than repetition {dup:.2f} dB ({n} frames)")
                 return 1
@@ -67,7 +67,7 @@ def main():
             # larger spikes so the content-clock test still needs resampling.
             for offline, option in (("--jitter 0.6 --seed 2", "FRAME_TIMING=1"), ("--dup 2", "DEDUP=1"),
                                     ("--dup 2 --hud-counter", "DEDUP=1")):
-                base, opt = evaluate(build, d, {"BDEX_FG_MODE": mode},
+                base, opt = evaluate(build, d, {"CHUDS_FG_MODE": mode},
                                      ["--offline-args", offline, "--variant", option,
                                       "--exclude", "8,8,72,24"])
                 if not opt > base + 0.3:
@@ -83,9 +83,9 @@ def main():
         # even where the measured acceleration is locally zero.
         for mode, option in (("interpolate", "INTERP_ACCEL=1"), ("extrapolate", "EXTRAPOLATE_ACCEL=1")):
             for clock in ("", " --steady-content"):
-                base, accel = evaluate(build, d, {"BDEX_FG_MODE": mode, "BDEX_FG_FRAME_TIMING": "1",
-                                                  "BDEX_FG_INTERP_ACCEL": "0", "BDEX_FG_EXTRAPOLATE_ACCEL": "0",
-                                                  "BDEX_FG_REVEAL_FILL": "1"},
+                base, accel = evaluate(build, d, {"CHUDS_FG_MODE": mode, "CHUDS_FG_FRAME_TIMING": "1",
+                                                  "CHUDS_FG_INTERP_ACCEL": "0", "CHUDS_FG_EXTRAPOLATE_ACCEL": "0",
+                                                  "CHUDS_FG_REVEAL_FILL": "1"},
                                        ["--multiplier", "4", "--offline-args", "--jitter 0.6 --spacing 4" + clock,
                                         "--variant", option])
                 if accel < base - 0.04:
@@ -97,22 +97,22 @@ def main():
                        check=True, stdout=subprocess.DEVNULL)
         # (off explicitly in the base: a discrete GPU turns it on by itself;
         # false_detail and border_predict, which move both sides, too)
-        base, local = evaluate(build, d / "popup", {"BDEX_FG_MODE": "interpolate", "BDEX_FG_SCENE_CUT_LOCAL": "0",
-                                                    "BDEX_FG_FALSE_DETAIL": "0", "BDEX_FG_BORDER_PREDICT": "0",
-                                                    "BDEX_FG_BORDER_FILL": "0", "BDEX_FG_STILL_OCCLUDER": "0", "BDEX_FG_HUD_AVOID": "0",
-                                                    "BDEX_FG_MOSAIC_BLUR": "0", "BDEX_FG_HUD_LAYER": "0"},
+        base, local = evaluate(build, d / "popup", {"CHUDS_FG_MODE": "interpolate", "CHUDS_FG_SCENE_CUT_LOCAL": "0",
+                                                    "CHUDS_FG_FALSE_DETAIL": "0", "CHUDS_FG_BORDER_PREDICT": "0",
+                                                    "CHUDS_FG_BORDER_FILL": "0", "CHUDS_FG_STILL_OCCLUDER": "0", "CHUDS_FG_HUD_AVOID": "0",
+                                                    "CHUDS_FG_MOSAIC_BLUR": "0", "CHUDS_FG_HUD_LAYER": "0"},
                                ["--variant", "SCENE_CUT_LOCAL=1"])
         if not local > base + 0.5:
             print(f"popup: scene_cut_local {local:.2f} dB does not beat the frame-wide test {base:.2f} dB")
             return 1
-        base, accel = evaluate(build, d / "swing", {"BDEX_FG_MODE": "extrapolate"}, ["--variant", "EXTRAPOLATE_ACCEL=1"])
+        base, accel = evaluate(build, d / "swing", {"CHUDS_FG_MODE": "extrapolate"}, ["--variant", "EXTRAPOLATE_ACCEL=1"])
         if not accel > base + 0.5:
             print(f"swing: extrapolate_accel {accel:.2f} dB does not beat constant velocity {base:.2f} dB")
             return 1
         # border_predict: the pan's entering / leaving content keeps the
         # camera's motion instead of a match against the clamped edge
         # (off explicitly in the base: a discrete GPU turns it on).
-        base, border = evaluate(build, d / "pan", {"BDEX_FG_MODE": "extrapolate", "BDEX_FG_BORDER_PREDICT": "0"},
+        base, border = evaluate(build, d / "pan", {"CHUDS_FG_MODE": "extrapolate", "CHUDS_FG_BORDER_PREDICT": "0"},
                                 ["--variant", "BORDER_PREDICT=1"])
         if not border > base + 0.2:
             print(f"pan: border_predict {border:.2f} dB does not beat matching against the edge {base:.2f} dB")
@@ -121,12 +121,12 @@ def main():
         # game-like scene, 21 frames: 2 s to make)
         subprocess.run([sys.executable, str(ROOT / "tools" / "edge_bench" / "make_game.py"), str(d / "fence"), "fence",
                         "21"], check=True, stdout=subprocess.DEVNULL)
-        base, px = evaluate(build, d / "fence", {"BDEX_FG_MODE": "interpolate", "BDEX_FG_PARALLAX_SEARCH": "0"},
+        base, px = evaluate(build, d / "fence", {"CHUDS_FG_MODE": "interpolate", "CHUDS_FG_PARALLAX_SEARCH": "0"},
                             ["--multiplier", "4", "--variant", "PARALLAX_SEARCH=1"])
         if not px > base + 0.04:  # (+0.26 dB on a discrete GPU, +0.08 under lavapipe without its options)
             print(f"fence: parallax_search {px:.2f} dB does not beat the hierarchical search alone {base:.2f} dB")
             return 1
-        base, chroma = evaluate(build, d / "chroma", {"BDEX_FG_MODE": "interpolate"}, ["--variant", "CHROMA_WEIGHT=1"])
+        base, chroma = evaluate(build, d / "chroma", {"CHUDS_FG_MODE": "interpolate"}, ["--variant", "CHROMA_WEIGHT=1"])
         if not chroma > base + 3.0:
             print(f"chroma: chroma_weight {chroma:.2f} dB does not beat luma-only matching {base:.2f} dB")
             return 1
@@ -135,7 +135,7 @@ def main():
         # (+1.6 dB on 33 frames on a discrete GPU).
         subprocess.run([sys.executable, str(ROOT / "tools" / "edge_bench" / "make_sequence.py"), str(d / "edges"), "still",
                         "9"], check=True, stdout=subprocess.DEVNULL)
-        env = {"BDEX_FG_MODE": "interpolate"}
+        env = {"CHUDS_FG_MODE": "interpolate"}
         base = evaluate(build, d / "edges", env)[0]
         depth = evaluate(build, d / "edges", env, ["--offline-args", f"--depth {d / 'edges' / 'depth'}"])[0]
         if not depth > base + 0.4:
@@ -148,8 +148,8 @@ def main():
         for profile in ("0", "2"):
             out = d / f"profile{profile}"
             out.mkdir()
-            env = dict(os.environ, BDEX_FG_CONFIG="/dev/null", BDEX_FG_PROFILE=profile)
-            log = subprocess.run([str(build / "tools" / "offline" / "bdex_offline"), str(d / "edges"), str(out)],
+            env = dict(os.environ, CHUDS_FG_CONFIG="/dev/null", CHUDS_FG_PROFILE=profile)
+            log = subprocess.run([str(build / "tools" / "offline" / "chuds_fg_offline"), str(d / "edges"), str(out)],
                                  check=True, stderr=subprocess.PIPE, text=True, env=env).stderr
             outs[profile] = {p.name: p.read_bytes() for p in sorted(out.glob("*.ppm"))}
             line = next((l for l in log.splitlines() if "gpu ms per input" in l), "")
@@ -177,8 +177,8 @@ def main():
         for name, level, passes in (("on", "0", "1"), ("level1-on", "1", "1"), ("level1-off", "1", "0")):
             out = d / f"quality-{name}"
             out.mkdir()
-            env = dict(os.environ, BDEX_FG_CONFIG="/dev/null", BDEX_FG_FALSE_DETAIL=passes, BDEX_FG_MOSAIC_BLUR=passes)
-            subprocess.run([str(build / "tools" / "offline" / "bdex_offline"), str(d / "edges"), str(out),
+            env = dict(os.environ, CHUDS_FG_CONFIG="/dev/null", CHUDS_FG_FALSE_DETAIL=passes, CHUDS_FG_MOSAIC_BLUR=passes)
+            subprocess.run([str(build / "tools" / "offline" / "chuds_fg_offline"), str(d / "edges"), str(out),
                             "--quality-level", level], check=True, stderr=subprocess.DEVNULL, env=env)
             frames_of[name] = {p.name: p.read_bytes() for p in sorted(out.glob("*.ppm"))}
         if frames_of["level1-on"] != frames_of["level1-off"] or frames_of["level1-on"] == frames_of["on"]:

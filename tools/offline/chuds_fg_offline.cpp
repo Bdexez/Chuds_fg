@@ -1,15 +1,15 @@
-// bdex_offline — runs the frame-generation engine (FrameGen, unchanged) on a
+// chuds_fg_offline — runs the frame-generation engine (FrameGen, unchanged) on a
 // sequence of PPM frames without any window, surface or layer.
 //
 // The input is a directory of consecutive frames captured at a high frame
-// rate (e.g. a game dumped through the layer with BDEX_FG_MULTIPLIER=1 and
-// BDEX_FG_DUMP=<dir>). Every `multiplier`-th frame is fed to the engine as a
+// rate (e.g. a game dumped through the layer with CHUDS_FG_MULTIPLIER=1 and
+// CHUDS_FG_DUMP=<dir>). Every `multiplier`-th frame is fed to the engine as a
 // "real" frame; the frames in between are generated and written next to the
 // ground truth they should match, so tools/eval_sequence.py can score them.
 // Because no window is involved, the result does not depend on the size a
 // compositor gives the window, and any recorded game becomes a test scene.
 //
-// Usage: bdex_offline <in_dir> <out_dir> [--multiplier N] [--format F] [--colorspace C] [--render-scale S]
+// Usage: chuds_fg_offline <in_dir> <out_dir> [--multiplier N] [--format F] [--colorspace C] [--render-scale S]
 //                     [--gpu I] [--max-inputs N] [--jitter J] [--dup N] [--spacing S] [--seed N] [--verbose] [--score-real]
 //   --format        swapchain format the engine sees: rgba8 (default), bgra8,
 //                   srgb (R8G8B8A8_SRGB), rgb10 (A2B10G10R10), rgba16f —
@@ -48,7 +48,7 @@
 //   --quality-level 1|2   gpu_budget's quality ladder at that level (the
 //                   levels that change settings only: 1 the costly optional
 //                   passes off, 2 also the narrowest search), to measure
-//                   what a level saves (BDEX_FG_PROFILE=2) and costs
+//                   what a level saves (CHUDS_FG_PROFILE=2) and costs
 //   --limit-shared KB, --limit-storage-images N   a smaller GPU's limits
 //                   (Vulkan guarantees 16 KB and 4): the engine's fallbacks
 //                   — a lean matcher only, or no generation — on any GPU
@@ -57,8 +57,8 @@
 //   should see then, following the layer's pacing (see the loop below), and
 //   the manifest lists real frames too (the engine's output when it may
 //   replace them, the input otherwise). Time runs as a 60 fps game.
-// Settings come from BDEX_FG_* environment variables (the config file is
-// ignored unless BDEX_FG_CONFIG names one), e.g. BDEX_FG_MODE=extrapolate.
+// Settings come from CHUDS_FG_* environment variables (the config file is
+// ignored unless CHUDS_FG_CONFIG names one), e.g. CHUDS_FG_MODE=extrapolate.
 //
 // Output: <out_dir>/gen_<k>_<i>.ppm, the frame generated for input pair k at
 // position i (1..multiplier-1), plus manifest.txt with one line per generated
@@ -75,7 +75,7 @@
 // then w*h*2 floats twice and lw*lh floats twice.
 // --bench N repeats the flow N times per input, back to back (with
 // temporal_prediction or accel the repetitions differ slightly).
-// BDEX_FG_PROFILE=1 prints the mean GPU time per stage (analysis, flow,
+// CHUDS_FG_PROFILE=1 prints the mean GPU time per stage (analysis, flow,
 // synthesis) of a fixed workload: a reproducible benchmark across GPUs,
 // unlike a live game whose GPU clocks follow its load (still +-15 % from
 // run to run: compare medians of a few runs).
@@ -100,7 +100,7 @@
 #include <vector>
 
 namespace fs = std::filesystem;
-using namespace bdex;
+using namespace chuds_fg;
 
 namespace {
 
@@ -215,13 +215,13 @@ void encode(const Image& img, VkExtent2D render, VkFormat format, VkColorSpaceKH
 }
 
 [[noreturn]] void die(const char* msg) {
-    fprintf(stderr, "bdex_offline: %s\n", msg);
+    fprintf(stderr, "chuds_fg_offline: %s\n", msg);
     exit(1);
 }
 
 void check(VkResult r, const char* what) {
     if (r != VK_SUCCESS) {
-        fprintf(stderr, "bdex_offline: %s failed (%d)\n", what, static_cast<int>(r));
+        fprintf(stderr, "chuds_fg_offline: %s failed (%d)\n", what, static_cast<int>(r));
         exit(1);
     }
 }
@@ -326,8 +326,8 @@ int main(int argc, char** argv) {
 
     // This process drives FrameGen itself: never load the implicit layer, and
     // do not inherit the user's game profiles unless explicitly asked to.
-    setenv("BDEX_FG_DISABLE", "1", 1);
-    if (!getenv("BDEX_FG_CONFIG")) setenv("BDEX_FG_CONFIG", "/dev/null", 1);
+    setenv("CHUDS_FG_DISABLE", "1", 1);
+    if (!getenv("CHUDS_FG_CONFIG")) setenv("CHUDS_FG_CONFIG", "/dev/null", 1);
     platformEnvForget();  // (the engine reads a copy of the environment)
     Config cfg = Config::load();
     cfg.enabled = true;
@@ -339,7 +339,7 @@ int main(int argc, char** argv) {
     // Headless Vulkan: no surface extension. VK_KHR_swapchain is enabled on
     // the device only because FrameGen expects its sources in PRESENT_SRC.
     VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    app.pApplicationName = "bdex_offline";
+    app.pApplicationName = "chuds_fg_offline";
     app.apiVersion = VK_API_VERSION_1_1;
     VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     ici.pApplicationInfo = &app;
@@ -416,7 +416,7 @@ int main(int argc, char** argv) {
     cp.queueFamilyIndex = qf;
     check(vkCreateCommandPool(device, &cp, nullptr, &dev.cmdPool), "vkCreateCommandPool");
     dev.config.autoConfigure(dev.props, dev.memProps);
-    fprintf(stderr, "bdex_offline: %s, %s, render %ux%u -> %ux%u, x%d %s, %s\n", dev.props.deviceName, fmtName.c_str(),
+    fprintf(stderr, "chuds_fg_offline: %s, %s, render %ux%u -> %ux%u, x%d %s, %s\n", dev.props.deviceName, fmtName.c_str(),
             render.width, render.height, extent.width, extent.height,
             mult, dev.config.modeName(), dev.config.describe().c_str());
 
@@ -463,7 +463,7 @@ int main(int argc, char** argv) {
                                             true);
             check(vkMapMemory(device, depthStaging.memory, 0, VK_WHOLE_SIZE, 0, &depthMapped), "vkMapMemory");
         } else if (!depthDir.empty()) {
-            fprintf(stderr, "bdex_offline: --depth: the engine keeps no depth (no generated frames?)\n");
+            fprintf(stderr, "chuds_fg_offline: --depth: the engine keeps no depth (no generated frames?)\n");
         }
         size_t depthFrames = 0;
 
@@ -525,7 +525,7 @@ int main(int argc, char** argv) {
         for (size_t k = 0; k < sched.size(); ++k) {
             const size_t fi = sched[k].content;
             if (!readPpm(frames[fi], img) || img.w != extent.width || img.h != extent.height) {
-                fprintf(stderr, "bdex_offline: %s: unreadable or size differs from the first frame\n",
+                fprintf(stderr, "chuds_fg_offline: %s: unreadable or size differs from the first frame\n",
                         frames[fi].string().c_str());
                 status = 1;
                 break;
@@ -709,7 +709,7 @@ int main(int argc, char** argv) {
                     char name[64];
                     snprintf(name, sizeof name, "gen_%04zu_%d.ppm", k, i);
                     if (!fg.writeDump((outDir / name).string(), static_cast<uint32_t>(i - 1))) {
-                        fprintf(stderr, "bdex_offline: cannot write %s\n", name);
+                        fprintf(stderr, "chuds_fg_offline: cannot write %s\n", name);
                         status = 1;
                     }
                     if (rawDumps && !fg.writeRawDump((outDir / (std::string(name) + ".raw")).string(), uint32_t(i - 1)))
@@ -742,11 +742,11 @@ int main(int argc, char** argv) {
             parity ^= 1;
         }
         if (verbose)
-            fprintf(stderr, "bdex_offline: reused %llu of %llu generated outputs (copy supported %d)\n",
+            fprintf(stderr, "chuds_fg_offline: reused %llu of %llu generated outputs (copy supported %d)\n",
                     static_cast<unsigned long long>(reusedOutputs), static_cast<unsigned long long>(generatedOutputs),
                     fg.outputReuseSupported() ? 1 : 0);
         if (dev.config.profile)
-            fprintf(stderr, "bdex_offline: gpu ms per input%s%s\n", fg.profileReport().c_str() + 9,
+            fprintf(stderr, "chuds_fg_offline: gpu ms per input%s%s\n", fg.profileReport().c_str() + 9,
                     benchReps > 1 ? " (flow: all --bench repetitions)" : "");
         vkDeviceWaitIdle(device);
         vkUnmapMemory(device, staging.memory);
@@ -754,7 +754,7 @@ int main(int argc, char** argv) {
         fgp.reset();  // the engine holds views of the history images
         for (auto& h : hist) dev.destroyImage(h);
         if (!depthDir.empty())
-            fprintf(stderr, "bdex_offline: depth for %zu of %zu inputs\n", depthFrames, sched.size());
+            fprintf(stderr, "chuds_fg_offline: depth for %zu of %zu inputs\n", depthFrames, sched.size());
         for (VkImageView v : depthView) vkDestroyImageView(device, v, nullptr);
         for (auto& d : depthImg) dev.destroyImage(d);
         if (depthMapped) vkUnmapMemory(device, depthStaging.memory);

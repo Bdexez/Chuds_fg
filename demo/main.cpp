@@ -2,7 +2,7 @@
 // moving objects at a capped frame rate so that the frame generation layer
 // can be exercised without a game.
 //
-//   bdex_demo [--fps N] [--frames N] [--size WxH] [--mode fifo|mailbox|immediate]
+//   chuds_fg_demo [--fps N] [--frames N] [--size WxH] [--mode fifo|mailbox|immediate]
 //             [--deterministic] [--speed X] [--srgb] [--cut N] [--repeat N] [--duration S]
 //             [--gpu-load N] [--latency-test [auto]] [--latency-log FILE] [--depth]
 //             [--present-thread L [--engine NAME] [--sim-thread [--reflex [--reflex-limit] [--reflex-lock]]]]
@@ -25,7 +25,7 @@
 // its own distance — what the layer's depth option looks for (not with
 // --replay).
 //
-// Run it with BDEX_FG=1 (and VK_LAYER_PATH pointing at the build tree if the
+// Run it with CHUDS_FG=1 (and VK_LAYER_PATH pointing at the build tree if the
 // layer is not installed) to see the generated frames.
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -272,7 +272,7 @@ private:
     // image they are copied into, then blitted (scaled) to the swapchain's.
     std::vector<std::filesystem::path> replayFrames_;
     std::vector<double> replayTimes_;
-    bdex::replay::Clock replayClock_;
+    chuds_fg::replay::Clock replayClock_;
     FILE* replayLog_ = nullptr;
     double replayShiftMs_ = 0.0;
     uint32_t replayLate_ = 0;
@@ -366,7 +366,7 @@ void Demo::makeWindow() {
     // (e.g. when several demos run concurrently) and the two eval sequences
     // land at different sizes. A fixed-size window cannot be resized.
     glfwWindowHint(GLFW_RESIZABLE, opt_.deterministic ? GLFW_FALSE : GLFW_TRUE);
-    window_ = glfwCreateWindow(opt_.width, opt_.height, "bdex frame generation demo", nullptr, nullptr);
+    window_ = glfwCreateWindow(opt_.width, opt_.height, "chuds-fg frame generation demo", nullptr, nullptr);
     if (!window_) throw std::runtime_error("glfwCreateWindow failed");
     glfwSetWindowUserPointer(window_, this);
     if (opt_.latencyTest == 1)
@@ -392,7 +392,7 @@ void Demo::makeWindow() {
 
 void Demo::initVulkan() {
     VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    app.pApplicationName = "bdex_demo";
+    app.pApplicationName = "chuds_fg_demo";
     app.apiVersion = opt_.reflex ? VK_API_VERSION_1_2 : VK_API_VERSION_1_1;  // (--reflex: timeline semaphores)
     const std::string engine = !opt_.engine.empty() ? opt_.engine : opt_.presentThread ? "vkd3d" : "";
     if (!engine.empty()) app.pEngineName = engine.c_str();
@@ -979,7 +979,7 @@ void Demo::initReplay() {
         if (!times) throw std::runtime_error("--replay-timing: timestamps.csv missing; this recording has no source clock");
         std::vector<std::string> names;
         for (const auto& p : replayFrames_) names.push_back(p.filename().string());
-        replayTimes_ = bdex::replay::readTimes(times, names);
+        replayTimes_ = chuds_fg::replay::readTimes(times, names);
         if (!opt_.replayLog.empty()) {
             // Never overwrite a recording (including its PPMs or timestamps).
             if (std::filesystem::exists(opt_.replayLog)) throw std::runtime_error("--replay-log: file already exists");
@@ -1540,13 +1540,13 @@ void Demo::run() {
         if (std::chrono::duration<double>(now - statT).count() >= 2.0) {
             char title[128];
             if (opt_.replayTiming)
-                snprintf(title, sizeof(title), "bdex demo - %.1f fps rendered (recorded source timing)",
+                snprintf(title, sizeof(title), "chuds-fg demo - %.1f fps rendered (recorded source timing)",
                          statFrames / std::chrono::duration<double>(now - statT).count());
             else if (opt_.uncapped)
-                snprintf(title, sizeof(title), "bdex demo - %.1f fps rendered (uncapped)",
+                snprintf(title, sizeof(title), "chuds-fg demo - %.1f fps rendered (uncapped)",
                          statFrames / std::chrono::duration<double>(now - statT).count());
             else
-                snprintf(title, sizeof(title), "bdex demo - %.1f fps rendered (target %.0f)",
+                snprintf(title, sizeof(title), "chuds-fg demo - %.1f fps rendered (target %.0f)",
                          statFrames / std::chrono::duration<double>(now - statT).count(), opt_.fps);
             glfwSetWindowTitle(window_, title);
             printf("%s\n", title);
@@ -1671,7 +1671,7 @@ Options parseArgs(int argc, char** argv) {
         else if (a == "--replay-timing") o.replayTiming = true;
         else if (a == "--replay-log") o.replayLog = value();
         else if (a == "-h" || a == "--help") {
-            printf("usage: bdex_demo [--fps N | --uncapped] [--frames N] [--size WxH] [--mode fifo|mailbox|immediate]\n"
+            printf("usage: chuds_fg_demo [--fps N | --uncapped] [--frames N] [--size WxH] [--mode fifo|mailbox|immediate]\n"
                    "                 [--deterministic] [--ignore-resize] [--speed X] [--srgb] [--cut N] [--repeat N] [--duration S]\n"
                    "                 [--gpu-load N] [--latency-test [auto]] [--latency-log FILE] [--anti-lag]\n"
                    "                 [--present-thread L [--engine NAME] [--sim-thread [--reflex [--reflex-limit] [--reflex-lock]]]]\n"

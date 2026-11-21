@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: bdex-framegen
-Source: https://github.com/Bdexez/bdex_frame_gen
+Upstream-Name: chuds-fg
+Source: https://github.com/Bdexez/Chuds_fg
 
 Files: *
 Copyright: 2026 Bdexez

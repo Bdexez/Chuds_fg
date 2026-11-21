@@ -1,8 +1,8 @@
-// bdex_capture's native launcher — see launcher.h. Win32 only, no toolkit:
+// chuds_fg_capture's native launcher — see launcher.h. Win32 only, no toolkit:
 // hand-placed controls in one window, IsDialogMessage for keyboard
 // navigation. The options persist to the shared config file's [*] section
 // with the same key names the Linux control panel
-// (tools/bdex-framegen-gui) writes, so the two panels stay interchangeable.
+// (tools/chuds-fg-gui) writes, so the two panels stay interchangeable.
 #include "launcher.h"
 #include "injection.h"
 #include "report.h"
@@ -36,13 +36,13 @@
 #include <utility>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // The launcher's language: French when Windows' display language is
-// (GetUserDefaultUILanguage), English otherwise; BDEX_LANG=fr|en chooses.
+// (GetUserDefaultUILanguage), English otherwise; CHUDS_FG_LANG=fr|en chooses.
 bool launcherFrench() {
     static const bool french = [] {
-        if (const char* v = std::getenv("BDEX_LANG"); v && *v) return (v[0] == 'f' || v[0] == 'F');
+        if (const char* v = std::getenv("CHUDS_FG_LANG"); v && *v) return (v[0] == 'f' || v[0] == 'F');
         return PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_FRENCH;
     }();
     return french;
@@ -115,7 +115,7 @@ std::vector<WindowInfo> capturableWindows() {
 // hand-written tuning, game sections — must survive a save.
 
 static std::wstring configPathW() {
-    if (const char* p = getenv("BDEX_FG_CONFIG")) return wideFromAcp(p);
+    if (const char* p = getenv("CHUDS_FG_CONFIG")) return wideFromAcp(p);
     return wideFromAcp(platformConfigPath().c_str());
 }
 
@@ -440,7 +440,7 @@ static bool saveGlobalConfig(const std::vector<std::pair<std::string, std::strin
     }
     if (!inserted) {
         if (out.empty())
-            out.push_back("# bdex-framegen — réglages bdex_capture (lanceur Windows)");
+            out.push_back("# chuds-fg — réglages chuds_fg_capture (lanceur Windows)");
         out.push_back("[*]");
         insertPairs();
     }
@@ -596,7 +596,7 @@ std::wstring launcherModePath() {
     wchar_t buf[MAX_PATH];
     const DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", buf, MAX_PATH);
     if (!n || n >= MAX_PATH) return L"";
-    return std::wstring(buf, n) + L"\\bdex-framegen\\launcher-mode";
+    return std::wstring(buf, n) + L"\\chuds-fg\\launcher-mode";
 }
 
 bool readAdvancedMode() {
@@ -663,7 +663,7 @@ static bool processAlive(long pid) {
     return alive;
 }
 
-// "En cours": what the layer (Vulkan games) and other bdex_capture instances
+// "En cours": what the layer (Vulkan games) and other chuds_fg_capture instances
 // publish (layer/src/status.h), refreshed every second while the launcher is
 // open — the same files as the GTK panel's view on Linux.
 void refreshRunning(Ui& ui) {
@@ -684,7 +684,7 @@ void refreshRunning(Ui& ui) {
             if (lines.empty()) text += T("   couche chargée\r\n", "   layer loaded\r\n");
             for (const auto& l : lines) text += "   " + l + "\r\n";
         }
-    if (text.empty()) text = T("Aucun jeu en cours avec bdex-framegen (couche Vulkan ou capture).", "No game running with bdex-framegen (Vulkan layer or capture).");
+    if (text.empty()) text = T("Aucun jeu en cours avec chuds-fg (couche Vulkan ou capture).", "No game running with chuds-fg (Vulkan layer or capture).");
     const std::wstring w = wideFromUtf8(text);
     if (w != ui.runningText) {  // no flicker nor lost scroll position when nothing changed
         ui.runningText = w;
@@ -749,7 +749,7 @@ void refreshList(Ui& ui) {
 void fillFromChoice(Ui& ui);  // defined below; onGameSelected refills the panel
 
 // ------------------------------------------------------------ calibration --
-// bdex-calibrate.exe (next to this program): what generation costs on this
+// chuds-fg-calibrate.exe (next to this program): what generation costs on this
 // GPU at the main screen's size and refresh — measured by itself at the
 // first start (in a thread: the window stays usable), again with « Mesurer »;
 // « Appliquer » takes its preset and multiplier.
@@ -759,7 +759,7 @@ std::wstring calibrationPath() {
     wchar_t buf[MAX_PATH];
     const DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", buf, MAX_PATH);
     if (!n || n >= MAX_PATH) return L"";
-    return std::wstring(buf, n) + L"\\bdex-framegen\\calibration.json";
+    return std::wstring(buf, n) + L"\\chuds-fg\\calibration.json";
 }
 
 std::wstring calibrateExe() {
@@ -768,7 +768,7 @@ std::wstring calibrateExe() {
     if (!n) return L"";
     std::wstring dir(exe, n);
     dir = dir.substr(0, dir.find_last_of(L"\\/") + 1);
-    const std::wstring p = dir + L"bdex-calibrate.exe";
+    const std::wstring p = dir + L"chuds-fg-calibrate.exe";
     return GetFileAttributesW(p.c_str()) == INVALID_FILE_ATTRIBUTES ? L"" : p;
 }
 
@@ -1006,7 +1006,7 @@ void persist(const LaunchChoice& c) {
         if (it != c.extra.end() && it->second != normalizeExtra(o, o.def)) kv.emplace_back(o.key, it->second);
     }
     // A per-game profile writes into the target's [game] section (Config::load
-    // applies it over the globals when bdex_capture runs on that title);
+    // applies it over the globals when chuds_fg_capture runs on that title);
     // otherwise the global [*] scope, as before.
     if (c.perGame && c.target) {
         DWORD pid = 0;
@@ -1218,7 +1218,7 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         adv(add(L"BUTTON", T(L"Signaler un problème… (rapport de diagnostic)", L"Report a problem... (diagnostic report)"),
                 BS_PUSHBUTTON | WS_TABSTOP, 508, y, 452, 23, ID_REPORT));
         y += 30;
-        // The GPU's calibration (bdex-calibrate.exe).
+        // The GPU's calibration (chuds-fg-calibrate.exe).
         {
             const Calibration cal = readCalibration();
             ui->calLabel = adv(add(L"STATIC", calibrationText(cal).c_str(), SS_LEFT, 508, y + 2, 288, 32, 0));
@@ -1322,7 +1322,7 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             gather(*ui);
             if (!ui->choice->target) {
                 MessageBoxW(hwnd, T(L"Sélectionne d'abord la fenêtre du jeu à capturer.", L"Select the game's window to capture first."),
-                            L"bdex framegen", MB_OK | MB_ICONINFORMATION);
+                            L"chuds-fg", MB_OK | MB_ICONINFORMATION);
                 return 0;
             }
             ui->choice->ok = true;
@@ -1351,7 +1351,7 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             const std::wstring path = writeReport(url);
             if (path.empty()) {
                 MessageBoxW(hwnd, T(L"Rapport impossible (LOCALAPPDATA ?).", L"Report impossible (LOCALAPPDATA?)."),
-                            L"bdex framegen", MB_OK | MB_ICONWARNING);
+                            L"chuds-fg", MB_OK | MB_ICONWARNING);
                 return 0;
             }
             // The report in the clipboard (to paste into the form), its file
@@ -1373,7 +1373,7 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                          path + T(L"\n\nLe formulaire pré-rempli va s'ouvrir : joins-y ce fichier (ou colle le rapport).",
                                   L"\n\nThe pre-filled form opens next: attach this file (or paste the report)."))
                             .c_str(),
-                        L"bdex framegen", MB_OK | MB_ICONINFORMATION);
+                        L"chuds-fg", MB_OK | MB_ICONINFORMATION);
             ShellExecuteW(nullptr, L"open", wideUtf8(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
             return 0;
         }
@@ -1381,7 +1381,7 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             const auto games = injectedGames();
             if (games.empty()) {
                 MessageBoxW(hwnd, T(L"Aucun jeu n'a d'injection installée.", L"No game has an injection installed."),
-                            L"bdex framegen", MB_OK | MB_ICONINFORMATION);
+                            L"chuds-fg", MB_OK | MB_ICONINFORMATION);
                 return 0;
             }
             std::wstring done, failed;
@@ -1395,7 +1395,7 @@ LRESULT CALLBACK launcherProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             if (!failed.empty())
                 text += std::wstring(text.empty() ? L"" : L"\n\n") + T(L"Non retirée (ferme le jeu et réessaie) :",
                                                                         L"Not removed (close the game and retry):") + failed;
-            MessageBoxW(hwnd, text.c_str(), L"bdex framegen", MB_OK | (failed.empty() ? MB_ICONINFORMATION : MB_ICONWARNING));
+            MessageBoxW(hwnd, text.c_str(), L"chuds-fg", MB_OK | (failed.empty() ? MB_ICONINFORMATION : MB_ICONWARNING));
             return 0;
         }
         case IDCANCEL:
@@ -1424,7 +1424,7 @@ void armLayer() { armLayerConfig(); }
 std::vector<std::string> vulkanGpuNames() {
     std::vector<std::string> out;
     VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    app.pApplicationName = "bdex_capture";
+    app.pApplicationName = "chuds_fg_capture";
     app.apiVersion = VK_API_VERSION_1_1;
     VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     ici.pApplicationInfo = &app;
@@ -1453,7 +1453,7 @@ bool layerRegistered() {
         for (DWORD i = 0; !found; ++i) {
             DWORD len = static_cast<DWORD>(std::size(name));
             if (RegEnumValueW(key, i, name, &len, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS) break;
-            found = wideLower(name).find(L"vk_layer_bdex_framegen") != std::wstring::npos;
+            found = wideLower(name).find(L"vk_layer_chuds_fg") != std::wstring::npos;
         }
         RegCloseKey(key);
         if (found) return true;
@@ -1464,7 +1464,7 @@ bool layerRegistered() {
 bool runLauncher(LaunchChoice& choice) {
     choice.ok = false;  // stays false when the window is closed
     const HINSTANCE inst = GetModuleHandleW(nullptr);
-    const wchar_t* cls = L"bdex_capture_launcher";
+    const wchar_t* cls = L"chuds_fg_capture_launcher";
     WNDCLASSEXW wc{sizeof wc};
     if (!GetClassInfoExW(inst, cls, &wc)) {
         wc.lpfnWndProc = launcherProc;
@@ -1491,7 +1491,7 @@ bool runLauncher(LaunchChoice& choice) {
     const int y = wa.top + static_cast<int>(std::max<LONG>(0, (wa.bottom - wa.top) - h)) / 2;
     Ui ui;
     ui.choice = &choice;
-    HWND hwnd = CreateWindowExW(WS_EX_CONTROLPARENT, cls, T(L"bdex framegen — lanceur", L"bdex framegen — launcher"),
+    HWND hwnd = CreateWindowExW(WS_EX_CONTROLPARENT, cls, T(L"chuds-fg — lanceur", L"chuds-fg — launcher"),
                                 WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, x, y,
                                 w, h, nullptr, nullptr, inst, &ui);
     if (!hwnd) return false;
@@ -1508,4 +1508,4 @@ bool runLauncher(LaunchChoice& choice) {
     return choice.ok;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

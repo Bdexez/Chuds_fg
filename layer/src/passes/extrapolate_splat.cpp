@@ -7,7 +7,7 @@
 #include "framegen_internal.h"
 #include "shaders.h"
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct SplatPC { int32_t size[2]; float s; float flowScale; float flowInvSize[2]; int32_t timing; float accel; int32_t mode; float t; };
@@ -79,4 +79,4 @@ private:
 
 std::unique_ptr<FgPass> makeExtrapolateSplatPass() { return std::make_unique<ExtrapolateSplatPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -9,7 +9,7 @@
 #include <locale>
 #include <sstream>
 
-namespace bdex {
+namespace chuds_fg {
 
 static std::string lower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
@@ -747,16 +747,16 @@ void Config::loadStream(std::istream& in, const std::string& path, const std::st
             processNamed = true;
         }
         if (!apply(t.substr(0, eq), t.substr(eq + 1)))
-            BDEX_WARN("%s:%d: ignored option '%s'", path.c_str(), lineNo, t.c_str());
+            CHUDS_FG_WARN("%s:%d: ignored option '%s'", path.c_str(), lineNo, t.c_str());
     }
 }
 
 void Config::loadEnv() {
-    static const char prefix[] = "BDEX_FG_";
+    static const char prefix[] = "CHUDS_FG_";
     // The preset goes first so that individual variables override it
     // whatever the order of the environment.
-    if (const char* p = platformEnv("BDEX_FG_PRESET")) {
-        if (!applyPreset(p)) BDEX_WARN("unknown preset '%s'", p);
+    if (const char* p = platformEnv("CHUDS_FG_PRESET")) {
+        if (!applyPreset(p)) CHUDS_FG_WARN("unknown preset '%s'", p);
     }
     for (char** e = platformEnviron(); e && *e; ++e) {
         std::string entry(*e);
@@ -767,10 +767,10 @@ void Config::loadEnv() {
         std::string value = entry.substr(eq + 1);
         if (lower(key) == "config" || lower(key) == "preset" || lower(key) == "disable") continue;  // loader handles disable
         if (!apply(key, value))
-            BDEX_WARN("ignored environment option %s", entry.c_str());
+            CHUDS_FG_WARN("ignored environment option %s", entry.c_str());
     }
-    // BDEX_FG=0 disables generation even though the layer is loaded.
-    if (const char* v = platformEnv("BDEX_FG")) {
+    // CHUDS_FG=0 disables generation even though the layer is loaded.
+    if (const char* v = platformEnv("CHUDS_FG")) {
         bool b;
         if (parseBool(v, b)) enabled = b;
         if (enabled) {
@@ -785,7 +785,7 @@ Config Config::load(const std::string& extraProcess) {
 }
 
 std::string Config::filePath() {
-    if (const char* p = platformEnv("BDEX_FG_CONFIG")) return p;
+    if (const char* p = platformEnv("CHUDS_FG_CONFIG")) return p;
     return platformConfigPath();
 }
 
@@ -857,7 +857,7 @@ Config Config::loadWithDefaults(Config c, const std::string& extraProcess) {
     // battery_saver: the power state now (pollConfig reloads when it changes).
     c.onBattery = c.batterySaver > 0 && !platformIsSteamDeck() && platformOnBattery() == 1;
     if (c.onBattery && c.batterySaver >= 2 && c.multiplier > 2) {
-        BDEX_INFO("on battery: multiplier x%d capped at x2 (battery_saver = 2)", c.multiplier);
+        CHUDS_FG_INFO("on battery: multiplier x%d capped at x2 (battery_saver = 2)", c.multiplier);
         c.multiplier = 2;
     }
     // Multiplayer anti-cheat present: stay a pass-through for this process,
@@ -872,13 +872,13 @@ Config Config::loadWithDefaults(Config c, const std::string& extraProcess) {
     if (c.ignoreAntiCheat || exception) {
         if (platformAntiCheatPresent(&antiCheat)) {
             c.antiCheatIgnored = antiCheat;
-            BDEX_WARN("anti-cheat '%s' detected but %s: layer stays on (ban risk: the player's own decision)",
+            CHUDS_FG_WARN("anti-cheat '%s' detected but %s: layer stays on (ban risk: the player's own decision)",
                       antiCheat.c_str(), exception ? "injection kept for this game" : "ignore_anticheat=1");
         }
     } else if (platformAntiCheatPresent(&antiCheat)) {
         c.enabled = false;
         c.antiCheatDisabled = true;
-        BDEX_WARN("anti-cheat '%s' detected: layer disabled for this process", antiCheat.c_str());
+        CHUDS_FG_WARN("anti-cheat '%s' detected: layer disabled for this process", antiCheat.c_str());
     }
     // require_app (the control panel, like the Windows launcher): games are
     // armed — virtual swapchain, real frames passed through — and generate
@@ -904,7 +904,7 @@ Config Config::loadWithDefaults(Config c, const std::string& extraProcess) {
     // 0, the panel's « sans le panneau » for all games (Steam's Game Mode,
     // where it cannot stay open beside a game): the desktop and Steam's own
     // processes stay untouched, as under require_app — gamescope above all,
-    // Game Mode's compositor. Their own [section] or BDEX_FG=1 still counts.
+    // Game Mode's compositor. Their own [section] or CHUDS_FG=1 still counts.
     if (c.enabled && !c.requireApp && !c.processNamed) {
         bool nonGame = platformIsDesktopApp() || platformIsNonGame(platformExeName());
         for (const auto& n : processNames()) nonGame = nonGame || platformIsNonGame(n);
@@ -972,4 +972,4 @@ std::string Config::describe() const {
     return o.str();
 }
 
-} // namespace bdex
+} // namespace chuds_fg

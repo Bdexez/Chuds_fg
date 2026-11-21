@@ -19,7 +19,7 @@
 #include <random>
 #include <vector>
 
-using namespace bdex;
+using namespace chuds_fg;
 
 namespace {
 

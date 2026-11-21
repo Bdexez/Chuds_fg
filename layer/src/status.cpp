@@ -12,7 +12,7 @@
 #include <mutex>
 #include <sstream>
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace {
 
@@ -367,4 +367,4 @@ void statusRemove(uint64_t key) {
     if (b.entries.erase(key)) writeLocked(b);
 }
 
-} // namespace bdex
+} // namespace chuds_fg

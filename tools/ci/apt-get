@@ -4,7 +4,7 @@
 # finds no candidate — the job failed with nothing pointing at the network.
 # Only network errors are retried: a missing package or a 404 (a release past
 # its end of life) fails at once, as before, for the scripts' own fallbacks.
-# Mounted as /opt/bdex-ci/apt-get, outside PATH (the scripts detect apt with
+# Mounted as /opt/chuds-fg-ci/apt-get, outside PATH (the scripts detect apt with
 # `command -v apt-get`); each job puts it first only where /usr/bin/apt-get
 # exists. Each attempt is bounded: a stalled mirror otherwise keeps apt-get
 # waiting indefinitely (the runner's own apt hung 4 hours on 2026-10-08, see

@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-namespace bdex {
+namespace chuds_fg {
 
 // Raises the calling thread's scheduling priority, as far as the system lets
 // an ordinary user: the real-time round-robin class where permitted
@@ -14,4 +14,4 @@ namespace bdex {
 // second (D-Bus): call it from the thread itself, off the game's thread.
 std::string raiseThreadPriority(int niceLevel = -10);
 
-} // namespace bdex
+} // namespace chuds_fg

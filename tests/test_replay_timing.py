@@ -13,9 +13,9 @@ def main():
         print("no display available, skipping")
         return 77
     demo = Path(sys.argv[1]).resolve()
-    env = {k: v for k, v in os.environ.items() if not k.startswith("BDEX_FG")}
-    env.update(BDEX_FG_CONFIG="/dev/null", BDEX_FG_DISABLE="1")
-    with tempfile.TemporaryDirectory(prefix="bdex-replay-timing-") as tmp:
+    env = {k: v for k, v in os.environ.items() if not k.startswith("CHUDS_FG")}
+    env.update(CHUDS_FG_CONFIG="/dev/null", CHUDS_FG_DISABLE="1")
+    with tempfile.TemporaryDirectory(prefix="chuds-fg-replay-timing-") as tmp:
         root = Path(tmp)
         source = [0, 40, 130, 155, 220, 250, 335]
         for i in range(len(source)):

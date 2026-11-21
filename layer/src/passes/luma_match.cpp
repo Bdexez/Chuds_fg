@@ -7,7 +7,7 @@
 #include "framegen_internal.h"
 #include "shaders.h"
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct LumaMatchPC { int32_t size[2]; int32_t mode; float minShift; };
@@ -77,4 +77,4 @@ private:
 
 std::unique_ptr<FgPass> makeLumaMatchPass() { return std::make_unique<LumaMatchPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

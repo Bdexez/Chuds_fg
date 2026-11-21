@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // GPU side of the frame generation for one swapchain: history images, luma
 // pyramids, flow fields, the compute pipelines that produce them, and the
@@ -81,7 +81,7 @@ public:
         uint32_t repeats = 0; // repeated frames detected since the output stage was built
     };
     bool readState(State& out) const;
-    // bdex_offline --dump-flow (tools/train_flow.py): the finest forward /
+    // chuds_fg_offline --dump-flow (tools/train_flow.py): the finest forward /
     // backward flow (level pixels) and the level-0 lumas of the pair, copied
     // after recordFlow and read once that submission completed.
     struct FlowDump {
@@ -125,7 +125,7 @@ public:
 
     // depth (the game's depth buffer): an image of nearness per source, at
     // the render size, filled by recordDepthImport when the depth of the frame
-    // in that source is known (the layer's DepthTracker, bdex_offline --depth).
+    // in that source is known (the layer's DepthTracker, chuds_fg_offline --depth).
     // The interpolation reads it where both frames of a pair have theirs.
     bool depthEnabled() const { return !depth_.empty(); }
     // The game's depth for the frame now in source `source`: `view` (the depth
@@ -185,7 +185,7 @@ public:
     // Recordings: the depth held for the frame in source `cur` (depthValid:
     // the game's, imported at its present) copied into a host-visible buffer
     // of depthTexelBytes() a render pixel; writeDepth() then writes it as
-    // bdex_offline --depth reads it — little-endian floats, reversed Z (the
+    // chuds_fg_offline --depth reads it — little-endian floats, reversed Z (the
     // nearness the engine keeps), one per pixel of the size / `downscale`
     // (the centre texel of each block: a depth is not averaged over an edge).
     bool depthValid(uint32_t cur) const { return cur < depthValid_.size() && depthValid_[cur]; }
@@ -217,7 +217,7 @@ public:
     // (submitted apart): what the GPU does until it starts is not a pass's.
     void profileResume(VkCommandBuffer cmd) { passMark(cmd, "wait"); }
     // The mean GPU ms per stage since the last report or take, then reset
-    // (bdex-calibrate). False without profiling.
+    // (chuds-fg-calibrate). False without profiling.
     bool profileTake(double ms[StageCount]);
     // gpu_budget: average GPU milliseconds of the generation (analysis, flow,
     // synthesis) per frame since the last call (0 if unmeasured); resets.
@@ -497,4 +497,4 @@ private:
     VkDescriptorSet dsCasReal_ = VK_NULL_HANDLE;      // real frame; only when sharpen_
 };
 
-} // namespace bdex
+} // namespace chuds_fg

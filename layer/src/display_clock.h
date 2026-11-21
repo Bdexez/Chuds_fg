@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // Learns the display's refresh grid from the moments frames were really
 // displayed (present_wait completions, in ms on any steady clock). Pure logic,
@@ -105,4 +105,4 @@ private:
     int sinceEstimate_ = 0;
 };
 
-} // namespace bdex
+} // namespace chuds_fg

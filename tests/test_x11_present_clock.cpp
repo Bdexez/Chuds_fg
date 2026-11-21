@@ -7,10 +7,10 @@
 #include <fstream>
 #include <string>
 
-using namespace bdex;
+using namespace chuds_fg;
 
-#ifndef BDEX_SOURCE_DIR  // (set by tests/CMakeLists.txt)
-#define BDEX_SOURCE_DIR "."
+#ifndef CHUDS_FG_SOURCE_DIR  // (set by tests/CMakeLists.txt)
+#define CHUDS_FG_SOURCE_DIR "."
 #endif
 
 namespace {
@@ -203,7 +203,7 @@ TEST(present_timeline_takes_a_grid_the_intervals_show) {
     CHECK(t.valid() && std::fabs(t.refreshHz() - 60.0) < 0.5);
 }
 
-// A real game, as the X server reported it (tools/x11_trace: bdex-x11-trace
+// A real game, as the X server reported it (tools/x11_trace: chuds-fg-x11-trace
 // watch, read-only, 11/11): Civilization VI (VKD3D-Proton) at 60 fps on the
 // 143.912 Hz screen, Hyprland's Xwayland, the layer not generating — 20 s,
 // one MSC a present. Part of the completions are on the screen's grid (two,
@@ -213,7 +213,7 @@ TEST(present_timeline_takes_a_grid_the_intervals_show) {
 // the screen's.
 TEST(present_timeline_real_trace_of_a_60_fps_game_is_not_a_60_hz_screen) {
     for (const double hint : {143.912, 0.0}) {
-        std::ifstream f(std::string(BDEX_SOURCE_DIR) + "/tests/data/x11_present_civ6_60fps.txt");
+        std::ifstream f(std::string(CHUDS_FG_SOURCE_DIR) + "/tests/data/x11_present_civ6_60fps.txt");
         CHECK(f.good());
         PresentTimeline t;
         t.setHint(hint);

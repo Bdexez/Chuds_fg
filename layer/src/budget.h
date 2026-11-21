@@ -1,6 +1,6 @@
 #pragma once
 
-namespace bdex {
+namespace chuds_fg {
 
 // gpu_budget: keeps the frame generation's GPU time under a share of the
 // game's frame interval by stepping down a quality ladder, and back up when
@@ -30,4 +30,4 @@ private:
     double costAt_[kMaxLevels] = {};  // last cost measured at each level (0 = unknown)
 };
 
-} // namespace bdex
+} // namespace chuds_fg

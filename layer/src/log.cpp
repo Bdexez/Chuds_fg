@@ -4,7 +4,7 @@
 #include <chrono>
 #include <mutex>
 
-namespace bdex {
+namespace chuds_fg {
 
 static std::atomic<int> g_level{1};
 static FILE* g_file = nullptr;
@@ -35,8 +35,8 @@ void log_write(LogLevel lvl, const char* fmt, ...) {
 
     std::lock_guard<std::mutex> lock(g_mutex);
     FILE* out = g_file ? g_file : stderr;
-    fprintf(out, "[bdex-fg %9.3f %s] %s\n", t, names[static_cast<int>(lvl)], buf);
+    fprintf(out, "[chuds-fg %9.3f %s] %s\n", t, names[static_cast<int>(lvl)], buf);
     fflush(out);
 }
 
-} // namespace bdex
+} // namespace chuds_fg

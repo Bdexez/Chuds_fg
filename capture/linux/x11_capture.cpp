@@ -18,7 +18,7 @@
 #include <fstream>
 #include <sstream>
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace {
 
@@ -137,7 +137,7 @@ std::vector<X11Window> X11Capture::list() {
         X11Window w;
         if (!describe(dpy_, c, w)) continue;
         if (w.title.empty() && w.pid == 0) continue;
-        if (w.title.rfind("bdex-capture", 0) == 0) continue;  // our overlay
+        if (w.title.rfind("chuds-fg-capture", 0) == 0) continue;  // our overlay
         out.push_back(w);
     }
     if (children) XFree(children);
@@ -182,15 +182,15 @@ bool X11Capture::start(const X11Window& w) {
     int major = 0, minor = 0, ev = 0, err = 0;
     if (!XCompositeQueryExtension(dpy_, &ev, &err) || !XCompositeQueryVersion(dpy_, &major, &minor) ||
         (major == 0 && minor < 2)) {
-        BDEX_ERR("the X server has no Composite 0.2 extension");
+        CHUDS_FG_ERR("the X server has no Composite 0.2 extension");
         return false;
     }
     if (!XDamageQueryExtension(dpy_, &damageEvent_, &damageError_)) {
-        BDEX_ERR("the X server has no DAMAGE extension");
+        CHUDS_FG_ERR("the X server has no DAMAGE extension");
         return false;
     }
     if (!XShmQueryExtension(dpy_)) {
-        BDEX_ERR("the X server has no MIT-SHM extension (a remote display?)");
+        CHUDS_FG_ERR("the X server has no MIT-SHM extension (a remote display?)");
         return false;
     }
     win_ = w;
@@ -205,7 +205,7 @@ bool X11Capture::start(const X11Window& w) {
     }
     damaged_ = true;  // a first frame now
     damagedAt_ = clock::now();
-    BDEX_INFO("capturing window 0x%lx \"%s\" (pid %ld, %s), %ux%u", win_.id, win_.title.c_str(), win_.pid,
+    CHUDS_FG_INFO("capturing window 0x%lx \"%s\" (pid %ld, %s), %ux%u", win_.id, win_.title.c_str(), win_.pid,
               win_.process.c_str(), pixW_, pixH_);
     return true;
 }
@@ -232,7 +232,7 @@ bool X11Capture::namePixmap() {
     int x, y;
     unsigned int w = 0, h = 0, border, depth;
     if (!pixmap_ || !XGetGeometry(dpy_, pixmap_, &root, &x, &y, &w, &h, &border, &depth) || w == 0 || h == 0) {
-        BDEX_ERR("cannot name the window's pixmap (not mapped?)");
+        CHUDS_FG_ERR("cannot name the window's pixmap (not mapped?)");
         return false;
     }
     pixW_ = w;
@@ -249,21 +249,21 @@ bool X11Capture::createSlots() {
         s.image = XShmCreateImage(dpy_, wa.visual, static_cast<unsigned>(wa.depth), ZPixmap, nullptr, &s.info, pixW_,
                                   pixH_);
         if (!s.image || s.image->bits_per_pixel != 32) {
-            BDEX_ERR("window depth %d: only 32-bit pixels (24/32-bit depth) are supported", wa.depth);
+            CHUDS_FG_ERR("window depth %d: only 32-bit pixels (24/32-bit depth) are supported", wa.depth);
             return false;
         }
         const size_t bytes = static_cast<size_t>(s.image->bytes_per_line) * pixH_;
         s.size = (bytes + page - 1) / page * page;  // whole pages, for the host-memory import
         s.info.shmid = shmget(IPC_PRIVATE, s.size, IPC_CREAT | 0600);
         if (s.info.shmid < 0) {
-            BDEX_ERR("shmget(%zu) failed", s.size);
+            CHUDS_FG_ERR("shmget(%zu) failed", s.size);
             return false;
         }
         s.info.shmaddr = s.image->data = static_cast<char*>(shmat(s.info.shmid, nullptr, 0));
         s.info.readOnly = False;
         if (s.info.shmaddr == reinterpret_cast<char*>(-1)) {
             s.info.shmaddr = s.image->data = nullptr;
-            BDEX_ERR("shmat failed");
+            CHUDS_FG_ERR("shmat failed");
             return false;
         }
         XShmAttach(dpy_, &s.info);
@@ -367,4 +367,4 @@ bool X11Capture::grab(int slot, Frame& out) {
     return true;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

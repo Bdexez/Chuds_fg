@@ -28,7 +28,7 @@ what an overlay mask must learn anew each time (241 frames by default).
 Also DIR/depth/fNNNN.f32, the depth buffer of the frame's time (reversed Z,
 near / z with near = 0.1, not motion-blurred, as a game's): the background
 at 200, the near layer at 200 / its parallax factor, the character at 40, the
-weapon at 0.5; the HUD and subtitles have none (bdex_offline --depth)."""
+weapon at 0.5; the HUD and subtitles have none (chuds_fg_offline --depth)."""
 import sys
 from pathlib import Path
 

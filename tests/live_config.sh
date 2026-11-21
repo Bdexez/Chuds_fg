@@ -4,19 +4,19 @@
 # menu edits the file): the demo through the layer, then x3, extrapolation,
 # require_app = 1 (the game pauses) and back to 0 (it resumes) — each must
 # reach the running game: output stage rebuilt, the frame rate following.
-#   live_config.sh <bdex_demo> <layer_dir>
+#   live_config.sh <chuds_fg_demo> <layer_dir>
 # Skips (77) without a display (Xvfb in CI, headless gamescope on a GPU).
 set -u
 DEMO="$1"
 LAYER_DIR="$2"
 if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${DISPLAY:-}" ]; then echo "no display available, skipping"; exit 77; fi
 . "$(dirname "$0")/../tools/layer_env.sh"
-bdex_use_layer "$LAYER_DIR"
+chuds_fg_use_layer "$LAYER_DIR"
 dir="$(mktemp -d)"
-trap 'rm -rf "$dir" "$BDEX_LAYER_XDG"' EXIT
+trap 'rm -rf "$dir" "$CHUDS_FG_LAYER_XDG"' EXIT
 conf="$dir/conf"
 printf '[*]\nenabled = 1\nrequire_app = 0\nmultiplier = 2\n' > "$conf"
-BDEX_FG_CONFIG="$conf" BDEX_FG_LOG=2 BDEX_FG_STATS_INTERVAL=1 BDEX_FG_STATUS_DIR="$dir" \
+CHUDS_FG_CONFIG="$conf" CHUDS_FG_LOG=2 CHUDS_FG_STATS_INTERVAL=1 CHUDS_FG_STATUS_DIR="$dir" \
   timeout 90 "$DEMO" --fps 30 --size 640x400 --duration 26 >"$dir/log" 2>&1 &
 demo=$!
 # (each step waits for the previous one's rebuild: lavapipe compiles slowly)

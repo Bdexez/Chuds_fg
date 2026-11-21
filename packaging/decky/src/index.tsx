@@ -1,4 +1,4 @@
-// Quick access menu of bdex-framegen (Steam Deck / SteamOS Game Mode): the
+// Quick access menu of chuds-fg (Steam Deck / SteamOS Game Mode): the
 // settings of the layer's configuration that matter in game, written by the
 // backend (main.py), which the layer reads again within a second.
 import { ButtonItem, DropdownItem, PanelSection, PanelSectionRow, ToggleField, staticClasses } from "@decky/ui";
@@ -47,7 +47,7 @@ function Content() {
     if (state) set({ ...state, ...c });
     setState(c).then((s) => set((old) => ({ ...(old ?? s), ...s }))).catch(() => {});
   };
-  if (!state) return <PanelSection title="bdex-framegen"><PanelSectionRow>…</PanelSectionRow></PanelSection>;
+  if (!state) return <PanelSection title="chuds-fg"><PanelSectionRow>…</PanelSectionRow></PanelSection>;
   const status = state.status;
   return (
     <PanelSection title="Frame generation">
@@ -117,8 +117,8 @@ function Content() {
 }
 
 export default definePlugin(() => ({
-  name: "bdex-framegen",
-  titleView: <div className={staticClasses.Title}>bdex-framegen</div>,
+  name: "chuds-fg",
+  titleView: <div className={staticClasses.Title}>chuds-fg</div>,
   content: <Content />,
   icon: <FaFilm />,
   onDismount() {},

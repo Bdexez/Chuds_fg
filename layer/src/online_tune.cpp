@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <sstream>
 
-namespace bdex {
+namespace chuds_fg {
 
 // Tag layout: bit 31 skip (first flow of a block: its temporal inputs came
 // from the other setting), bits 24..30 candidate, 16..23 round, 0..15 block.
@@ -276,4 +276,4 @@ std::string OnlineTune::summary() const {
     return out;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -1,5 +1,5 @@
 # Windows build of both products: the Vulkan layer (mode 1, x64 + Win32) and
-# the capture PoC bdex_capture.exe (mode 2, x64). There is no Windows machine
+# the capture PoC chuds_fg_capture.exe (mode 2, x64). There is no Windows machine
 # in the development environment, so this job is the MSVC build the docs'
 # validation checklists start with. Artifacts: one zip per architecture;
 # register-layer.ps1 generates the per-user manifest when installed.
@@ -119,7 +119,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force logs | Out-Null
           cmake -S . -B build -G "Visual Studio 17 2022" -A ${{ matrix.arch }} `
-            -DBDEX_BUILD_DEMO=OFF -DBDEX_BUILD_TESTS=ON -DBDEX_WERROR=ON 2>&1 | Tee-Object -FilePath logs/configure.log
+            -DCHUDS_FG_BUILD_DEMO=OFF -DCHUDS_FG_BUILD_TESTS=ON -DCHUDS_FG_WERROR=ON 2>&1 | Tee-Object -FilePath logs/configure.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build
@@ -154,7 +154,7 @@ jobs:
           cd logs
           git init -q
           git checkout -q -b ci-log-${{ matrix.arch }}
-          git config user.email "ci@bdex"
+          git config user.email "ci@chuds-fg"
           git config user.name "ci"
           git add .
           git commit -q -m "logs of run ${{ github.run_id }} (${{ github.sha }})"
@@ -177,8 +177,8 @@ jobs:
           try {
             $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
               Sort-Object FullName | Select-Object -Last 1
-            $files = @("build/layer/Release/VkLayer_bdex_framegen.dll", "build/capture/Release/bdex_capture.exe",
-                       "build/tools/calibrate/Release/bdex-calibrate.exe") | Where-Object { Test-Path $_ }
+            $files = @("build/layer/Release/VkLayer_chuds_fg.dll", "build/capture/Release/chuds_fg_capture.exe",
+                       "build/tools/calibrate/Release/chuds-fg-calibrate.exe") | Where-Object { Test-Path $_ }
             & $signtool.FullName sign /fd SHA256 /f $pfx /p $env:PFX_PASSWORD `
               /tr http://timestamp.digicert.com /td SHA256 $files
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -192,14 +192,14 @@ jobs:
         if: env.PACKAGE == 'true'
         shell: pwsh
         run: |
-          $out = "dist/bdex-framegen-windows-${{ matrix.arch }}"
+          $out = "dist/chuds-fg-windows-${{ matrix.arch }}"
           New-Item -ItemType Directory -Force $out | Out-Null
-          Copy-Item build/layer/Release/VkLayer_bdex_framegen.dll $out
-          if (Test-Path build/capture/Release/bdex_capture.exe) {
-            Copy-Item build/capture/Release/bdex_capture.exe $out
+          Copy-Item build/layer/Release/VkLayer_chuds_fg.dll $out
+          if (Test-Path build/capture/Release/chuds_fg_capture.exe) {
+            Copy-Item build/capture/Release/chuds_fg_capture.exe $out
           }
-          if (Test-Path build/tools/calibrate/Release/bdex-calibrate.exe) {
-            Copy-Item build/tools/calibrate/Release/bdex-calibrate.exe $out
+          if (Test-Path build/tools/calibrate/Release/chuds-fg-calibrate.exe) {
+            Copy-Item build/tools/calibrate/Release/chuds-fg-calibrate.exe $out
           }
           Copy-Item tools/register-layer.ps1, tools/unregister-layer.ps1, tools/validate-windows.ps1 $out
           Copy-Item layer/profiles.conf $out   # per-game profiles, read next to the DLL / exe
@@ -217,8 +217,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: env.PACKAGE == 'true'
         with:
-          name: bdex-framegen-windows-${{ matrix.arch }}
-          path: dist/bdex-framegen-windows-${{ matrix.arch }}
+          name: chuds-fg-windows-${{ matrix.arch }}
+          path: dist/chuds-fg-windows-${{ matrix.arch }}
           if-no-files-found: error
 
   # The package to give users: the x64 one with the 32-bit layer in x86\
@@ -235,15 +235,15 @@ jobs:
       - name: Bundle
         run: |
           set -e
-          out=dist/bdex-framegen-windows-complete
-          cp -r dist/bdex-framegen-windows-x64 "$out"
+          out=dist/chuds-fg-windows-complete
+          cp -r dist/chuds-fg-windows-x64 "$out"
           mkdir -p "$out/x86"
-          cp dist/bdex-framegen-windows-Win32/VkLayer_bdex_framegen.dll "$out/x86/"
+          cp dist/chuds-fg-windows-Win32/VkLayer_chuds_fg.dll "$out/x86/"
           ls -R "$out"
       - uses: actions/upload-artifact@v4
         with:
-          name: bdex-framegen-windows-complete
-          path: dist/bdex-framegen-windows-complete
+          name: chuds-fg-windows-complete
+          path: dist/chuds-fg-windows-complete
           if-no-files-found: error
 
   release:
@@ -261,7 +261,7 @@ jobs:
       - name: Zip
         run: |
           cd dist
-          for d in bdex-framegen-windows-*; do (cd "$d" && zip -r "../$d.zip" .); done
+          for d in chuds-fg-windows-*; do (cd "$d" && zip -r "../$d.zip" .); done
           ls -l *.zip
       # The package ships VKD3D-Proton (LGPL-2.1): its complete source goes on
       # the same release page (section 4), submodules included.

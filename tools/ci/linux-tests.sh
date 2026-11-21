@@ -6,7 +6,7 @@
 #   tools/ci/linux-tests.sh BUILD BASELINE_BUILD [LANE...]
 #   lanes: core display mingw (every push, linux.yml), slow validation
 #   stress (nightly, compat.yml); default: all but mingw
-# BDEX_CORPUS_DIR adds the recorded game sequences to the corpus test.
+# CHUDS_FG_CORPUS_DIR adds the recorded game sequences to the corpus test.
 #
 # Not side by side (measured 2026-11-01, the CI replayed on 2 CPUs — a
 # private repository's runner): three lanes at once made the offline tests
@@ -27,7 +27,7 @@ set -uo pipefail
 build=${1:?build directory}
 baseline=${2:?f2cec5f build directory}
 cd "$(dirname "$0")/../.."
-logs="${BDEX_CI_LOGS:-$build/ci-logs}"
+logs="${CHUDS_FG_CI_LOGS:-$build/ci-logs}"
 mkdir -p "$logs"
 display_re='integration|latency_probe|gamescope_limit|capture_linux|live_config|limit_session|record_live|replay_bench|acquire_timeout|multithread_config'
 slow_re='^determinism$|^output_reuse$'
@@ -36,21 +36,21 @@ others_re="^validation\$|swapchain_stress|$slow_re|$display_re"
 start=$(date +%s)
 stamp() { echo "[$(( $(date +%s) - start ))s] $*"; }
 
-# GPU work without a display (bdex_offline), the f2cec5f invariant and the
+# GPU work without a display (chuds_fg_offline), the f2cec5f invariant and the
 # PSNR gates.
 lane_core() {
   xvfb-run -a ctest --test-dir "$build" --output-on-failure --repeat until-pass:2 \
     -E "$others_re" || return 1
   # Default generated frames must match the pre-census build byte for byte.
   # Each run loads only its own build's layer (private XDG_DATA_HOME).
-  BDEX_INVARIANT_SEQUENTIAL=1 xvfb-run -a -s '-screen 0 1280x800x24' \
+  CHUDS_FG_INVARIANT_SEQUENTIAL=1 xvfb-run -a -s '-screen 0 1280x800x24' \
     python3 tests/check_matcher_invariant.py "$build" "$baseline" || return 1
   # Quality regression gate: PSNR of the generated frames against the 60 fps
   # ground truth, normal and fast-motion scenes (lavapipe tracks the GPU
   # within ~0.04 dB; thresholds just under it).
   local normal fast report mult
   normal="$(xvfb-run -a tools/run_eval.sh "$build" 40 | awk '/^  mean/{print $2; exit}')"
-  fast="$(xvfb-run -a env BDEX_EVAL_ARGS='--speed 2' tools/run_eval.sh "$build" 40 | awk '/^  mean/{print $2; exit}')"
+  fast="$(xvfb-run -a env CHUDS_FG_EVAL_ARGS='--speed 2' tools/run_eval.sh "$build" 40 | awk '/^  mean/{print $2; exit}')"
   echo "PSNR normal: ${normal} dB, fast: ${fast} dB"
   python3 - "$normal" "$fast" <<'EOF' || return 1
 import sys
@@ -67,7 +67,7 @@ EOF
   # x3/x4 score every generated position (local reference on llvmpipe:
   # 31.81/31.98 dB at 800x600); same 28 dB floor, shorter runs.
   for mult in 3 4; do
-    report="$(BDEX_FG_MULTIPLIER=$mult xvfb-run -a tools/run_eval.sh "$build" 12)"
+    report="$(CHUDS_FG_MULTIPLIER=$mult xvfb-run -a tools/run_eval.sh "$build" 12)"
     echo "$report"
     awk '/^  mean/ { seen=1; if ($2 < 28) bad=1 } END { exit !seen || bad }' <<<"$report" || return 1
   done
@@ -76,13 +76,13 @@ EOF
 # The demo through the layer on a display (the compositor test included:
 # capture_linux starts openbox + picom on its display).
 lane_display() {
-  BDEX_REQUIRE_DISPLAY=1 BDEX_TEST_COMPOSITOR=1 xvfb-run -a \
+  CHUDS_FG_REQUIRE_DISPLAY=1 CHUDS_FG_TEST_COMPOSITOR=1 xvfb-run -a \
     ctest --test-dir "$build" --output-on-failure --repeat until-pass:2 -R "$display_re"
 }
 
 # Khronos validation (synchronization included) over every option.
 lane_validation() {
-  BDEX_REQUIRE_DISPLAY=1 xvfb-run -a \
+  CHUDS_FG_REQUIRE_DISPLAY=1 xvfb-run -a \
     ctest --test-dir "$build" --output-on-failure --repeat until-pass:2 -R '^validation$'
 }
 
@@ -95,12 +95,12 @@ lane_slow() {
 # The swapchain stress run (resizes, recreations, fullscreen) under the
 # Khronos layers.
 lane_stress() {
-  BDEX_REQUIRE_DISPLAY=1 xvfb-run -a \
+  CHUDS_FG_REQUIRE_DISPLAY=1 xvfb-run -a \
     ctest --test-dir "$build" --output-on-failure --repeat until-pass:2 -R 'swapchain_stress'
 }
 
 lane_mingw() {
-  BDEX_MINGW_ARCHS=i686 BDEX_MINGW_GEN="$build" tools/ci/mingw/check.sh
+  CHUDS_FG_MINGW_ARCHS=i686 CHUDS_FG_MINGW_GEN="$build" tools/ci/mingw/check.sh
 }
 
 shift 2

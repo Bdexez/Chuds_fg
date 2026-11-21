@@ -6,6 +6,6 @@
 #   tools/ci/flatpak-check.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-docker volume create bdex-flatpak-cache >/dev/null
-exec docker run --rm --privileged -v "$ROOT":/src:ro -v bdex-flatpak-cache:/root/.local/share/flatpak \
+docker volume create chuds-fg-flatpak-cache >/dev/null
+exec docker run --rm --privileged -v "$ROOT":/src:ro -v chuds-fg-flatpak-cache:/root/.local/share/flatpak \
   fedora:latest bash /src/tools/ci/flatpak-check-inner.sh

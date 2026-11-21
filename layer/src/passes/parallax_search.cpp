@@ -8,7 +8,7 @@
 #include "framegen_internal.h"
 #include "shaders.h"
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct ParallaxPC { int32_t size[2]; int32_t luma[2]; int32_t block; float minSad; float gain; int32_t mode; float agree; };
@@ -72,4 +72,4 @@ private:
 
 std::unique_ptr<FgPass> makeParallaxSearchPass() { return std::make_unique<ParallaxSearchPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

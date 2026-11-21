@@ -1,0 +1,42 @@
+# Maintainer: Bdexez
+# The prebuilt release archive (the layer with its own C++ runtime, the 32-bit
+# one for 32-bit games, the CLI, the control panel), installed to /usr —
+# nothing to compile. Built from the sources: chuds-fg-git.
+pkgname=chuds-fg-bin
+pkgver=0.5.6
+pkgrel=1
+pkgdesc="Frame generation for Vulkan games (optical flow, x2 to x8) as a Vulkan layer, with a GTK control panel (prebuilt)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/Bdexez/Chuds_fg"
+license=('LicenseRef-proprietary')
+depends=('glibc' 'vulkan-icd-loader')
+optdepends=('python-gobject: control panel (chuds-fg-gui)'
+            'gtk4: control panel (chuds-fg-gui)'
+            'libadwaita: control panel with Adwaita widgets (plain GTK 4 without it)'
+            'lib32-vulkan-icd-loader: 32-bit games'
+            'vulkan-tools: chuds-fg --check and --report')
+provides=('chuds-fg')
+conflicts=('chuds-fg' 'chuds-fg-git')
+# The 32-bit layer must not pull lib32-glibc: 32-bit games bring it.
+options=('!strip' '!debug')
+source_x86_64=("$url/releases/download/v$pkgver/chuds-fg-linux-x86_64-$pkgver.tar.gz")
+source_aarch64=("$url/releases/download/v$pkgver/chuds-fg-linux-aarch64-$pkgver.tar.gz")
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+package() {
+  local files="$srcdir/chuds-fg-linux-$CARCH-$pkgver/files" json lib
+  install -d "$pkgdir/usr"
+  cp -r "$files/bin" "$files/share" "$pkgdir/usr/"
+  rm -f "$pkgdir/usr/share/chuds-fg/ARCH"
+  for lib in lib lib32; do
+    [ -f "$files/$lib/libVkLayer_chuds_fg.so" ] || continue
+    install -Dm755 "$files/$lib/libVkLayer_chuds_fg.so" "$pkgdir/usr/$lib/libVkLayer_chuds_fg.so"
+  done
+  # The archive's manifests name its own prefix: /usr here.
+  for json in "$pkgdir"/usr/share/vulkan/implicit_layer.d/*.json; do
+    case "$json" in *_32.json) lib=lib32 ;; *) lib=lib ;; esac
+    sed -i "s#\"library_path\": \"[^\"]*\"#\"library_path\": \"/usr/$lib/libVkLayer_chuds_fg.so\"#" "$json"
+  done
+  install -Dm644 "$srcdir/chuds-fg-linux-$CARCH-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

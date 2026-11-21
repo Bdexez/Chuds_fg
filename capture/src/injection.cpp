@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace fs = std::filesystem;
 
@@ -38,7 +38,7 @@ std::string normalised(const std::wstring& path) {
     return narrow(wideLower(b));
 }
 
-// The directory of bdex_capture.exe: the package, with dxvk\, vkd3d-proton\ and the layer.
+// The directory of chuds_fg_capture.exe: the package, with dxvk\, vkd3d-proton\ and the layer.
 fs::path packageDir() {
     wchar_t exe[MAX_PATH];
     const DWORD n = GetModuleFileNameW(nullptr, exe, MAX_PATH);
@@ -92,9 +92,9 @@ std::string findAntiCheat(const GameInfo& g, const std::vector<std::wstring>& mo
     return platformAntiCheatRunning();
 }
 
-const wchar_t* kMarker = L"bdex-framegen-injection.txt";
+const wchar_t* kMarker = L"chuds-fg-injection.txt";
 
-fs::path injectionsList() { return localDir(L"bdex-framegen") / L"injections.txt"; }
+fs::path injectionsList() { return localDir(L"chuds-fg") / L"injections.txt"; }
 
 void saveInjections(const std::vector<std::wstring>& games) {
     std::error_code ec;
@@ -236,7 +236,7 @@ bool installTranslation(const GameInfo& g, std::string& why) {
     }
     {
         std::ofstream marker(dir / kMarker, std::ios::trunc);
-        marker << "# Copied by bdex-framegen (" << apiName(g.api) << " -> Vulkan): removed by the launcher's\n"
+        marker << "# Copied by chuds-fg (" << apiName(g.api) << " -> Vulkan): removed by the launcher's\n"
                << "# « Retirer les injections » button, or delete these files and this one.\n";
         for (const auto& f : copied) marker << narrow(f) << "\n";
     }
@@ -303,11 +303,11 @@ bool registerLayerForUser(std::string& why) {
     };
     const Arch arches[] = {
 #ifdef _WIN64
-        {L"VkLayer_bdex_framegen.dll", L"bdex-framegen", L"VK_LAYER_BDEX_framegen", L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers"},
-        {L"x86\\VkLayer_bdex_framegen.dll", L"bdex-framegen32", L"VK_LAYER_BDEX_framegen_32",
+        {L"VkLayer_chuds_fg.dll", L"chuds-fg", L"VK_LAYER_CHUDS_fg", L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers"},
+        {L"x86\\VkLayer_chuds_fg.dll", L"chuds-fg32", L"VK_LAYER_CHUDS_fg_32",
          L"SOFTWARE\\WOW6432Node\\Khronos\\Vulkan\\ImplicitLayers"},
 #else
-        {L"VkLayer_bdex_framegen.dll", L"bdex-framegen32", L"VK_LAYER_BDEX_framegen_32", L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers"},
+        {L"VkLayer_chuds_fg.dll", L"chuds-fg32", L"VK_LAYER_CHUDS_fg_32", L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers"},
 #endif
     };
     bool any = false;
@@ -321,7 +321,7 @@ bool registerLayerForUser(std::string& why) {
             return false;
         }
         fs::create_directories(dest, ec);
-        const fs::path dll = dest / L"VkLayer_bdex_framegen.dll";
+        const fs::path dll = dest / L"VkLayer_chuds_fg.dll";
         // The package's DLL changed (an update): copy it again — not while a
         // game holds the old one loaded (it stays; the next start picks it up).
         const bool stale = !fs::exists(dll, ec) || fs::file_size(dll, ec) != fs::file_size(src, ec) ||
@@ -337,13 +337,13 @@ bool registerLayerForUser(std::string& why) {
         {
             std::ofstream m(json, std::ios::trunc);
             m << "{\n  \"file_format_version\": \"1.2.0\",\n  \"layer\": {\n    \"name\": \"" << narrow(a.name)
-              << "\",\n    \"type\": \"GLOBAL\",\n    \"library_path\": \".\\\\VkLayer_bdex_framegen.dll\",\n"
+              << "\",\n    \"type\": \"GLOBAL\",\n    \"library_path\": \".\\\\VkLayer_chuds_fg.dll\",\n"
                  "    \"api_version\": \"1.4.0\",\n    \"implementation_version\": \"1\",\n"
-                 "    \"description\": \"BDEX frame generation: interpolates extra frames between the game's frames\",\n"
+                 "    \"description\": \"CHUDS FG frame generation: interpolates extra frames between the game's frames\",\n"
                  "    \"functions\": {\n      \"vkGetInstanceProcAddr\": \"vkGetInstanceProcAddr\",\n"
                  "      \"vkGetDeviceProcAddr\": \"vkGetDeviceProcAddr\",\n"
                  "      \"vkNegotiateLoaderLayerInterfaceVersion\": \"vkNegotiateLoaderLayerInterfaceVersion\"\n    },\n"
-                 "    \"disable_environment\": { \"BDEX_FG_DISABLE\": \"1\" }\n  }\n}\n";
+                 "    \"disable_environment\": { \"CHUDS_FG_DISABLE\": \"1\" }\n  }\n}\n";
         }
         HKEY key = nullptr;
         if (RegCreateKeyExW(HKEY_CURRENT_USER, a.key, 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) != ERROR_SUCCESS) {
@@ -359,7 +359,7 @@ bool registerLayerForUser(std::string& why) {
         }
         any = true;
     }
-    if (!any) why = T("VkLayer_bdex_framegen.dll absent du paquet", "VkLayer_bdex_framegen.dll missing from the package");
+    if (!any) why = T("VkLayer_chuds_fg.dll absent du paquet", "VkLayer_chuds_fg.dll missing from the package");
     return any;
 }
 
@@ -376,11 +376,11 @@ std::wstring antiCheatWarning(const GameInfo& g, bool injection) {
                  L"). The anti-cheat does not flag it today, but it can change at any time: the account "
                  L"could be banned. Use at your own risk.\n\nThe launch goes ahead.");
     return std::wstring(T(L"Anti-triche détecté pour ", L"Anti-cheat detected for ")) + game + L" (" + ac + L").\n\n" +
-           T(L"bdex-framegen passe par la capture de la fenêtre : rien n'est chargé dans le jeu ni modifié. "
+           T(L"chuds-fg passe par la capture de la fenêtre : rien n'est chargé dans le jeu ni modifié. "
              L"Certains éditeurs interdisent tout de même les logiciels tiers : utilisation à tes risques.\n\n"
              L"Le lancement continue.",
-             L"bdex-framegen captures the window: nothing is loaded into the game nor changed. Some "
+             L"chuds-fg captures the window: nothing is loaded into the game nor changed. Some "
              L"publishers still forbid third-party software: use at your own risk.\n\nThe launch goes ahead.");
 }
 
-} // namespace bdex
+} // namespace chuds_fg

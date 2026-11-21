@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct HudPC {
@@ -64,4 +64,4 @@ private:
 
 std::unique_ptr<FgPass> makeFpsHudPass() { return std::make_unique<FpsHudPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

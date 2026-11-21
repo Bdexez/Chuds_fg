@@ -10,7 +10,7 @@
 // then shows at most one frame of the game per such cycle: generated frames
 // past it hold the game back (measured: 30 fps game at x2 under a 30 fps
 // limit ran at 15 fps, 233 ms from present to screen).
-namespace bdex {
+namespace chuds_fg {
 
 // This process presents through gamescope's WSI layer: gamescope runs it
 // (GAMESCOPE_WAYLAND_DISPLAY) and the layer is enabled (ENABLE_GAMESCOPE_WSI,
@@ -22,4 +22,4 @@ bool gamescopeWsi();
 // without its Wayland limiter protocol; false without one.
 bool gamescopeLimiterActive();
 
-} // namespace bdex
+} // namespace chuds_fg

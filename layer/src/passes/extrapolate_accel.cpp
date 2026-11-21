@@ -7,7 +7,7 @@
 #include "framegen_internal.h"
 #include "shaders.h"
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 class ExtrapolateAccelPass : public FgPass {
@@ -79,4 +79,4 @@ private:
 
 std::unique_ptr<FgPass> makeExtrapolateAccelPass() { return std::make_unique<ExtrapolateAccelPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

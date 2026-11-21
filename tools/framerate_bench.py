@@ -166,14 +166,14 @@ def child(args):
     env = dict(os.environ)
     env.pop("WAYLAND_DISPLAY", None)  # use the isolated compositor's Xwayland
     env.pop("ENABLE_GAMESCOPE_WSI", None)  # measure actual X Present completions
-    env.update(BDEX_FG="1", BDEX_FG_CONFIG="/dev/null", BDEX_FG_LOG="2",
-               BDEX_FG_MULTIPLIER=str(args.child_multiplier), BDEX_FG_MODE=args.child_mode,
-               BDEX_FG_PRESENT_MODE="immediate", BDEX_FG_STATS_INTERVAL="1",
-               BDEX_FG_PRESET=args.preset, BDEX_FG_LATENCY_LOG=str(args.child / "latency.log"))
+    env.update(CHUDS_FG="1", CHUDS_FG_CONFIG="/dev/null", CHUDS_FG_LOG="2",
+               CHUDS_FG_MULTIPLIER=str(args.child_multiplier), CHUDS_FG_MODE=args.child_mode,
+               CHUDS_FG_PRESENT_MODE="immediate", CHUDS_FG_STATS_INTERVAL="1",
+               CHUDS_FG_PRESET=args.preset, CHUDS_FG_LATENCY_LOG=str(args.child / "latency.log"))
     # Defaults (including skip_fast) are exercised unless an override is explicit.
     for setting in args.env:
         key, value = setting.split("=", 1)
-        env[key if key.startswith("BDEX_FG_") else "BDEX_FG_" + key.upper()] = value
+        env[key if key.startswith("CHUDS_FG_") else "CHUDS_FG_" + key.upper()] = value
     command = [str(args.demo), "--size", args.size, "--ignore-resize", "--mode", "immediate",
                "--duration", str(args.seconds)]
     if args.gpu_load > 0:
@@ -250,7 +250,7 @@ def main():
     parser.add_argument("--preset", default="performance")
     parser.add_argument("--env", action="append", default=[], metavar="KEY=VALUE")
     parser.add_argument("--gpu-load", type=int, default=0,
-                        help="bdex_demo --gpu-load N: the scene drawn N times a frame (a game bound by its own GPU work)")
+                        help="chuds_fg_demo --gpu-load N: the scene drawn N times a frame (a game bound by its own GPU work)")
     parser.add_argument("--check", action="store_true",
                         help="fail if fixed interpolation loses more than 5%% of outputs or triggers catch-up")
     parser.add_argument("--max-motion-jumps", type=float,
@@ -286,7 +286,7 @@ def main():
         parser.error("--size must be positive WxH")
     args.build = args.build.resolve()
     layer = (args.layer_dir or args.build / "layer").resolve()
-    demo = args.build / "demo/bdex_demo"
+    demo = args.build / "demo/chuds_fg_demo"
     manifests = list(layer.glob("*.json"))
     if not manifests or not demo.is_file():
         parser.error("build the layer and demo first")
@@ -298,9 +298,9 @@ def main():
         shutil.copy2(manifest, manifest_dir)
     env = {k: v for k, v in os.environ.items()
            if k not in ("DISPLAY", "WAYLAND_DISPLAY", "VK_INSTANCE_LAYERS", "VK_IMPLICIT_LAYER_PATH",
-                        "VK_ADD_IMPLICIT_LAYER_PATH") and not k.startswith("BDEX_FG")}
+                        "VK_ADD_IMPLICIT_LAYER_PATH") and not k.startswith("CHUDS_FG")}
     env.update(XDG_DATA_HOME=str(output / "data"), XDG_CONFIG_HOME=str(output / "config"),
-               XDG_CACHE_HOME=str(output / "cache"), BDEX_FG_CONFIG="/dev/null")
+               XDG_CACHE_HOME=str(output / "cache"), CHUDS_FG_CONFIG="/dev/null")
     sources = output / "sources"
     if "variable" in args.fps:
         variable_sources(sources, args.seconds)

@@ -13,9 +13,9 @@ log is in [`CHANGELOG.md`](CHANGELOG.md).
   spatial and temporal upscaling, control panel (GTK 4, text mode, English
   and French), Proton (DXVK / VKD3D-Proton, checked in CI under Wine),
   gamescope / SteamOS Game Mode, Flatpak and Snap launchers.
-- **Linux, capture** (`bdex-capture`): X11 / Xwayland, and Wayland through
+- **Linux, capture** (`chuds-fg-capture`): X11 / Xwayland, and Wayland through
   the ScreenCast portal; can generate on a second GPU.
-- **Windows**: the capture app (`bdex_capture.exe`) was validated on
+- **Windows**: the capture app (`chuds_fg_capture.exe`) was validated on
   hardware on 2026-09-15 with D3D9, D3D11 and D3D12 games. Injection has
   been the default since 2026-10-03 (the Vulkan layer, plus DXVK /
   VKD3D-Proton for D3D games); games with an anti-cheat are captured
@@ -47,12 +47,12 @@ log is in [`CHANGELOG.md`](CHANGELOG.md).
    `async_compute` and `gpu_budget` on an AMD iGPU.
 6. **Publishing**: 0.5.6 (2026-10-05) is a GitHub release. The AUR,
    COPR / OBS, a PPA or Flathub need a public repository and accounts; the
-   packages are ready. Before the AUR: `bdex-framegen-bin`'s
+   packages are ready. Before the AUR: `chuds-fg-bin`'s
    `sha256sums=SKIP` replaced by the release's `SHA256SUMS-linux.txt`.
 7. **Code signing (Windows)**: an Authenticode certificate, then its `.pfx`
    (base64) and password in the repository's secrets
    `WINDOWS_SIGN_PFX_BASE64` / `WINDOWS_SIGN_PFX_PASSWORD`; `windows.yml`
-   signs the layer, `bdex_capture.exe` and `bdex-calibrate.exe` on tags from
+   signs the layer, `chuds_fg_capture.exe` and `chuds-fg-calibrate.exe` on tags from
    then on (SmartScreen, antivirus wary of an .exe copying DLLs into game
    folders). Also: enable Dependabot alerts in the repository's settings
    (`.github/dependabot.yml` only schedules the update pull requests).
@@ -88,7 +88,7 @@ log is in [`CHANGELOG.md`](CHANGELOG.md).
   Vulkan), GTA IV and State of Decay 2 (DXVK) and Civilization VI
   (VKD3D-Proton); its quality is judged nowhere yet, and the panel's
   recordings keep the depth since 2026-11-11 (`depth/fNNNN.f32`, what
-  `bdex_offline --depth` reads). Next: record games with it, judge it on
+  `chuds_fg_offline --depth` reads). Next: record games with it, judge it on
   them, then predicted frames (`reveal_fill`,
   the splat's priority by depth), then the game's own motion vectors (below).
 - **x4 on a 30 fps game** (2026-10-13 to 21): x4 is again exactly 4 frames a
@@ -130,7 +130,7 @@ log is in [`CHANGELOG.md`](CHANGELOG.md).
     (1.75–1.9 ms a game frame) for a few hundredths of a dB on average; under
     saturation the low-value passes should go before the game is held back
     (`gpu_budget` skipped them: its level 1 takes them since 2026-11-11; by
-    default it is off); the per-pass profile (`BDEX_FG_PROFILE=2`) exists
+    default it is off); the per-pass profile (`CHUDS_FG_PROFILE=2`) exists
     since the same day;
   - the game's motion vectors (TAA / DLSS / FSR velocity buffers), found
     like the depth buffer: never considered; an `edge_bench` oracle first;
@@ -143,11 +143,11 @@ log is in [`CHANGELOG.md`](CHANGELOG.md).
   and optional pass (repeatable to 0.01 ms on an idle GPU); the panel's
   recordings keep the game's depth, and `pending_decisions.py` scores
   `depth` on them; the layer reads the environment once (`getenv` against a
-  game's `setenv`, found by a static-analysis pass); `bdex-x11-trace`;
+  game's `setenv`, found by a static-analysis pass); `chuds-fg-x11-trace`;
   `gpu_budget`'s level 1 frees 39 % of the generation instead of 9 %.
   **Left from it**: recordings of real games made with `depth = 1` (the
   judgement itself); State of Decay 2's completions on screen
-  (`bdex-x11-trace watch`: one MSC for two presents, not in the data yet);
+  (`chuds-fg-x11-trace watch`: one MSC for two presents, not in the data yet);
   generation suspended while the window is hidden (its MSC stands still);
   whether the low-value passes should also go, by default, before
   `gpu_headroom` holds the game back (the player's choice).

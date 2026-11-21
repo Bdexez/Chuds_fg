@@ -1,6 +1,6 @@
 #include "format.h"
 
-namespace bdex {
+namespace chuds_fg {
 
 OutputEncoding encodingForFormat(VkFormat f, VkColorSpaceKHR cs) {
     OutputEncoding e;
@@ -38,4 +38,4 @@ OutputEncoding encodingForFormat(VkFormat f, VkColorSpaceKHR cs) {
     return e;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

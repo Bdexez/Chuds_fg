@@ -1,7 +1,7 @@
 {
-  "name": "bdex-framegen",
+  "name": "chuds-fg",
   "version": "0.1.0",
-  "description": "Quick access menu of the bdex-framegen frame generation layer",
+  "description": "Quick access menu of the chuds-fg frame generation layer",
   "type": "module",
   "scripts": {
     "build": "rollup -c",

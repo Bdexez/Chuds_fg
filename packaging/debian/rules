@@ -4,18 +4,18 @@
 # The prebuilt .deb of the releases is tools/package-native.sh.
 include /usr/share/dpkg/architecture.mk
 
-COMMON := -DBDEX_BUILD_DEMO=OFF -DBDEX_BUILD_TESTS=OFF -DBDEX_BUILD_OFFLINE=OFF \
-          -DBDEX_STATIC_RUNTIME=ON
+COMMON := -DCHUDS_FG_BUILD_DEMO=OFF -DCHUDS_FG_BUILD_TESTS=OFF -DCHUDS_FG_BUILD_OFFLINE=OFF \
+          -DCHUDS_FG_STATIC_RUNTIME=ON
 
 %:
 	dh $@ --buildsystem=cmake --builddirectory=build64
 
 override_dh_auto_configure:
-	dh_auto_configure -- $(COMMON) -DBDEX_INSTALL_LIBDIR=lib/$(DEB_HOST_MULTIARCH)
+	dh_auto_configure -- $(COMMON) -DCHUDS_FG_INSTALL_LIBDIR=lib/$(DEB_HOST_MULTIARCH)
 ifeq ($(DEB_HOST_ARCH),amd64)
 	# The 32-bit layer (32-bit games), with -m32 (g++-multilib).
 	cmake -S . -B build32 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
-	      -DBDEX_32BIT=ON -DBDEX_STATIC_RUNTIME=ON -DBDEX_INSTALL_LIBDIR=lib/i386-linux-gnu
+	      -DCHUDS_FG_32BIT=ON -DCHUDS_FG_STATIC_RUNTIME=ON -DCHUDS_FG_INSTALL_LIBDIR=lib/i386-linux-gnu
 endif
 
 override_dh_auto_build:
@@ -27,7 +27,7 @@ endif
 override_dh_auto_install:
 	dh_auto_install
 ifeq ($(DEB_HOST_ARCH),amd64)
-	DESTDIR=$(CURDIR)/debian/bdex-framegen cmake --install build32
+	DESTDIR=$(CURDIR)/debian/chuds-fg cmake --install build32
 endif
 
 # No GPU in a build root.

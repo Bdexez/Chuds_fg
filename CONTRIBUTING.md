@@ -1,4 +1,4 @@
-# Contributing to bdex-framegen
+# Contributing to chuds-fg
 
 Thanks for your interest in the project. Bug reports, test reports from real
 games, ideas and pull requests are all welcome.
@@ -12,22 +12,22 @@ Runtime container. Open an issue with:
 1. **The layer log** at verbosity 2 (or 3 if the problem happens while
    loading):
    ```
-   BDEX_FG=1 BDEX_FG_LOG=2 BDEX_FG_LOG_FILE=/tmp/bdex.log %command%
+   CHUDS_FG=1 CHUDS_FG_LOG=2 CHUDS_FG_LOG_FILE=/tmp/chuds-fg.log %command%
    ```
    The first lines show the configuration, the GPU, the queue in use and the
    swapchain format; that is often enough to understand what is going on.
-2. **Your environment**: `bdex-framegen --report` writes system, session,
+2. **Your environment**: `chuds-fg --report` writes system, session,
    GPU/driver, installed manifests, relevant environment variables, the
-   config file and the end of the log into `bdex-framegen-report.txt` —
+   config file and the end of the log into `chuds-fg-report.txt` —
    attach it (read it first for anything private).
 3. **The game** and how it is launched (native, DXVK, VKD3D-Proton, Proton
    version), including the launch options.
 4. **The symptom**: no effect, crash, black screen, artefacts, stutter…
-   For artefacts, one screenshot with `BDEX_FG_DEBUG=flow` and one with
-   `BDEX_FG_DEBUG=split` help a lot.
+   For artefacts, one screenshot with `CHUDS_FG_DEBUG=flow` and one with
+   `CHUDS_FG_DEBUG=split` help a lot.
 
 If the game crashes, first check that it works with
-`BDEX_FG_DEBUG=passthrough` (layer loaded, swapchain virtualised, but no
+`CHUDS_FG_DEBUG=passthrough` (layer loaded, swapchain virtualised, but no
 generation): this separates a Vulkan integration problem from a problem in
 the shaders.
 
@@ -36,8 +36,8 @@ the shaders.
 ### Setup
 
 ```sh
-git clone git@github.com:Bdexez/bdex_frame_gen.git
-cd bdex_frame_gen
+git clone git@github.com:Bdexez/Chuds_fg.git
+cd Chuds_fg
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure
@@ -46,7 +46,7 @@ ctest --test-dir build --output-on-failure
 The layer can be tested without installing it:
 
 ```sh
-VK_IMPLICIT_LAYER_PATH=$PWD/build/layer BDEX_FG=1 ./build/demo/bdex_demo --fps 30
+VK_IMPLICIT_LAYER_PATH=$PWD/build/layer CHUDS_FG=1 ./build/demo/chuds_fg_demo --fps 30
 ```
 
 ### Before opening a pull request
@@ -59,23 +59,23 @@ VK_IMPLICIT_LAYER_PATH=$PWD/build/layer BDEX_FG=1 ./build/demo/bdex_demo --fps 3
   validation included (`ctest -R validation` checks both modes with every
   optional pass enabled; by hand:
   ```sh
-  VK_LOADER_LAYERS_ENABLE='*validation' BDEX_FG=1 build/demo/bdex_demo --fps 30 --frames 90
+  VK_LOADER_LAYERS_ENABLE='*validation' CHUDS_FG=1 build/demo/chuds_fg_demo --fps 30 --frames 90
   ```
   with `VK_KHRONOS_VALIDATION_VALIDATE_SYNC=true` for synchronization
   validation).
 - For any change to the shaders or the interpolation, attach the before/after
   numbers from `tools/run_eval.sh build 40`, as well as
-  `BDEX_EVAL_ARGS="--speed 2.5" tools/run_eval.sh build 40` for fast motion.
+  `CHUDS_FG_EVAL_ARGS="--speed 2.5" tools/run_eval.sh build 40` for fast motion.
   Include the moving-edge and changing-region scores; for multiplier changes,
-  also run with `BDEX_FG_MULTIPLIER=3` and `4`. A PSNR improvement on the demo
+  also run with `CHUDS_FG_MULTIPLIER=3` and `4`. A PSNR improvement on the demo
   is not absolute proof, but a regression is a good signal. The runner ignores
-  the local config file; set experimental options with `BDEX_FG_*` variables.
+  the local config file; set experimental options with `CHUDS_FG_*` variables.
 - The demo is one scene. For quality changes, also replay recorded game
   sequences offline (no window, no compositor, identical inputs for every
   variant). Record the real frames of a game through the layer, then score
   the defaults against your option on those frames:
   ```sh
-  BDEX_FG=1 BDEX_FG_MULTIPLIER=1 BDEX_FG_DUMP=/tmp/seq BDEX_FG_DUMP_FRAMES=240 %command%   # Steam launch options
+  CHUDS_FG=1 CHUDS_FG_MULTIPLIER=1 CHUDS_FG_DUMP=/tmp/seq CHUDS_FG_DUMP_FRAMES=240 %command%   # Steam launch options
   tools/eval_sequence.py /tmp/seq --variant OCCLUSION_STRENGTH=1 [--multiplier 3] [--exclude x0,y0,x1,y1]
   ```
   Every `multiplier`-th frame is an input and the ones in between are the
@@ -84,12 +84,12 @@ VK_IMPLICIT_LAYER_PATH=$PWD/build/layer BDEX_FG=1 ./build/demo/bdex_demo --fps 3
   generated frames), and what plain frame repetition (`dup`) and a
   cross-fade (`blend`) score on the same frames. `ctest -R corpus` replays a synthetic corpus
   (`tools/make_corpus.py`) plus any sequence directories under
-  `$BDEX_CORPUS_DIR` against `tests/corpus_reference.json`; after an intended
+  `$CHUDS_FG_CORPUS_DIR` against `tests/corpus_reference.json`; after an intended
   quality change, refresh it with `python3 tests/test_corpus.py build --update`
   and commit the diff with the numbers. Dumping slows the game down, which only makes
   the motion between frames larger; move the camera while recording.
 - For any change affecting performance, attach a statistics line with
-  `BDEX_FG_PROFILE=1` before and after.
+  `CHUDS_FG_PROFILE=1` before and after.
 - One PR = one topic. Commit messages are written in the imperative, with a
   body explaining *why* when it is not obvious.
 - Add an entry to `CHANGELOG.md` (*Unreleased* section).
@@ -99,13 +99,13 @@ VK_IMPLICIT_LAYER_PATH=$PWD/build/layer BDEX_FG=1 ./build/demo/bdex_demo --fps 3
 Measurements on real games beat the synthetic scenes. To add one:
 
 1. Record its real frames (generation off):
-   `bdex-framegen --record ~/rec/mygame 240 -- %command%` (Steam launch
+   `chuds-fg --record ~/rec/mygame 240 -- %command%` (Steam launch
    options) or with any command. Play a few seconds of representative
    motion — camera pans, characters, the HUD.
 2. Pack a window of it, downscaled for the CI's software Vulkan:
    `tools/corpus_pack.py ~/rec/mygame mygame-town.tar.gz --name mygame-town --start 60 --count 121 --note "…"`
 3. Check it locally: `tools/corpus_fetch.py /tmp/real mygame-town.tar.gz`,
-   then `BDEX_CORPUS_DIR=/tmp/real tests/test_corpus.py build --update`
+   then `CHUDS_FG_CORPUS_DIR=/tmp/real tests/test_corpus.py build --update`
    writes its references into `tests/corpus_reference.json`.
 4. Attach the archive to the repository's GitHub release named `corpus`
    (`gh release upload corpus mygame-town.tar.gz`) and commit the

@@ -2,7 +2,7 @@
 """How the frames of a game really reached the screen, from the layer's
 display log.
 
-    BDEX_FG_LATENCY_LOG=/tmp/fg.log %command%      (Steam launch options; or in
+    CHUDS_FG_LATENCY_LOG=/tmp/fg.log %command%      (Steam launch options; or in
                                                     the config: latency_log = ...)
     tools/cadence_report.py /tmp/fg.log [--hz 143.912] [--skip 3]
 

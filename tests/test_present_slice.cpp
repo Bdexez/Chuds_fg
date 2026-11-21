@@ -58,7 +58,7 @@ TEST(present_slice_reindexes_two_swapchains_and_metadata) {
     present.pResults = results;
 
     // The pass-through swapchain may be second in the application's array.
-    bdex::PresentSlice real(present, {1}, true);
+    chuds_fg::PresentSlice real(present, {1}, true);
     CHECK(real.valid());
     CHECK(real.info().swapchainCount == 1);
     CHECK(real.info().pImageIndices[0] == 19);
@@ -78,7 +78,7 @@ TEST(present_slice_reindexes_two_swapchains_and_metadata) {
     CHECK(real.results()[0] == VK_SUBOPTIMAL_KHR);
     CHECK(results[1] == VK_SUCCESS);  // the caller copies the subset result back
 
-    bdex::PresentSlice virt(present, {0}, false);
+    chuds_fg::PresentSlice virt(present, {0}, false);
     CHECK(virt.valid());
     CHECK(virt.info().pImageIndices[0] == 7);
     CHECK(virt.info().waitSemaphoreCount == 0);
@@ -102,11 +102,11 @@ TEST(present_slice_rejects_unmappable_metadata) {
     ids.swapchainCount = 1;
     ids.pPresentIds = &onlyOne;
     present.pNext = &ids;
-    bdex::PresentSlice mismatched(present, {1}, true);
+    chuds_fg::PresentSlice mismatched(present, {1}, true);
     CHECK(!mismatched.valid());
 
     VkBaseInStructure unknown{static_cast<VkStructureType>(0x7fffffff), nullptr};
     present.pNext = &unknown;
-    bdex::PresentSlice unsupported(present, {1}, true);
+    chuds_fg::PresentSlice unsupported(present, {1}, true);
     CHECK(!unsupported.valid());
 }

@@ -5,9 +5,9 @@
 #include <cstdarg>
 #include <cstdio>
 
-namespace bdex {
+namespace chuds_fg {
 inline void logLine(const char* level, const char* fmt, va_list ap) {
-    std::fprintf(stderr, "[bdex-cap %s] ", level);
+    std::fprintf(stderr, "[chuds-fg-cap %s] ", level);
     std::vfprintf(stderr, fmt, ap);
     std::fputc('\n', stderr);
 }
@@ -20,8 +20,8 @@ inline void logWarn(const char* fmt, ...) {
 inline void logError(const char* fmt, ...) {
     va_list ap; va_start(ap, fmt); logLine("ERROR", fmt, ap); va_end(ap);
 }
-} // namespace bdex
+} // namespace chuds_fg
 
-#define LOGI(...) bdex::logInfo(__VA_ARGS__)
-#define LOGW(...) bdex::logWarn(__VA_ARGS__)
-#define LOGE(...) bdex::logError(__VA_ARGS__)
+#define LOGI(...) chuds_fg::logInfo(__VA_ARGS__)
+#define LOGW(...) chuds_fg::logWarn(__VA_ARGS__)
+#define LOGE(...) chuds_fg::logError(__VA_ARGS__)

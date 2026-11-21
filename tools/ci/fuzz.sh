@@ -12,13 +12,13 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 secs="${1:-60}"; shift || true
 targets=("$@")
 [ ${#targets[@]} -gt 0 ] || targets=(config status options_ui online_tune)
-build="${BDEX_FUZZ_BUILD:-$ROOT/build-fuzz}"
+build="${CHUDS_FG_FUZZ_BUILD:-$ROOT/build-fuzz}"
 san="-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=undefined -fno-omit-frame-pointer -g -O1"
 cmake -S "$ROOT" -B "$build" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER="${CC:-clang}" \
   -DCMAKE_CXX_COMPILER="${CXX:-clang++}" -DCMAKE_CXX_FLAGS="$san" -DCMAKE_C_FLAGS="$san" \
-  -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined" -DBDEX_FUZZ=ON \
-  -DBDEX_BUILD_DEMO=OFF -DBDEX_BUILD_OFFLINE=OFF >/dev/null
-cmake --build "$build" -j"$(nproc)" --target $(printf 'bdex_fuzz_%s ' "${targets[@]}") >/dev/null
+  -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined" -DCHUDS_FG_FUZZ=ON \
+  -DCHUDS_FG_BUILD_DEMO=OFF -DCHUDS_FG_BUILD_OFFLINE=OFF >/dev/null
+cmake --build "$build" -j"$(nproc)" --target $(printf 'chuds_fg_fuzz_%s ' "${targets[@]}") >/dev/null
 status=0
 for t in "${targets[@]}"; do
   work="$(mktemp -d)"
@@ -34,7 +34,7 @@ for t in "${targets[@]}"; do
   # alloc_dealloc_mismatch=0: std::stable_sort's temporary buffer
   # (libstdc++ 16's stl_tempbuf.h built by Clang 22) reads as "operator new
   # vs free" to ASan — the library's code, on every input, not ours.
-  if ! (cd "$work" && ASAN_OPTIONS=alloc_dealloc_mismatch=0 UBSAN_OPTIONS=print_stacktrace=1 "$build/tests/bdex_fuzz_$t" "${dict[@]}" -max_total_time="$secs" \
+  if ! (cd "$work" && ASAN_OPTIONS=alloc_dealloc_mismatch=0 UBSAN_OPTIONS=print_stacktrace=1 "$build/tests/chuds_fg_fuzz_$t" "${dict[@]}" -max_total_time="$secs" \
         -max_len=4096 -timeout=10 -rss_limit_mb=2048 -print_final_stats=1 "$work" 2>"$work.log"); then
     status=1
     grep -E "ERROR|SUMMARY|fuzz:|runtime error" "$work.log" | head -20

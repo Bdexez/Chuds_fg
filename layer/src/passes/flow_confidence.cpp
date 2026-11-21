@@ -7,7 +7,7 @@
 #include "framegen_internal.h"
 #include "shaders.h"
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct ConfPC { int32_t fine[2]; int32_t luma[2]; int32_t block; int32_t slot; };
@@ -89,4 +89,4 @@ private:
 
 std::unique_ptr<FgPass> makeFlowConfidencePass() { return std::make_unique<FlowConfidencePass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

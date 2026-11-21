@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstdint>
 
-using namespace bdex;
+using namespace chuds_fg;
 
 namespace {
 // Deterministic jitter in [-a, a].
@@ -106,7 +106,7 @@ TEST(display_clock_late_tail_fails_the_plain_test) {
 // target_fps: the output never goes above the target (the refresh rate), where
 // a mailbox display drops frames unevenly; hysteresis at the boundaries.
 TEST(dynamic_multiplier_stays_under_the_target) {
-    using bdex::dynamicMultiplier;
+    using chuds_fg::dynamicMultiplier;
     auto ratio = [](double gameFps) { return 144.0 / gameFps; };  // 144 Hz target
     CHECK(dynamicMultiplier(0, ratio(60), 4) == 2);   // 120
     CHECK(dynamicMultiplier(0, ratio(72), 4) == 2);   // 144

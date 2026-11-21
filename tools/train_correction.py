@@ -5,7 +5,7 @@ adds a residual to each generated pixel, from its 3x3 neighbourhood.
     tools/train_correction.py --train SEQ... --test SEQ... [--hidden 8] [--write]
 
 Each sequence is a directory of consecutive PPM frames (tools/make_corpus.py,
-a recorded game, the demo's dumps); bdex_offline generates its in-between
+a recorded game, the demo's dumps); chuds_fg_offline generates its in-between
 frames with the current engine (every other frame as input, the others as
 ground truth, x2). Per pixel the network sees, over its 3x3 neighbourhood,
 the generated colour (relative to the centre pixel), the plain cross-fade of
@@ -46,8 +46,8 @@ def luma(img):
 def generate(build, seq, work, mode="interpolate"):
     out = Path(work) / f"{Path(seq).name}-{mode}"
     out.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ, BDEX_FG_MODE=mode, BDEX_FG_CONFIG="/dev/null")
-    subprocess.run([str(Path(build) / "tools" / "offline" / "bdex_offline"), str(seq), str(out), "--multiplier", "2"],
+    env = dict(os.environ, CHUDS_FG_MODE=mode, CHUDS_FG_CONFIG="/dev/null")
+    subprocess.run([str(Path(build) / "tools" / "offline" / "chuds_fg_offline"), str(seq), str(out), "--multiplier", "2"],
                    check=True, capture_output=True, env=env)
     frames = []
     for line in (out / "manifest.txt").read_text().splitlines():
@@ -201,7 +201,7 @@ def main():
     ap.add_argument("--write", action="store_true", help="store the weights for the shader")
     a = ap.parse_args()
     rng = np.random.default_rng(a.seed)
-    work = tempfile.mkdtemp(prefix="bdex-train-")
+    work = tempfile.mkdtemp(prefix="chuds-fg-train-")
     xs, ys = [], []
     for seq in a.train:
         for gen, gt, t, prev, cur in generate(a.build, seq, work, a.mode):

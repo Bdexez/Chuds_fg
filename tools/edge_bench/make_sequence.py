@@ -9,9 +9,9 @@ Writes DIR/fNNNN.ppm (score with x2: odd frames are the ground truth),
 DIR/truth.npz (owner of every pixel, per frame; velocity of every owner) and
 DIR/depth/fNNNN.f32, the depth buffer a game would have (reversed Z, D3D's:
 near / z, near = 0.1; the world at 100, object i at 20 - 2i, painted in that
-order; the HUD is drawn without depth: the world's there) — bdex_offline
+order; the HUD is drawn without depth: the world's there) — chuds_fg_offline
 --depth DIR/depth.
-Then: bdex_offline DIR OUT --multiplier 2 [--dump-flow OUT/flow]; score.py DIR OUT [--flow]."""
+Then: chuds_fg_offline DIR OUT --multiplier 2 [--dump-flow OUT/flow]; score.py DIR OUT [--flow]."""
 import sys, numpy as np
 from pathlib import Path
 

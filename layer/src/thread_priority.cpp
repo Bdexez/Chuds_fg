@@ -12,7 +12,7 @@
 #include <unistd.h>
 #endif
 
-namespace bdex {
+namespace chuds_fg {
 
 #if defined(__linux__)
 namespace {
@@ -108,4 +108,4 @@ std::string raiseThreadPriority(int) { return {}; }
 
 #endif
 
-} // namespace bdex
+} // namespace chuds_fg

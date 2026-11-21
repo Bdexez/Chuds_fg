@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace bdex {
+namespace chuds_fg {
 
 void DescriptorPlanner::registerLayout(VkDescriptorSetLayout layout, const std::vector<VkDescriptorType>& bindings) {
     Counts c;
@@ -38,4 +38,4 @@ bool DescriptorPlanner::plan(VkDescriptorSetLayout layout, std::vector<VkDescrip
     return fresh;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

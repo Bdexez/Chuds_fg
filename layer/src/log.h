@@ -2,7 +2,7 @@
 #include <cstdarg>
 #include <cstdio>
 
-namespace bdex {
+namespace chuds_fg {
 
 enum class LogLevel { Error = 0, Warn = 1, Info = 2, Debug = 3 };
 
@@ -15,10 +15,10 @@ void log_write(LogLevel lvl, const char* fmt, ...) __attribute__((format(printf,
 void log_write(LogLevel lvl, const char* fmt, ...);
 #endif
 
-} // namespace bdex
+} // namespace chuds_fg
 
-#define BDEX_LOG(lvl, ...)  ::bdex::log_write(::bdex::LogLevel::lvl, __VA_ARGS__)
-#define BDEX_ERR(...)       BDEX_LOG(Error, __VA_ARGS__)
-#define BDEX_WARN(...)      BDEX_LOG(Warn, __VA_ARGS__)
-#define BDEX_INFO(...)      BDEX_LOG(Info, __VA_ARGS__)
-#define BDEX_DBG(...)       BDEX_LOG(Debug, __VA_ARGS__)
+#define CHUDS_FG_LOG(lvl, ...)  ::chuds_fg::log_write(::chuds_fg::LogLevel::lvl, __VA_ARGS__)
+#define CHUDS_FG_ERR(...)       CHUDS_FG_LOG(Error, __VA_ARGS__)
+#define CHUDS_FG_WARN(...)      CHUDS_FG_LOG(Warn, __VA_ARGS__)
+#define CHUDS_FG_INFO(...)      CHUDS_FG_LOG(Info, __VA_ARGS__)
+#define CHUDS_FG_DBG(...)       CHUDS_FG_LOG(Debug, __VA_ARGS__)

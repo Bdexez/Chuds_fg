@@ -1,4 +1,4 @@
-# bdex-framegen — complete technical reference
+# chuds-fg — complete technical reference
 
 [Project overview](../README.md) · [Windows guide](../docs/windows-README.md)
 
@@ -20,7 +20,7 @@
 
 ## How it works
 
-`bdex-framegen` is an **implicit Vulkan layer** (`VK_LAYER_BDEX_framegen`).
+`chuds-fg` is an **implicit Vulkan layer** (`VK_LAYER_CHUDS_fg`).
 It sits between the game and the graphics driver, grabs every frame the game
 presents, estimates the motion between two consecutive frames, and inserts
 one or more intermediate frames before the real one.
@@ -44,7 +44,7 @@ Design notes:
 *The middle frame was never rendered by the game: it is synthesised from the two neighbouring frames.*
 
 <details>
-<summary>See the estimated optical flow (<code>BDEX_FG_DEBUG=flow</code>)</summary>
+<summary>See the estimated optical flow (<code>CHUDS_FG_DEBUG=flow</code>)</summary>
 <br>
 <img src="../docs/flow.png" alt="Optical flow visualisation" width="480">
 
@@ -60,12 +60,12 @@ covers more than native Vulkan games:
 
 | Game | How | Status |
 |---|---|---|
-| Native Linux Vulkan | `BDEX_FG=1 game` | Works (demo, `vkcube`, `vkgears`) |
-| Windows Direct3D 8–12 through Steam Play / Proton | `BDEX_FG=1 %command%` — DXVK and VKD3D-Proton translate to Vulkan | **Works** — verified on DXVK (Direct3D 11) and VKD3D-Proton (Direct3D 12) titles |
-| Windows games outside Steam (Wine, Lutris, Heroic, Bottles) | Enable DXVK in the runner and set `BDEX_FG=1` in the environment | Same as above |
-| Native Linux **OpenGL** | `bdex-framegen --gl -- game`: Mesa's Zink runs OpenGL on Vulkan (`MESA_LOADER_DRIVER_OVERRIDE=zink`, plus `__GLX_VENDOR_LIBRARY_NAME=mesa` and the Mesa EGL vendor — without them the NVIDIA driver keeps the game on its own GL, silently out of reach) | Works (`glxgears` 900 → 1800 fps on NVIDIA, an SDL3 game); Zink itself can be slower than the native GL driver on some games and iGPUs |
-| Emulators, 2D engines, anything else | Run it inside [gamescope](https://github.com/ValveSoftware/gamescope) with its SDL backend: `BDEX_FG=1 gamescope --backend sdl -- game` — the compositor presents the whole game through its own Vulkan swapchain. The shipped `[gamescope]` profile exposes `VK_KHR_present_id`/`present_wait`, which gamescope requires. Put `enabled = 1` in a `[gamescope]` section (rather than `BDEX_FG=1`) to avoid generating twice for a Vulkan game inside it. The default Wayland backend presents without a swapchain: no generation there | Works (`glxgears` 337 → 675 fps) |
-| Games with anti-cheat (the layer stays out), non-Vulkan programs | `bdex-capture` (capture, see [Capture mode](#capture-mode-bdex-capture-anti-cheat-games-a-second-gpu)) — X11 / Xwayland windows | Works (x2 at 0.6–10 ms on a GPU, plus the X server's round trip) |
+| Native Linux Vulkan | `CHUDS_FG=1 game` | Works (demo, `vkcube`, `vkgears`) |
+| Windows Direct3D 8–12 through Steam Play / Proton | `CHUDS_FG=1 %command%` — DXVK and VKD3D-Proton translate to Vulkan | **Works** — verified on DXVK (Direct3D 11) and VKD3D-Proton (Direct3D 12) titles |
+| Windows games outside Steam (Wine, Lutris, Heroic, Bottles) | Enable DXVK in the runner and set `CHUDS_FG=1` in the environment | Same as above |
+| Native Linux **OpenGL** | `chuds-fg --gl -- game`: Mesa's Zink runs OpenGL on Vulkan (`MESA_LOADER_DRIVER_OVERRIDE=zink`, plus `__GLX_VENDOR_LIBRARY_NAME=mesa` and the Mesa EGL vendor — without them the NVIDIA driver keeps the game on its own GL, silently out of reach) | Works (`glxgears` 900 → 1800 fps on NVIDIA, an SDL3 game); Zink itself can be slower than the native GL driver on some games and iGPUs |
+| Emulators, 2D engines, anything else | Run it inside [gamescope](https://github.com/ValveSoftware/gamescope) with its SDL backend: `CHUDS_FG=1 gamescope --backend sdl -- game` — the compositor presents the whole game through its own Vulkan swapchain. The shipped `[gamescope]` profile exposes `VK_KHR_present_id`/`present_wait`, which gamescope requires. Put `enabled = 1` in a `[gamescope]` section (rather than `CHUDS_FG=1`) to avoid generating twice for a Vulkan game inside it. The default Wayland backend presents without a swapchain: no generation there | Works (`glxgears` 337 → 675 fps) |
+| Games with anti-cheat (the layer stays out), non-Vulkan programs | `chuds-fg-capture` (capture, see [Capture mode](#capture-mode-chuds-fg-capture-anti-cheat-games-a-second-gpu)) — X11 / Xwayland windows | Works (x2 at 0.6–10 ms on a GPU, plus the X server's round trip) |
 | Software rendering / no GPU presentation | — | Not possible |
 
 The layer never sees game logic or input: it only interpolates what reaches
@@ -73,8 +73,8 @@ the display, so generation changes presentation rather than game simulation. Com
 Steam's overlay and MangoHud sit in the same layer chain and keep working.
 MangoHud usually loads *above* the layer (on the game's side): it counts and
 draws on the game's frames only, its text then carried into the generated
-ones. `bdex-framegen --mangohud -- <game>` (or, in Steam's launch options,
-`MANGOHUD=1 VK_INSTANCE_LAYERS=VK_LAYER_BDEX_framegen:VK_LAYER_MANGOHUD_overlay_x86_64:VK_LAYER_MANGOHUD_overlay_x86 %command%`)
+ones. `chuds-fg --mangohud -- <game>` (or, in Steam's launch options,
+`MANGOHUD=1 VK_INSTANCE_LAYERS=VK_LAYER_CHUDS_fg:VK_LAYER_MANGOHUD_overlay_x86_64:VK_LAYER_MANGOHUD_overlay_x86 %command%`)
 puts it under: it shows the frame rate on screen and draws on every frame.
 Launchers installed natively (Lutris, Heroic, Bottles, itch…) need nothing:
 the layer loads into their games as into Steam's.
@@ -90,10 +90,10 @@ installed to `/usr`, updated and removed by its package manager:
 
 | Distribution | Package | Install |
 |---|---|---|
-| Debian, Ubuntu, Mint, Pop!_OS, Zorin… | `bdex-framegen_<version>_amd64.deb` (`arm64`) | `sudo apt install ./bdex-framegen_*.deb` |
-| Fedora, Nobara, openSUSE, RHEL 9… | `bdex-framegen-<version>-1.x86_64.rpm` (`aarch64`) | `sudo dnf install ./bdex-framegen-*.rpm` / `sudo zypper in ./bdex-framegen-*.rpm` |
-| Bazzite, Silverblue, Kinoite (immutable) | the `.rpm` | `rpm-ostree install ./bdex-framegen-*.rpm`, reboot — or the archive below, in `~/.local` |
-| Arch, Manjaro, EndeavourOS, CachyOS | `packaging/arch/bdex-framegen-bin` (prebuilt) or `-git` (from source, 32-bit layer included) | `makepkg -si` in that directory |
+| Debian, Ubuntu, Mint, Pop!_OS, Zorin… | `chuds-fg_<version>_amd64.deb` (`arm64`) | `sudo apt install ./chuds-fg_*.deb` |
+| Fedora, Nobara, openSUSE, RHEL 9… | `chuds-fg-<version>-1.x86_64.rpm` (`aarch64`) | `sudo dnf install ./chuds-fg-*.rpm` / `sudo zypper in ./chuds-fg-*.rpm` |
+| Bazzite, Silverblue, Kinoite (immutable) | the `.rpm` | `rpm-ostree install ./chuds-fg-*.rpm`, reboot — or the archive below, in `~/.local` |
+| Arch, Manjaro, EndeavourOS, CachyOS | `packaging/arch/chuds-fg-bin` (prebuilt) or `-git` (from source, 32-bit layer included) | `makepkg -si` in that directory |
 | NixOS | the flake (`flake.nix`) | below |
 
 The same files as the archives (64-bit layer, 32-bit one for 32-bit games,
@@ -103,15 +103,15 @@ CLI, panel), in the distribution's library directories
 openSUSE Tumbleweed, and generates x2 there (`tools/ci/archive-check.sh`);
 `tools/package-native.sh <archive>` builds them. A package cannot write into
 your home: for **Steam, Heroic, Lutris or Bottles installed as a Flatpak**
-(or Steam as a Snap), run `bdex-framegen --sandboxes` once, as your user.
+(or Steam as a Snap), run `chuds-fg --sandboxes` once, as your user.
 
 **Flatpak launchers** (Steam, Heroic, Lutris from Flathub): the layer also
 exists as a Flatpak Vulkan layer extension, like MangoHud and vkBasalt —
-`packaging/flatpak/org.freedesktop.Platform.VulkanLayer.BdexFramegen.yml`
+`packaging/flatpak/org.freedesktop.Platform.VulkanLayer.ChudsFg.yml`
 (Freedesktop runtime 25.08, 64 and 32-bit). Once installed (`flatpak-builder
 --user --install build-dir <that file>`, or from Flathub when it is
 published there), every app on that runtime loads it and `flatpak update`
-keeps it current; `bdex-framegen --sandboxes` then copies only the settings
+keeps it current; `chuds-fg --sandboxes` then copies only the settings
 into those apps. Built and loaded by the runtime's loader in CI
 (`tools/ci/flatpak-check.sh`).
 
@@ -120,10 +120,10 @@ distribution, updated with the system:
 
 | | Recipe | Checked by |
 |---|---|---|
-| Fedora COPR, openSUSE Build Service | `packaging/rpm/bdex-framegen.spec` (32-bit layer on x86_64: enable multilib in COPR) | `tools/ci/srpm-check.sh` (Fedora, Tumbleweed) |
+| Fedora COPR, openSUSE Build Service | `packaging/rpm/chuds-fg.spec` (32-bit layer on x86_64: enable multilib in COPR) | `tools/ci/srpm-check.sh` (Fedora, Tumbleweed) |
 | Launchpad PPA, OBS for Debian/Ubuntu | `packaging/debian/` (copy to `debian/`) | `tools/ci/debsrc-check.sh` (Ubuntu 24.04, 22.04, Debian 12) |
-| Gentoo | overlay `packaging/gentoo` (`games-util/bdex-framegen`, `ABI_X86="64 32"`, `USE=gui`) | `tools/ci/gentoo-check.sh` |
-| Void Linux (glibc, musl) | `packaging/void/bdex-framegen/template` (void-packages) | `tools/ci/void-check.sh` |
+| Gentoo | overlay `packaging/gentoo` (`games-util/chuds-fg`, `ABI_X86="64 32"`, `USE=gui`) | `tools/ci/gentoo-check.sh` |
+| Void Linux (glibc, musl) | `packaging/void/chuds-fg/template` (void-packages) | `tools/ci/void-check.sh` |
 
 Each check builds the recipe from the checkout in the distribution's
 container, installs the result and checks the libraries and manifests (CI
@@ -131,7 +131,7 @@ job `source-packages`). Publishing them needs the repository to be public.
 
 **Laptops with two GPUs**: the game should run on the GPU the screen is
 plugged into, or every frame — generated ones included — is copied from one
-GPU to the other (`bdex-framegen --report` says so). `bdex-framegen --gpu
+GPU to the other (`chuds-fg --report` says so). `chuds-fg --gpu
 screen -- <game>` (or `discrete`, `integrated`, `nvidia`, `amd`, `intel`;
 `--gpu list`) sets Mesa's device selection, NVIDIA's PRIME offload and
 DXVK / VKD3D-Proton's device filter.
@@ -139,9 +139,9 @@ DXVK / VKD3D-Proton's device filter.
 **NixOS** — in the system's flake:
 
 ```nix
-inputs.bdex-framegen.url = "github:Bdexez/bdex_frame_gen";
+inputs.chuds-fg.url = "github:Bdexez/Chuds_fg";
 # ...
-modules = [ bdex-framegen.nixosModules.default { programs.bdex-framegen.enable = true; } ];
+modules = [ chuds-fg.nixosModules.default { programs.chuds-fg.enable = true; } ];
 ```
 
 The module installs the layer and the 32-bit one (`enable32Bit`, on by
@@ -153,20 +153,20 @@ Built, and loaded by the store's Vulkan loader, in CI (job `nix`).
 
 ### Prebuilt (nothing to compile)
 
-Download from the [GitHub releases](https://github.com/Bdexez/bdex_frame_gen/releases)
-(or the `bdex-framegen-linux` artifact of any `linux` CI run):
+Download from the [GitHub releases](https://github.com/Bdexez/Chuds_fg/releases)
+(or the `chuds-fg-linux` artifact of any `linux` CI run):
 
-- `bdex-framegen-linux-x86_64-<version>.tar.gz` — Intel / AMD PCs, Steam Deck
+- `chuds-fg-linux-x86_64-<version>.tar.gz` — Intel / AMD PCs, Steam Deck
   (64-bit layer, and the 32-bit one for 32-bit games);
-- `bdex-framegen-linux-aarch64-<version>.tar.gz` — ARM64: Asahi Linux (Apple
+- `chuds-fg-linux-aarch64-<version>.tar.gz` — ARM64: Asahi Linux (Apple
   Silicon), Snapdragon laptops, Raspberry Pi 5…
   (native ARM64 Vulkan programs; on Asahi, Steam's x86 games run in a
   muvm + FEX virtual machine whose x86_64 Vulkan loader cannot load an ARM64
   layer — not covered yet)
 
 ```sh
-tar xzf bdex-framegen-linux-*.tar.gz
-cd bdex-framegen-linux-*/
+tar xzf chuds-fg-linux-*.tar.gz
+cd chuds-fg-linux-*/
 ./install.sh          # into ~/.local: no root, also on immutable systems (SteamOS, Bazzite, Silverblue…)
 ```
 
@@ -188,14 +188,14 @@ inside each one found (`~/.var/app/<app>/data`, where its Vulkan loader
 looks), and the control panel keeps their copy of the settings up to date and
 finds their games (each sandbox has its own process numbers). Install the
 Flatpak launcher first (and run it once), or run `install.sh` again after
-(or `bdex-framegen --sandboxes`). **Steam as a Snap** (Ubuntu's Software
+(or `chuds-fg --sandboxes`). **Steam as a Snap** (Ubuntu's Software
 centre) likewise: the layer goes into `~/snap/steam` (`common` for the
 library, the manifest and settings in the snap's own home) — written from the
 snap's documented layout, not yet tried on a real snap.
 
 The control panel needs `python3-gobject` and GTK 4 (libadwaita is used when
 present). Without GTK 4 (Ubuntu 20.04, Debian 11) it runs in text mode, in a
-terminal — the same session, options and Steam string (`bdex-framegen-gui
+terminal — the same session, options and Steam string (`chuds-fg-gui
 --text` forces it). `./uninstall.sh` removes everything, Flatpak copies
 included.
 `tools/ci/package-release.sh` builds the same archives (Docker).
@@ -208,7 +208,7 @@ included.
   shared memory — checked by the `min_limits` test); where a GPU allows less
   than 32 KB of shared memory the block matcher's optional terms stay off, and
   a GPU below the guarantees gets its frames passed through, the reason in
-  `bdex-framegen --report`.
+  `chuds-fg --report`.
 - To build: CMake ≥ 3.20, GCC ≥ 10 or Clang, the Vulkan headers ≥ 1.3.204,
   `glslc` (shaderc) or `glslangValidator` (glslang); GLFW (optional) for the
   demo. Checked in CI by building in each distribution's container, then
@@ -224,8 +224,8 @@ sudo apk add cmake g++ vulkan-headers vulkan-loader-dev glslang glfw-dev        
 ```
 
 Older Vulkan headers (Debian 11, Ubuntu 20.04): pass newer ones with
-`-DBDEX_VULKAN_INCLUDE_DIR=` (CMake says how). Without a GLSL compiler,
-`-DBDEX_SPIRV_DIR=<a build's layer/spv>` uses SPIR-V compiled elsewhere.
+`-DCHUDS_FG_VULKAN_INCLUDE_DIR=` (CMake says how). Without a GLSL compiler,
+`-DCHUDS_FG_SPIRV_DIR=<a build's layer/spv>` uses SPIR-V compiled elsewhere.
 
 ### One command
 
@@ -236,11 +236,11 @@ tools/install.sh      # builds and installs into ~/.local (64-bit, plus 32-bit w
 The installation drops:
 
 ```
-~/.local/lib/libVkLayer_bdex_framegen.so
-~/.local/lib32/libVkLayer_bdex_framegen.so                      (32-bit games)
-~/.local/share/vulkan/implicit_layer.d/VK_LAYER_BDEX_framegen.json
-~/.local/share/vulkan/implicit_layer.d/VK_LAYER_BDEX_framegen_32.json
-~/.local/bin/bdex-framegen                                      (launcher)
+~/.local/lib/libVkLayer_chuds_fg.so
+~/.local/lib32/libVkLayer_chuds_fg.so                      (32-bit games)
+~/.local/share/vulkan/implicit_layer.d/VK_LAYER_CHUDS_fg.json
+~/.local/share/vulkan/implicit_layer.d/VK_LAYER_CHUDS_fg_32.json
+~/.local/bin/chuds-fg                                      (launcher)
 ```
 
 Uninstall: `tools/uninstall.sh`.
@@ -248,20 +248,20 @@ Uninstall: `tools/uninstall.sh`.
 The 32-bit layer is built when a 32-bit C++ toolchain is installed:
 `gcc-multilib g++-multilib` (Debian, Ubuntu), `glibc-devel.i686
 libstdc++-devel.i686 libatomic.i686` (Fedora), `lib32-gcc-libs` (Arch).
-The 32-bit Vulkan loader is not needed to build it. `BDEX_NO_32BIT=1`
+The 32-bit Vulkan loader is not needed to build it. `CHUDS_FG_NO_32BIT=1`
 skips it.
 
-> **Arch Linux**: `packaging/arch/bdex-framegen-git/PKGBUILD` builds a
-> `bdex-framegen-git` package (`makepkg -si` in that directory) installing to
-> `/usr`, the 32-bit layer included (multilib); `bdex-framegen-bin` packages
+> **Arch Linux**: `packaging/arch/chuds-fg-git/PKGBUILD` builds a
+> `chuds-fg-git` package (`makepkg -si` in that directory) installing to
+> `/usr`, the 32-bit layer included (multilib); `chuds-fg-bin` packages
 > the release archive.
 
 ### Windows
 
-Two products, built by the Windows CI (download the `bdex-framegen-windows-x64`
+Two products, built by the Windows CI (download the `chuds-fg-windows-x64`
 artifact or a release zip) — see [`docs/windows-README.md`](../docs/windows-README.md):
 
-- **`bdex_capture.exe` — recommended.** Captures a game's window
+- **`chuds_fg_capture.exe` — recommended.** Captures a game's window
   (Windows.Graphics.Capture), generates frames with the same engine and shows
   them in an overlay on top of the game. Works with every API (Direct3D 9–12,
   OpenGL, Vulkan) and can use capture without injecting the Vulkan layer, at the
@@ -270,7 +270,7 @@ artifact or a release zip) — see [`docs/windows-README.md`](../docs/windows-RE
   Validated on hardware on D3D9/11/12 titles (Intel iGPU + RTX 3050).
 - **The Vulkan layer DLL** (native-Vulkan games and emulators): register it
   with `tools\register-layer.ps1`, then enable it per game from Steam's
-  launch options (`cmd /c "set BDEX_FG=1 && %command%"`). Built and
+  launch options (`cmd /c "set CHUDS_FG=1 && %command%"`). Built and
   unit-tested by the CI but **not yet validated on Windows hardware**.
 
 <details>
@@ -282,7 +282,7 @@ cmake --build build -j
 cmake --install build --prefix ~/.local
 
 # 32-bit variant (multilib required)
-cmake -S . -B build32 -DCMAKE_BUILD_TYPE=Release -DBDEX_32BIT=ON
+cmake -S . -B build32 -DCMAKE_BUILD_TYPE=Release -DCHUDS_FG_32BIT=ON
 cmake --build build32 -j && cmake --install build32 --prefix ~/.local
 ```
 </details>
@@ -297,7 +297,7 @@ nothing to add to your Steam launch options.
 
 ### Control panel (recommended)
 
-Run **`bdex-framegen-gui`** (or `bdex-framegen --gui`, or the *bdex-framegen*
+Run **`chuds-fg-gui`** (or `chuds-fg --gui`, or the *chuds-fg*
 entry in the applications menu), the way you would open Lossless Scaling:
 launch your game normally (Steam...), and it shows up in the panel by itself.
 Every Vulkan game is armed meanwhile (the layer passes its frames through),
@@ -344,7 +344,7 @@ VKD3D-Proton's present thread; the game's status then says « Limite d'images
 retenue dans l'attente du jeu ».
 
 **GPU calibration** (*Calibration du GPU*, measured by itself at the first
-start; `bdex-framegen --calibrate [--apply]` from a terminal): `bdex-calibrate`
+start; `chuds-fg --calibrate [--apply]` from a terminal): `chuds-fg-calibrate`
 runs the engine on synthetic frames at the screen's size and refresh, for the
 automatic preset and each fixed one, and recommends the preset and the highest
 multiplier whose cost stays within a quarter of the GPU's time (no game below
@@ -352,10 +352,10 @@ multiplier whose cost stays within a quarter of the GPU's time (no game below
 goes above the calibrated multiplier anyway (*Avancé › Système*). **Record**
 (*Avancé › Système › Enregistrer le jeu sélectionné*): its next 150 real
 frames for the evaluation corpus
-(`~/.cache/bdex-framegen/recordings`, packed by `tools/corpus_pack.py`).
+(`~/.cache/chuds-fg/recordings`, packed by `tools/corpus_pack.py`).
 Panel recordings include `timestamps.csv`, sampled at each source present;
 `python3 tools/recording_report.py SEQUENCE` reports frame-time variation.
-`bdex_demo --replay SEQUENCE --replay-timing --replay-log /tmp/replay.csv`
+`chuds_fg_demo --replay SEQUENCE --replay-timing --replay-log /tmp/replay.csv`
 reproduces those intervals through the online path instead of using `--fps`,
 then stops at the last selected source. Missing/inconsistent timestamps are
 rejected. The log records requested and actual source presents; if a frame
@@ -367,9 +367,9 @@ Packing and unpacking preserve these times when selecting a subsequence.
 **Without the panel** — *Avancé › Système*: every game (*Tous les jeux, sans
 le panneau*), or the selected one (*Mode Jeu — par jeu*), generates from its
 start with the panel's settings, the panel closed. That is how Steam's Game Mode is used (below),
-also from a terminal: `bdex-framegen --always-on [GAME]` / `--always-off`.
+also from a terminal: `chuds-fg --always-on [GAME]` / `--always-off`.
 
-Everything is written to `~/.config/bdex-framegen.conf`, which the layer reads
+Everything is written to `~/.config/chuds-fg.conf`, which the layer reads
 on its own (games in a Flatpak launcher get a copy). The panel needs Python 3
 with PyGObject and GTK 4; libadwaita 1.4+ is used when present.
 
@@ -379,7 +379,7 @@ Install in **Desktop Mode** (Konsole), into `~/.local` — SteamOS's read-only
 system is not touched, and its updates keep it:
 
 ```sh
-tar xzf bdex-framegen-linux-x86_64-*.tar.gz && cd bdex-framegen-linux-x86_64-*/ && ./install.sh
+tar xzf chuds-fg-linux-x86_64-*.tar.gz && cd chuds-fg-linux-x86_64-*/ && ./install.sh
 ```
 
 The control panel runs in Desktop Mode (SteamOS ships GTK 4 and PyGObject).
@@ -387,11 +387,11 @@ The control panel runs in Desktop Mode (SteamOS ships GTK 4 and PyGObject).
 beside a game there. Either:
 
 - *Avancé › Système* in the panel: *Tous les jeux, sans le panneau*, or
-  *Mode Jeu — par jeu* (or `bdex-framegen --always-on [GAME]`): every game, or the chosen one, generates from its start in Game
+  *Mode Jeu — par jeu* (or `chuds-fg --always-on [GAME]`): every game, or the chosen one, generates from its start in Game
   Mode, with the panel's settings — change them in Desktop Mode, or live from
   the config file; or
 - per game, Steam's launch options (*Properties → Launch options*, also
-  editable in Game Mode): `BDEX_FG=1 %command%` — the panel's copy button
+  editable in Game Mode): `CHUDS_FG=1 %command%` — the panel's copy button
   gives the whole line with its settings (menu, *Copier les options de
   lancement Steam*).
 
@@ -401,7 +401,7 @@ to the limit (a 30 fps game under a 30 fps limit gets no generated frame, a
 20 fps one is brought to 30), keeping one frame queued at most. For 60 fps
 from a 30 fps game, set the limit to **Off** (or to the refresh rate: 60, or
 90 on an OLED Deck) and cap the game itself — its own limiter, or `fps_limit
-= 30` — or let *Adaptatif* fill the refresh rate. `bdex-framegen --report`
+= 30` — or let *Adaptatif* fill the refresh rate. `chuds-fg --report`
 and the panel say when the limit is on. Measured in gamescope 3.16 (the
 SteamOS 3.9 one) with that limit at 30 fps, a 30 fps game at x2: 30 fps and
 19–66 ms from present to screen, where it fell to 15 fps and 233 ms before;
@@ -413,9 +413,9 @@ through, metadata included. On the Deck's integrated GPU the automatic preset
 is *performance*. The same holds in any gamescope session (Bazzite,
 ChimeraOS...).
 
-### Capture mode: `bdex-capture` (anti-cheat games, a second GPU)
+### Capture mode: `chuds-fg-capture` (anti-cheat games, a second GPU)
 
-`bdex-capture` generates frames for a game **window** by capture, like
+`chuds-fg-capture` generates frames for a game **window** by capture, like
 Lossless Scaling, instead of inside the game: nothing is loaded into the
 game. Use it for the games the layer stays out of (anti-cheat), for programs
 that do not present through Vulkan, and to generate on **another GPU** than
@@ -423,9 +423,9 @@ the game's — the one driving the screen (`--gpu`), Lossless Scaling's
 two-GPU setup.
 
 ```sh
-bdex-capture --list                       # the windows it can capture
-bdex-capture --name "Game title" -m 2     # or --pid PID, --window 0xID; nothing: click the window
-bdex-capture --list-gpus                  # then --gpu 1 (or a part of its name: --gpu radeon)
+chuds-fg-capture --list                       # the windows it can capture
+chuds-fg-capture --name "Game title" -m 2     # or --pid PID, --window 0xID; nothing: click the window
+chuds-fg-capture --list-gpus                  # then --gpu 1 (or a part of its name: --gpu radeon)
 ```
 
 X11 sessions and Xwayland windows (most Proton games on a Wayland desktop):
@@ -435,11 +435,11 @@ as an XDamage event and is read with MIT-SHM straight into GPU-visible memory
 override-redirect overlay without input region shows the real and generated
 frames above the game and follows it, clicks and keys going through to it.
 The settings are the layer's (configuration file with the game's `[section]`,
-`BDEX_FG_*`), then `-m`, `--mode`, `--preset`, `--hud`. Ctrl+Alt+G toggles
+`CHUDS_FG_*`), then `-m`, `--mode`, `--preset`, `--hud`. Ctrl+Alt+G toggles
 the generation, Ctrl+Alt+Q quits (`--hotkey` rebinds the toggle).
 
 **Native Wayland windows** (a native game, Wine's Wayland driver):
-`bdex-capture --wayland [--name GAME] [--rect X,Y,W,H]` goes through the
+`chuds-fg-capture --wayland [--name GAME] [--rect X,Y,W,H]` goes through the
 desktop's screen-cast portal — the desktop asks once which window to share
 (the choice is kept for the next times) — and PipeWire; the frames are read
 in place as on X11. A Wayland window's position is the compositor's, so the
@@ -461,7 +461,7 @@ Wayland windows (the PipeWire screen-cast portal is not implemented yet).
 
 ### Turning it on by hand
 
-`~/.config/bdex-framegen.conf` is a plain INI file. `[*]` applies to every game;
+`~/.config/chuds-fg.conf` is a plain INI file. `[*]` applies to every game;
 a `[name]` section applies to the game whose executable is `name`:
 
 ```ini
@@ -476,29 +476,29 @@ multiplier = 3
 
 ### Environment variables (per-game, still supported)
 
-Setting `BDEX_FG=1` turns the layer on for a single process, overriding the
+Setting `CHUDS_FG=1` turns the layer on for a single process, overriding the
 config file — handy for a one-off, from the command line, or as a per-game
 Steam launch option:
 
 ```sh
-BDEX_FG=1 ./my_game                      # x2 (default)
-bdex-framegen -m 3 -- ./my_game          # x3 through the launcher
-bdex-framegen -x -- ./my_game            # extrapolation: no added latency
-bdex-framegen --preset performance --profile -- vkcube
-bdex-framegen --check                    # does the loader find the layer?
+CHUDS_FG=1 ./my_game                      # x2 (default)
+chuds-fg -m 3 -- ./my_game          # x3 through the launcher
+chuds-fg -x -- ./my_game            # extrapolation: no added latency
+chuds-fg --preset performance --profile -- vkcube
+chuds-fg --check                    # does the loader find the layer?
 ```
 
 **Steam** → game properties → *Launch options*:
 
 ```
-BDEX_FG=1 %command%
-BDEX_FG=1 BDEX_FG_MULTIPLIER=3 BDEX_FG_MODE=extrapolate %command%
+CHUDS_FG=1 %command%
+CHUDS_FG=1 CHUDS_FG_MULTIPLIER=3 CHUDS_FG_MODE=extrapolate %command%
 ```
 
 Without installing, from the build tree:
 
 ```sh
-VK_IMPLICIT_LAYER_PATH=$PWD/build/layer BDEX_FG=1 ./build/demo/bdex_demo --fps 30
+VK_IMPLICIT_LAYER_PATH=$PWD/build/layer CHUDS_FG=1 ./build/demo/chuds_fg_demo --fps 30
 ```
 
 This command uses the build-tree layer even if another version is installed.
@@ -506,18 +506,18 @@ This command uses the build-tree layer even if another version is installed.
 The layer periodically prints its statistics to the terminal:
 
 ```
-[bdex-fg  4.128 INFO] game 30.0 fps -> output 60.0 fps (x2.00), present call 0.14 ms, real frame delayed 17.1 ms
+[chuds-fg  4.128 INFO] game 30.0 fps -> output 60.0 fps (x2.00), present call 0.14 ms, real frame delayed 17.1 ms
 ```
 
 ### The demo
 
-`bdex_demo` renders a procedural scene (moving objects, static HUD, frame
+`chuds_fg_demo` renders a procedural scene (moving objects, static HUD, frame
 counter) at a capped frame rate, to test without a game:
 
 ```sh
-build/demo/bdex_demo --fps 30               # without the layer: 30 fps
-BDEX_FG=1 build/demo/bdex_demo --fps 30     # with it: 60 fps displayed
-build/demo/bdex_demo --help                 # --size, --mode, --speed, --cut, --srgb…
+build/demo/chuds_fg_demo --fps 30               # without the layer: 30 fps
+CHUDS_FG=1 build/demo/chuds_fg_demo --fps 30     # with it: 60 fps displayed
+build/demo/chuds_fg_demo --help                 # --size, --mode, --speed, --cut, --srgb…
 ```
 
 `--latency-test` answers every key press (`--latency-test auto`: one
@@ -529,19 +529,19 @@ side of an input-to-screen measurement (see Latency).
 
 ## Configuration
 
-Every option can be set through `BDEX_FG_<KEY>` environment variables or in
-`~/.config/bdex-framegen.conf` (`key = value`, one per line; the environment
+Every option can be set through `CHUDS_FG_<KEY>` environment variables or in
+`~/.config/chuds-fg.conf` (`key = value`, one per line; the environment
 takes precedence).
 
 Per-game profiles verified by the project ship in
-`<prefix>/share/bdex-framegen/profiles.conf` (next to the DLL on Windows) and
+`<prefix>/share/chuds-fg/profiles.conf` (next to the DLL on Windows) and
 are applied before your file, which overrides them. They only tune a named
-game: they never enable the layer or pause it (`BDEX_FG_PROFILES=` disables
+game: they never enable the layer or pause it (`CHUDS_FG_PROFILES=` disables
 them).
 
 | Key | Default | Description |
 |---|:---:|---|
-| `BDEX_FG` / `ENABLED` | – | `1` enables the layer, `0` disables it |
+| `CHUDS_FG` / `ENABLED` | – | `1` enables the layer, `0` disables it |
 | `MULTIPLIER` | `2` | frames displayed per rendered frame: 2 to 8 (x8: 30 fps on a 240 Hz screen). Past what the screen's swapchain lets the layer hold at once, the frames of a present are staged in internal images, so the game never waits for the pacing. |
 | `MODE` | `interpolate` | `extrapolate` predicts the next frame from the last two: no added latency, more artefacts on abrupt motion. `hybrid` (x3/x4): one interpolated frame, then the real frame, then predicted ones — the real frame is 1/m of a frame late instead of (m−1)/m (x4: a quarter of a frame instead of three quarters) and no prediction reaches as far as in pure extrapolation (offline, demo x4: −1.3 to −2.4 dB from interpolation, against −3.0 to −4.7 for extrapolation; x3: −1.0 to −1.4, against −3.4 to −4.4). At x2 it is interpolation. |
 | `PRESET` | `auto` | `auto` picks `performance` for integrated/small GPUs and `balanced` for discrete GPUs with at least 2 GiB of VRAM; or force `quality` (full-resolution flow up to ~1080p, half resolution above — at 1440p the full-resolution pyramid followed a third of the camera motion: recorded games +0.3 to +0.5 dB at half the flow's GPU time), `balanced`, `enhanced` (balanced flow plus the opt-ins measured positive together: `ZERO_BIAS_CONTRAST=0.02`, `PIXEL_VECTORS`, `FLOW_TEMPORAL`, `HUD_MASK=24`, `SCENE_CUT_LOCAL`, `DEDUP`, `EXTRAPOLATE_SPLAT` — offline vs the defaults: interpolation +0.08 to +10.8 dB, demo +0.71; extrapolation −0.04 to +7.1 dB, demo +2.0; about twice the synthesis time), `performance` (quarter-resolution flow, ~2× cheaper), `latency` (extrapolation + x2 for minimal input lag). On a discrete GPU every preset but `performance` also turns on the synthesis options of the automatic preset (`PIXEL_VECTORS`, `INTERP_SPLAT`, `ROT_WEIGHT`, `TEMPORAL_PREDICTION`, `ZERO_BIAS=0`, `SCENE_CUT_LOCAL`, the extrapolation splat); until 2026-10-13 an explicit preset dropped them (`quality` on a real game: 17–20 % more grossly wrong pixels at x2/x3) |
@@ -586,16 +586,16 @@ them).
 | `RECORD_SCALE` | `0` | The control panel's recordings of a game's real frames (corpus for the quality tools): written at 1/N of the game's size, `1` = full size; `0` = about 960 pixels wide (a third at 1440p, where the HUD's thin strokes never stay exactly still, so HUD handling cannot be judged on them — use `1` or `2` for that). |
 | `PARALLAX_SEARCH` | `0` | Motion search: in a sideways move, thin near structures — a railing's posts, fences, pillars — pass faster than the scenery behind them (parallax), and the hierarchical search gives them the background's vector (at the coarse levels a post a few pixels wide is averaged away, the finer levels search a few pixels around the coarse motion): they break up in the generated frames. Where the finest flow explains its 8×8 window poorly, multiples of its own vector (×0.5, ×1.5–×3) are tried, a pixel either side along the motion, and kept where they explain the window clearly better and the other direction agrees (around where the content lands). Railing scene at x4 +0.32 dB, flicker −0.21, grossly wrong pixels −11 %; sideways moves +0.02 / +0.03; everything else within 0.02 dB. Costs ~0.3 ms of GPU a game frame on a fast-moving 1440p game, on the generated frames' latency path — hence off by default. Applied live. |
 | `EXTRAPOLATE_ACCEL` | `0` | Experimental, extrapolation only: predicts along a curved trajectory, using how the motion changed since the previous frame pair (acceleration), instead of constant velocity. The acceleration is averaged over neighbouring blocks moving alike and ignored where the motion is unreliable or the content just entered the picture. Offline, a camera swinging back and forth: +1.0 dB (x2), +2.7 dB with `ZERO_BIAS_CONTRAST=0.1`; constant motion neutral (±0.02) except a smooth fast pan −0.13 dB; online demo fast motion +0.13 dB (revealed areas +0.8), normal −0.01. `0`–`1` (weight), `0` is off. Timed frames use both source intervals and scale the noise rejection accordingly, with the same safeguards as `INTERP_ACCEL`. |
-| `ONLINE_TUNE` | `0` | Experimental: per-game automatic choice of the opt-in motion options. While the game plays, the layer rates its own motion field on the game's next real frame (the previous pair's motion predicts it; the error is compared with predicting no motion — one small GPU pass per frame, no reference needed), tries each candidate — `ZERO_BIAS_CONTRAST=0.1`, `TEMPORAL_PREDICTION=1`, `SUBPIXEL=1` (extrapolation only: it wins there, as the measure says, but loses interpolated), `FLOW_TEMPORAL=1` — in alternating blocks of 8 frames against the settings already kept, and keeps an option when it lowers the error by at least 1 % of the no-motion error on average and in three block pairs out of four without making the flow less stable (its pair-to-pair change relative to the motion, +5 % at most) — or when it makes the flow clearly steadier (−10 %, the flicker the prediction error cannot see) without hurting the prediction. Frames without motion are skipped. Takes about 2 s of motion per candidate (the demo: all decided in 6.6 s at 60 fps); decisions are logged and cached per game and mode (`~/.cache/bdex-framegen/online-tune-<game>-<mode>.txt`, `%LOCALAPPDATA%\bdex-framegen` on Windows, `BDEX_FG_CACHE_DIR` to move or disable; delete the file to re-tune; `bdex-framegen --tuned-profile [GAME] [--apply]` turns the decisions into a `[GAME]` config section — printed, or written into the config file — to pin them or share them, e.g. in `layer/profiles.conf`). Options set explicitly are never touched. Offline: `ZERO_BIAS_CONTRAST` kept on a swinging camera (+4.75 dB) and fast pans, dropped where neutral; `SUBPIXEL` kept only on a sub-pixel pan in extrapolation (+2.0 dB). On the demo through the layer, `FLOW_TEMPORAL` is now kept for its steadier flow (−16 %; offline flicker −5 %, +0.13 dB). Synthesis options are tried too, rated by a probe that synthesises a frame the game really rendered without showing it to the synthesis: in interpolation the middle of three frames is rebuilt from the outer two (flows composed) — `OCCLUSION_STRENGTH`, `PIXEL_VECTORS`, `SYNTH_BICUBIC`; in extrapolation the next frame is predicted — `EXTRAPOLATE_SPLAT`, `EXTRAPOLATE_ACCEL`, `SYNTH_BICUBIC`; and pairs that only pay together, tried as one: in interpolation `SUBPIXEL_LK=2` + `SYNTH_BICUBIC=1` and `SUBPIXEL=1` + `SYNTH_BICUBIC=1` (offline the choices follow the PSNR: accel kept on a swinging camera, +0.94 dB, splat on a pan, +0.82 dB, each dropped where it loses). Once decided, the content keeps being watched (every 8th frame): a lasting change of motion (×3) or brightness (±0.2) while the picture moves starts the trial again (at most once per ~60 s of watching). Read at start-up. `1` to enable. |
+| `ONLINE_TUNE` | `0` | Experimental: per-game automatic choice of the opt-in motion options. While the game plays, the layer rates its own motion field on the game's next real frame (the previous pair's motion predicts it; the error is compared with predicting no motion — one small GPU pass per frame, no reference needed), tries each candidate — `ZERO_BIAS_CONTRAST=0.1`, `TEMPORAL_PREDICTION=1`, `SUBPIXEL=1` (extrapolation only: it wins there, as the measure says, but loses interpolated), `FLOW_TEMPORAL=1` — in alternating blocks of 8 frames against the settings already kept, and keeps an option when it lowers the error by at least 1 % of the no-motion error on average and in three block pairs out of four without making the flow less stable (its pair-to-pair change relative to the motion, +5 % at most) — or when it makes the flow clearly steadier (−10 %, the flicker the prediction error cannot see) without hurting the prediction. Frames without motion are skipped. Takes about 2 s of motion per candidate (the demo: all decided in 6.6 s at 60 fps); decisions are logged and cached per game and mode (`~/.cache/chuds-fg/online-tune-<game>-<mode>.txt`, `%LOCALAPPDATA%\chuds-fg` on Windows, `CHUDS_FG_CACHE_DIR` to move or disable; delete the file to re-tune; `chuds-fg --tuned-profile [GAME] [--apply]` turns the decisions into a `[GAME]` config section — printed, or written into the config file — to pin them or share them, e.g. in `layer/profiles.conf`). Options set explicitly are never touched. Offline: `ZERO_BIAS_CONTRAST` kept on a swinging camera (+4.75 dB) and fast pans, dropped where neutral; `SUBPIXEL` kept only on a sub-pixel pan in extrapolation (+2.0 dB). On the demo through the layer, `FLOW_TEMPORAL` is now kept for its steadier flow (−16 %; offline flicker −5 %, +0.13 dB). Synthesis options are tried too, rated by a probe that synthesises a frame the game really rendered without showing it to the synthesis: in interpolation the middle of three frames is rebuilt from the outer two (flows composed) — `OCCLUSION_STRENGTH`, `PIXEL_VECTORS`, `SYNTH_BICUBIC`; in extrapolation the next frame is predicted — `EXTRAPOLATE_SPLAT`, `EXTRAPOLATE_ACCEL`, `SYNTH_BICUBIC`; and pairs that only pay together, tried as one: in interpolation `SUBPIXEL_LK=2` + `SYNTH_BICUBIC=1` and `SUBPIXEL=1` + `SYNTH_BICUBIC=1` (offline the choices follow the PSNR: accel kept on a swinging camera, +0.94 dB, splat on a pan, +0.82 dB, each dropped where it loses). Once decided, the content keeps being watched (every 8th frame): a lasting change of motion (×3) or brightness (±0.2) while the picture moves starts the trial again (at most once per ~60 s of watching). Read at start-up. `1` to enable. |
 | `FLOW_TEMPORAL` | `0` | Experimental: temporal stabilisation of the motion. Each frame pair's motion is measured from scratch, so where matching is ambiguous (flat areas, repeated texture) it can switch between equally good vectors from one pair to the next and the generated frames shimmer. With this on, the previous pair's vector for the same content is kept where it is within 2 px of the new one and matches the pair about as well (its block difference within a tolerance of the new one's, scaled by the value); a real change of motion makes it match worse and the new measurement stands. Offline demo replay: interpolation +0.13 dB, moving edges +0.25 dB, flicker −5 %; extrapolation +0.05 dB, moving edges +0.25 dB; synthetic corpus neutral (±0.01); negligible GPU time. `0`–`1` (tolerance), `0` is off. Not a default: ~0.28 ms of GPU time at 1440p with `preset=quality` (RTX 3060 Ti) for +0.12 dB on the demo replay. |
 | `REVEAL_FILL` | `auto` | Predicted frames (extrapolation, hybrid); on by default on a discrete GPU (automatic preset, or any preset but `performance`), together with `EXTRAPOLATE_SPLAT`. `0` / `1` force it. where a moving object uncovers background after the real frame, the source search does not converge (it alternates between the object and the background it leaves) and the pixel took whichever the iteration count landed on; with this it takes the source whose content moves less — the background, the model `EXTRAPOLATE_SPLAT` already uses to order pixels. Only where the trajectory is also inconsistent (a rotation does not settle either but stays consistent). Also applies when `EXTRAPOLATE_ACCEL` is enabled, including locally zero acceleration. Offline: revealed areas of an object crossing a panning background +1.9 dB (+0.54 overall), pan +1.04 dB, HUD scene +0.58, swinging camera +0.39; demo −0.33 dB (−0.07 with `EXTRAPOLATE_SPLAT`, with which the gains add up elsewhere: pan +1.60). An `ONLINE_TUNE` candidate. `1` to enable. |
 | `FRAME_TIMING` | `0` | Experimental: places each generated frame at the game's real frame times instead of the fixed `i/multiplier`, so a frame-time spike does not show as a stutter (the frames of a present are spread over the *smoothed* interval, the motion between two real frames spans the *actual* one). Offline, a variable-timestep game with ±20–40 % frame times: +0.1 to +2.3 dB, flicker halved on a HUD scene; a fixed-timestep game (the content ignores the present time) loses up to 0.6 dB, identical output on a steady frame rate. `1` to enable. |
 | `DEDUP` | `0` | Experimental: detects the frames a game presents twice (30 fps cutscenes or games in a 60 fps loop, emulators), also when only the world repeats under a HUD or cursor redrawn every frame: no motion is measured on a repeat, the previous pair's flow is kept, the outputs are timed on the moments each image first appeared, and in extrapolation the stale repeated frame is replaced by an extrapolated one. Offline, every image presented twice: +0.9 to +7 dB, flicker down to a sixth; byte-identical when nothing repeats. The statistics line counts the repeats. Read at start-up. `1` to enable. |
-| `PAUSED` | `0` | Present only the real frames. Read live: `bdex-framegen --toggle` flips it in the config file and running games follow within ~0.5 s — bind it to a desktop shortcut for an on/off hotkey. Most flow/synthesis settings, `FPS_LIMIT` and `TARGET_FPS` are also reloaded live when the file changes; those that size resources (multiplier, render scale, HUD, levels) need a restart. |
+| `PAUSED` | `0` | Present only the real frames. Read live: `chuds-fg --toggle` flips it in the config file and running games follow within ~0.5 s — bind it to a desktop shortcut for an on/off hotkey. Most flow/synthesis settings, `FPS_LIMIT` and `TARGET_FPS` are also reloaded live when the file changes; those that size resources (multiplier, render scale, HUD, levels) need a restart. |
 | `TARGET_FPS` | `0` | Dynamic multiplier: the largest one whose output stays at or under this rate (your refresh rate) — on 144: 72 fps gives x2, 50 fps x2 (x3 would be 150), 48 fps x3, 36 fps x4, x1 from 74 fps — never above `MULTIPLIER`, which becomes the maximum. Above the refresh rate a mailbox display drops frames unevenly (judder), and unlike FIFO the game is never slowed down. `0` = fixed multiplier; `auto` = the refresh rate measured by the present feedback, else the one the control panel reads from the system (x2 while neither is known). The panel's « Auto » multiplier is `MULTIPLIER=4` + `TARGET_FPS=auto`. |
 | `ADAPTIVE` | `0` | With `TARGET_FPS` (`auto`: the display's refresh rate): every game frame gets as many frames as fit at that rate, the fraction carried over — 50 fps on 144 Hz gives 3, 3, 2, 3, 3, 2… frames, one per refresh, 144 fps shown instead of the 100 of the largest whole multiple (x2) — each synthesised at its own display time. `MULTIPLIER` is the ceiling (4 in the control panel's « Adaptatif »); works with every `MODE` (hybrid: the real frame second, the rest predicted). `1` to enable. |
 | `GPU_BUDGET` | `0` | Keeps frame generation from eating the game's GPU time: the share of the game's frame interval (`0.25` = a quarter) the generation may take. Measured every second with GPU timestamps; after two windows over it, the quality steps down — first the costly optional passes (per-pixel vectors, re-rankings, sub-pixel, acceleration, extra flow lookups, and the two passes over each finished frame, `false_detail` and `mosaic_blur`: together 40 % of the generation at 1440p x3 for under 0.1 dB on game-like scenes), then the narrowest search, then the flow at half and a quarter of its resolution (a rebuild of the output stage, one frame without generation) — and steps back up after five calm windows if the level above is known to fit. The statistics line (`LOG=2`) reports each change. `0` = off. |
-| `FPS_LIMIT` | `0` | Caps the game's frame rate (like `DXVK_FRAME_RATE`), before frame generation: the game is held just before it begins its next frame (and reads its input), never a finished frame — at the end of its present for a Vulkan game, at Reflex's sleep or Anti-Lag's input stage when the game uses them, and for a Direct3D game under Proton where DXVK / VKD3D-Proton wait for its earlier presents (`FPS_LIMIT_WAIT`). Frame generation is smoothest from an even base rate that divides the refresh rate (60 for 120 Hz, 72 for 144 Hz). With the control panel (`REQUIRE_APP`), only the game « Démarrer » started is capped, until « Arrêter » or the panel closes; a game run without the panel (Game Mode, `BDEX_FG=1`) always is. `0` = no cap; `auto` = measured refresh rate ÷ `MULTIPLIER`. |
+| `FPS_LIMIT` | `0` | Caps the game's frame rate (like `DXVK_FRAME_RATE`), before frame generation: the game is held just before it begins its next frame (and reads its input), never a finished frame — at the end of its present for a Vulkan game, at Reflex's sleep or Anti-Lag's input stage when the game uses them, and for a Direct3D game under Proton where DXVK / VKD3D-Proton wait for its earlier presents (`FPS_LIMIT_WAIT`). Frame generation is smoothest from an even base rate that divides the refresh rate (60 for 120 Hz, 72 for 144 Hz). With the control panel (`REQUIRE_APP`), only the game « Démarrer » started is capped, until « Arrêter » or the panel closes; a game run without the panel (Game Mode, `CHUDS_FG=1`) always is. `0` = no cap; `auto` = measured refresh rate ÷ `MULTIPLIER`. |
 | `FPS_LIMIT_WAIT` | `1` | Direct3D games under Proton (DXVK, VKD3D-Proton): `FPS_LIMIT` holds the game where it waits for its earlier frames before it begins a new one, instead of holding their present thread. They present from a thread of their own and let the game run up to three frames ahead of it: a held present queued those frames, each read its input one to three frames before reaching the screen. The layer answers `VK_KHR_present_id` / `VK_KHR_present_wait` for its swapchains (where the driver has them) and, while a limit is set, offers them FIFO alone — the mode in which both wait for each present; the real swapchain keeps the mode they would have picked otherwise (immediate, else mailbox). A limit set while the game runs makes it re-create its swapchain once. With NVIDIA Reflex on in the game, the limit holds it at Reflex's sleep instead, on its game thread: Unreal and RE Engine games read their input there, a frame ahead of the thread that presents (one frame less than at the present wait). Measured (headless gamescope, a 40 fps cap, the demo presenting as they do, `--present-thread`): input to the real frame on screen 72 → 23 ms with VKD3D-Proton's own bound (3 frames), 98 → 23 ms with DXVK's default (DXGI's 3), 48 → 23 ms at a maximum latency of 1, as with the game's own limiter (22 ms). `0` = the limit holds their present, as before. Read at the game's start. |
 | `GPU_HEADROOM` | `0.1` | Layer, while generating: when the GPU cannot keep up with the game and the frame generation together — the game waits for its previous frame's GPU work (`MAX_FRAME_LATENCY`) on most frames and the GPU is busy nearly all the time — the game's frame rate is held so that the GPU idles this share of the time (0..0.5): the syntheses finish on time for their refreshes and the compositor gets the GPU when it needs it (x4 at 100 fps saturated: about x4 at 90). The GPU's busy percent comes from NVML (NVIDIA, `libnvidia-ml.so.1`, also inside Steam's container) or amdgpu's `gpu_busy_percent`, read every 200 ms; every half second the cap moves the rate by target/busy (at most −10 %/+8 %, dead band −6/+4 points), down only while the game still waits for the GPU (a GPU kept busy by another program does not walk it down), never under 80 % of what the GPU last let the game reach nor half the rate it first capped, and goes when it no longer binds. Elsewhere (Intel, Windows) the waits alone decide: capped at 1 − headroom, probes back up after quiet seconds. The lower of this and `FPS_LIMIT` applies (at the game's own sleep point with Reflex / Anti-Lag, like `FPS_LIMIT`). Not under Steam's gamescope frame limit. Status: `auto_cap_fps`, `gpu_busy`. Headless gamescope, 1440p quality x4, a demo drawing its scene 30 times a frame (GPU-bound): frame to screen 30.7 → 23.1–24.7 ms, content step error 1.3 → 0.6–1.2 ms rms, game 107 → 110–121 fps (the generation, on time, holds even_fast). `0` off. Applied live. |
 | `PRESENT_QUEUE` | `1` | The copies and presents of the frames on a queue of their own, the synthesis on another of the same family (where the family has two to spare): a present's own GPU work (the driver's presentation blit on X11 / Xwayland) then never waits behind the next frame's synthesis. Measured with a 9 ms synthesis at 66 fps: every generated frame displayed instead of half of them, the real frame 7 ms sooner. Read at start-up. `0` = one queue for everything. |
@@ -603,28 +603,28 @@ them).
 | `PRESENT_FEEDBACK` | `1` | Where the driver supports `VK_KHR_present_id` + `present_wait` (kept hidden from the game), the layer measures when each frame is really displayed: the statistics report the refresh rate and frames replaced before display; on a fixed-refresh display the pacing presents each frame in time for its refresh and generated frames show the content of their real display time (offline, a 100 Hz display with a 60 fps game at x2: +11 dB; 144 Hz: +2 to +3 dB). Variable-refresh displays and compositors without a refresh grid are detected and left as before. `0` = off. |
 | `X11_CLOCK` | `1` | An X11 window — every Proton game on a Wayland desktop runs in one, through Xwayland: the display's refresh grid is read from the X server, from the X Present extension's completion events of the game's window (on a private connection; libxcb loaded at run time). Under Xwayland a present in immediate mode is reported complete at once, so `PRESENT_FEEDBACK` sees no refresh grid there; these events carry the moment Xwayland last handed the window's content to the compositor — the instant a frame must beat — and, on an X server, the last vblank. The frames are then presented for the compositor's real refreshes rather than on a grid of the layer's own at an arbitrary phase, and the statistics count the frames that really went out (status `display_grid=3`). `0` = off. |
 | `PRESENT_TIMING` | `1` | With `PRESENT_FEEDBACK`, where the driver has `VK_EXT_present_timing` (recent NVIDIA drivers among others; kept hidden from the game): each frame's display time comes from the driver — when its first pixel became visible, in the steady clock's domain — instead of the moment a waiting thread woke up, and the swapchain's exact refresh duration seeds the display clock. `0` = present wait only. |
-| `METHOD` | `auto` | How the control panel and the launchers generate for a game: `auto` — injection (this layer, inside the game's presentation: the lowest latency) where it runs in the game, capture (`bdex-capture`) otherwise: a game the layer stays out of (anti-cheat), a program that does not present through Vulkan, or generation on another GPU than the game's (`GPU`); `layer` — injection only; `capture` — capture only. The layer itself only keeps the value. |
-| `GPU` | `auto` | The GPU that generates the frames: `auto` (the game's), or a part of a GPU's name (`radeon`, `3060`...) — another one than the game's makes the panel and the launchers use the capture on it (the game renders on its GPU, the frames are generated and shown on the other one: Lossless Scaling's two-GPU setup). `bdex-capture` takes it when `--gpu` is not given (a number works there too). |
-| `HOTKEY` | `ctrl+alt+g` | The capture apps' generation on/off shortcut (`bdex-capture`, `bdex_capture.exe`), e.g. `ctrl+shift+f1`. |
+| `METHOD` | `auto` | How the control panel and the launchers generate for a game: `auto` — injection (this layer, inside the game's presentation: the lowest latency) where it runs in the game, capture (`chuds-fg-capture`) otherwise: a game the layer stays out of (anti-cheat), a program that does not present through Vulkan, or generation on another GPU than the game's (`GPU`); `layer` — injection only; `capture` — capture only. The layer itself only keeps the value. |
+| `GPU` | `auto` | The GPU that generates the frames: `auto` (the game's), or a part of a GPU's name (`radeon`, `3060`...) — another one than the game's makes the panel and the launchers use the capture on it (the game renders on its GPU, the frames are generated and shown on the other one: Lossless Scaling's two-GPU setup). `chuds-fg-capture` takes it when `--gpu` is not given (a number works there too). |
+| `HOTKEY` | `ctrl+alt+g` | The capture apps' generation on/off shortcut (`chuds-fg-capture`, `chuds_fg_capture.exe`), e.g. `ctrl+shift+f1`. |
 | `PRESENT_MODE` | `auto` | `auto` presents with mailbox when the game asks for FIFO; `app` keeps the game's mode; or force `fifo`, `mailbox`, `immediate`, `relaxed` |
 | `PACING` | `1` | even spacing of the frames in non-FIFO modes |
-| `REQUIRE_APP` | `0` | The control panel (`bdex-framegen-gui`) decides, like the Windows launcher; the panel writes `1` (with `ENABLED=1`). Every Vulkan game is armed — the layer takes its swapchain and passes the frames through — except desktop programs (browsers, Steam, gamescope, GTK 4 apps). Pick a running game in the panel's « Simple » page, « Démarrer »: generation starts in that game; the options apply live (multiplier, mode, flow, HUD: the output stage is rebuilt); « Arrêter » or closing the panel stops it, and the game's frame cap (`FPS_LIMIT`) with it — an armed game the panel has not started runs uncapped. Upscaling (`RENDER_SCALE`) applies to games started while the panel is open. `BDEX_FG=1` (Steam launch option, `bdex-framegen -- game`) bypasses it, and so does `require_app = 0` in a game's own section: that game generates without the panel (the panel's « Avancé › Système », `bdex-framegen --always-on GAME`; in `[*]`, every game — desktop programs still excluded). |
+| `REQUIRE_APP` | `0` | The control panel (`chuds-fg-gui`) decides, like the Windows launcher; the panel writes `1` (with `ENABLED=1`). Every Vulkan game is armed — the layer takes its swapchain and passes the frames through — except desktop programs (browsers, Steam, gamescope, GTK 4 apps). Pick a running game in the panel's « Simple » page, « Démarrer »: generation starts in that game; the options apply live (multiplier, mode, flow, HUD: the output stage is rebuilt); « Arrêter » or closing the panel stops it, and the game's frame cap (`FPS_LIMIT`) with it — an armed game the panel has not started runs uncapped. Upscaling (`RENDER_SCALE`) applies to games started while the panel is open. `CHUDS_FG=1` (Steam launch option, `chuds-fg -- game`) bypasses it, and so does `require_app = 0` in a game's own section: that game generates without the panel (the panel's « Avancé › Système », `chuds-fg --always-on GAME`; in `[*]`, every game — desktop programs still excluded). |
 | `LOW_LATENCY` | `0` | block the game until its previous frame has been handed to the display (only matters with FIFO) |
 | `MAX_FRAME_LATENCY` / `FRAME_LATENCY` | `1` | While generating: frames the GPU may still be working on when the game begins its next one (like a driver's low-latency mode). `1` = the game's present returns only once the GPU has finished its previous frame (rendering and synthesis), so a GPU-bound game cannot queue frames ahead, each of which is a frame interval of input lag (measured, GPU-bound demo at 4K: frame-to-screen 50 → 36 ms, and 60 → 71 fps from less GPU contention). `0` = no limit. Applied live. |
 | `FLOW_CONFIDENCE` | `0` | How far the flow can be trusted, per flow texel: the backward vector and the forward one at its endpoint must cancel out on textured content (flat areas, which any vector warps the same, do not count) and pair the same luma. The statistics line, the panel and `--report` give the share of uncertain flow (`flow uncertain on N% of the picture`: demo 0.7 % at a quarter speed, 1.9 % normal, 6.9 % at 3x); `DEBUG=confidence` paints it red over the generated frames. A pass at the flow's resolution. Read at start-up (on by itself with `DEBUG=confidence`). |
 | `INTERP_SPLAT` | auto | Interpolation: both frames forward-splatted to the output's time (the pixels of the previous frame along the forward flow, those of the current one back along the backward flow, the likelier foreground winning where several land); each output pixel also tries the trajectories of the two pixels that landed on it — the layer in front at an object's edge, which the lookup at the pixel often misses — where its own is imperfect and the splatted one clearly better. Alone: occlusions +0.55 dB, scrolling text +0.62, rotation +0.26, the demo +0.05 to +0.08, no loss; on top of `PIXEL_VECTORS` occlusions +0.22, text +0.41, menus +0.06, demo +0.01 to +0.03, HUD −0.12. ~0.11 ms at 1440p (a half-resolution splat). On by default on discrete GPUs (with `PIXEL_VECTORS`, and dropped with it above 4K ×3); `1` / `0` to force. |
-| `LEARNED_FLOW` | `0` | Experimental: a small network (23 inputs, 16 hidden units; `tools/train_flow.py`, numpy) corrects each vector of the finest flow by at most 1.5 level pixels — block matching finds whole pixels, one vector a block. Per flow texel it sees the 8 neighbouring vectors relative to it, the matching error and its slope one pixel away in each direction, and the vector's fractional part. Trained on synthetic motions whose true flow is known (pans at several speeds, sub-pixel pan, swinging camera, zoom; `bdex_offline --dump-flow`): held-out end-point error 0.52 → 0.21 level px. On the 960×540 corpus (never trained on): interpolation zoom +1.2 dB, fade +1.4, sub-pixel +0.5, HUD +0.1, rotation −0.13, flash −0.12; extrapolation zoom +2.6, sub-pixel +2.2, rotation +0.3; hybrid x3 zoom +1.0; the demo ±0.03. About +0.3 ms a generated frame at 1440p x2 (flow and synthesis). The share of the correction applied, `0`–`1`; `0` (off) until trained on recordings of real games (*Enregistrer*). |
+| `LEARNED_FLOW` | `0` | Experimental: a small network (23 inputs, 16 hidden units; `tools/train_flow.py`, numpy) corrects each vector of the finest flow by at most 1.5 level pixels — block matching finds whole pixels, one vector a block. Per flow texel it sees the 8 neighbouring vectors relative to it, the matching error and its slope one pixel away in each direction, and the vector's fractional part. Trained on synthetic motions whose true flow is known (pans at several speeds, sub-pixel pan, swinging camera, zoom; `chuds_fg_offline --dump-flow`): held-out end-point error 0.52 → 0.21 level px. On the 960×540 corpus (never trained on): interpolation zoom +1.2 dB, fade +1.4, sub-pixel +0.5, HUD +0.1, rotation −0.13, flash −0.12; extrapolation zoom +2.6, sub-pixel +2.2, rotation +0.3; hybrid x3 zoom +1.0; the demo ±0.03. About +0.3 ms a generated frame at 1440p x2 (flow and synthesis). The share of the correction applied, `0`–`1`; `0` (off) until trained on recordings of real games (*Enregistrer*). |
 | `LUMA_MATCH` | `0.01` | Before the flow, the previous frame's luma pyramid is brought to the current frame's mean and contrast when the whole picture's brightness moved by at least this much (0..1 of the luma range; at least 13 of 4×4 tiles moving the same way: a menu opening over part of the screen is not a lighting change) — the block matcher then sees a fade or a lighting change as the same picture. Measured: brightness oscillating 15 % +8.2 dB, a fade +6.2 dB (extrapolation +5.7 / +1.2), every other sequence of the corpus and the demo identical. +0.04 ms at 960×540. `0` = off. Applied live. |
-| `LEARNED_CORRECTION` | `0` | Interpolation: a tiny network trained offline (`tools/train_correction.py`, 63 inputs → 8 → 1, numpy) moves each generated pixel toward the plain cross-fade where its 3×3 neighbourhood says the warp is wrong (0..1, how much of the move). Trained on demo recordings and part of the synthetic corpus, tested on sequences it never saw: demo +0.49 dB (+0.80 on moving edges), +0.10 and +0.15 on two other demo runs, but popup −0.59 and subpixel −1.73 dB — it generalises only as far as its training data. +0.12 ms at 960×540. 8-bit formats without upscaling. Retrain on your own games' recordings (`bdex-framegen --record`) to make it worth it. Extrapolation has weights of its own (`--mode extrapolate`: the predicted pixel moved toward the current frame): demo +0.12 to +0.26 dB, menus +0.32, but scrolling text −3.1 and sub-pixel pans −0.4. |
-| `CRASH_LOG` | `1` | Linux: should the layer crash (a fault whose instruction or one of its first callers is in the layer), write `~/.cache/bdex-framegen/crash-<game>-<pid>.txt` — the signal, the addresses as offsets in the layer (`addr2line -f -C -e libVkLayer_bdex_framegen.so 0x…`), the version and settings — then hand the fault on to the handler that was there (Wine and Proton handle faults of their own: never swallowed). `bdex-framegen --report` includes the latest ones. Read at start-up. |
+| `LEARNED_CORRECTION` | `0` | Interpolation: a tiny network trained offline (`tools/train_correction.py`, 63 inputs → 8 → 1, numpy) moves each generated pixel toward the plain cross-fade where its 3×3 neighbourhood says the warp is wrong (0..1, how much of the move). Trained on demo recordings and part of the synthetic corpus, tested on sequences it never saw: demo +0.49 dB (+0.80 on moving edges), +0.10 and +0.15 on two other demo runs, but popup −0.59 and subpixel −1.73 dB — it generalises only as far as its training data. +0.12 ms at 960×540. 8-bit formats without upscaling. Retrain on your own games' recordings (`chuds-fg --record`) to make it worth it. Extrapolation has weights of its own (`--mode extrapolate`: the predicted pixel moved toward the current frame): demo +0.12 to +0.26 dB, menus +0.32, but scrolling text −3.1 and sub-pixel pans −0.4. |
+| `CRASH_LOG` | `1` | Linux: should the layer crash (a fault whose instruction or one of its first callers is in the layer), write `~/.cache/chuds-fg/crash-<game>-<pid>.txt` — the signal, the addresses as offsets in the layer (`addr2line -f -C -e libVkLayer_chuds_fg.so 0x…`), the version and settings — then hand the fault on to the handler that was there (Wine and Proton handle faults of their own: never swallowed). `chuds-fg --report` includes the latest ones. Read at start-up. |
 | `SKIP_FAST` | `0` | Optional: suspend a fixed multiplier when the game reaches 85 % of the screen's refresh rate, resume below 75 % (half a second either way), to save GPU work and interpolation latency. Off by default: the chosen xN continues above the screen's rate. The statistics line and panel report suspension (`generation idle`). No effect without a known refresh rate; under gamescope, not once Steam's frame limit has been on. Applied live. |
-| `PIPELINE_CACHE` | `1` | The layer's compiled shaders kept on disk (`~/.cache/bdex-framegen/pipelines-<vendor>-<device>-<driver cache UUID>.bin`, a file per driver version; the 32-bit layer its own): a game starts its frame generation without compiling them again. Measured, NVIDIA with its own shader cache off (a first start): 0.88 → 0.15 s. Read at start-up. |
+| `PIPELINE_CACHE` | `1` | The layer's compiled shaders kept on disk (`~/.cache/chuds-fg/pipelines-<vendor>-<device>-<driver cache UUID>.bin`, a file per driver version; the 32-bit layer its own): a game starts its frame generation without compiling them again. Measured, NVIDIA with its own shader cache off (a first start): 0.88 → 0.15 s. Read at start-up. |
 | `THREAD_PRIORITY` | `1` | The presentation thread at a higher scheduling priority, as far as an ordinary user may: real-time round-robin where permitted (gamemode, a realtime group), else nice −10 from rtkit — the service that raises PipeWire's audio threads, on most desktops — else unchanged; the log says which (`presentation thread priority`). Measured with 12 busy processes: wake-up lateness 39 → 25 µs (78 → 53); frames shown unchanged on that bench, where the compositor itself was starved. Read at start-up. |
 | `PRECISE_WAKE` | `1` | The presentation thread drops the kernel's timer slack (Linux, 50 µs by default): its sleeps until each present's moment end closer to it — measured, 56 → 7 µs late on an idle machine, 130 → 38 µs with the CPU busy (117.3 → 118.0 frames shown of 120). The statistics line gives the lateness (`wake-up late N us`). (Spinning the last half millisecond was tried: no gain idle, frames lost under load.) |
 | `VRR_HOLD` | `1` | On a variable-refresh screen (FreeSync, G-Sync, VRR compositor: the present feedback works but finds no fixed refresh grid), `INTERP_HOLD=1` counts as `auto`: a frame shows when it is presented, so the real frame goes out as soon as the screen's top rate allows, each frame still showing the content of its own display time. Fixed-refresh screens are unaffected. `0` keeps even spacing. Applied live. |
 | `REFRESH_FILL` | `0` | Interpolation at a fixed `MULTIPLIER`, or with `TARGET_FPS` (the panel's « Auto », which picks the largest whole multiplier under the refresh rate): when the game's frames times the multiplier fall short of a fixed refresh rate by less than one frame per game frame — 30 fps x4 on a 144 Hz screen gives 120 frames for 144 refreshes, one frame held two refreshes every fifth (24 times a second) and the content of the frames off their display by up to half a refresh — each game frame gets `m` or `m+1` frames, one per refresh (the adaptive pacing, with `VIRTUAL_GRID` where the refresh grid is not measured). Headless gamescope, 144 Hz, the demo at 30 fps x4 (three runs each): 142–143 frames a second shown instead of 120, frames held a refresh more 30/s → 5/s, the real frame on screen ~7 ms later (33 → 40 ms present to screen; 40 fps x3: +5 ms). `0` = off (the default since 2026-10-20: a multiplier is exactly that many frames per game frame — 30 fps x4 is 120 fps, as users expect), `1` = from x3 (the default from 14/10 to 20/10), `2` = from x2 too (60 fps x2 on 144 Hz: +7 ms). The output stage keeps one more frame (8 maximum). Since 16/10, the layer also follows the refresh rate when the multiplier meets or exceeds it: x4 at 36–37 fps on 144 Hz alternates three and four outputs instead of overflowing the screen; at least two outputs per game frame, within the allocated ceiling. Pure interpolation only. `0` restores fixed multiplication. |
 | `PACE_PLAN` | `1` | Interpolation on a refresh grid (measured or `VIRTUAL_GRID`): each frame of a present is planned for its refresh when the game presents, from how long its first frame usually takes to be ready (a cautious running estimate), given the content of that refresh, and presented for it. The layer predicted from the present call instead, with the GPU still working: in headless gamescope at 30 fps x4 on 144 Hz, 35 % of the frames showed a refresh later than their content's, irregularly (the motion's judder) — 5 % with the plan, +1.4 ms (with `REFRESH_FILL`, 67 % → 10 %). Applied live. |
-| `CONTENT_CLOCK` | `1` | Interpolation with display-timed frames (a refresh grid, measured or `VIRTUAL_GRID`; `ADAPTIVE`, `REFRESH_FILL`): each frame takes the content of its display time within the *actual* interval between the two real frames, as `FRAME_TIMING` does, instead of the smoothed one — a 36 ms game frame among 33 ms ones put them ~1.6 ms of motion off. Simulated x4 at 30 fps on a refresh grid (`bdex_offline --jitter 0.4 --refresh --refresh-known`): variable frame times +0.45 dB, flicker −0.9; presents jittered around a fixed timestep +0.2 dB. Without display times, `FRAME_TIMING` decides as before. Applied live. |
+| `CONTENT_CLOCK` | `1` | Interpolation with display-timed frames (a refresh grid, measured or `VIRTUAL_GRID`; `ADAPTIVE`, `REFRESH_FILL`): each frame takes the content of its display time within the *actual* interval between the two real frames, as `FRAME_TIMING` does, instead of the smoothed one — a 36 ms game frame among 33 ms ones put them ~1.6 ms of motion off. Simulated x4 at 30 fps on a refresh grid (`chuds_fg_offline --jitter 0.4 --refresh --refresh-known`): variable frame times +0.45 dB, flicker −0.9; presents jittered around a fixed timestep +0.2 dB. Without display times, `FRAME_TIMING` decides as before. Applied live. |
 | `HYBRID_PREDICT` | `0` | `MODE=hybrid`: the predicted frames after the real one. `0` keeps the real frame second (x4: interpolated, real, predicted, predicted). `1` at x4: interpolated, interpolated, real, predicted — the real frame half a frame late instead of three quarters (interpolation) or a quarter (hybrid `0`), one prediction a quarter of a frame ahead. The night's nine recordings at x4: −0.41 dB from interpolation, flicker +1.7 (hybrid `0`: −1.21 dB, +3.6); headless gamescope 1440p x4 at 30 fps: the real frame handed to the compositor 32.4 → 26.1 ms after the game's present (hybrid `0`: 18.8). |
 | `TIGHT_HOLD` | `1` | Layer, interpolation at a fixed multiplier (no `REFRESH_FILL`/`ADAPTIVE`) on a known refresh grid: when the game's frames times the multiplier fall short of the refresh rate by less than 1.25 refreshes per game frame — 30 fps x4 on 144 Hz, 4 frames for 4.8 refreshes, so most game frames have one frame held a refresh more wherever the even spacing puts it — the generated frames go out one refresh apart and that refresh goes to the real frame, which comes (m−1)·(I/m − P) sooner: x4 at 30 fps on 144 Hz 4.2 ms, x3 at 40 fps 2.8 ms (only where it saves 2 ms). As many refreshes held; the sharpest frame is the one shown longer; each frame keeps the content of its own display time. Under Xwayland (`X11_CLOCK`) frames a refresh apart are planned to be ready 1.5 ms before their refresh (measured deadline: closer, 64 % missed it and two frames met in the next one). Headless gamescope, 1440p quality, the PRAGMATA replay at x4: present-to-screen 42.0 → 39.2 ms (median 33.8 → 32.5), replaced 0.1/s either way, refreshes held 24.0 → 23.2/s. `INTERP_HOLD` below 1 takes precedence. Applied live. |
 | `EVEN_MOTION` | `0` | Layer, adaptive pure interpolation on a refresh grid (`REFRESH_FILL`): every refresh shows the content of its own moment — the display a constant lag behind the game's presents, each refresh's frame generated at the time it stands for, the real frame shown only as the moment it stands for. Pinned on refreshes, the real frames of a 30 fps game on 144 Hz make pairs of 5 and 4 refreshes (the motion a quarter faster through one pair in five) and carry the game's present jitter (PRAGMATA: 5 to 10 ms of content per 6.95 ms refresh). Pacing simulator, PRAGMATA-like jitter: content step error 0.76 → 0.001 ms rms, worst 2.7 → 0.04, no refresh held, latency +5 ms; one synthesis more per game frame (an output more is allocated). Applies when the output stage is rebuilt. |
@@ -640,14 +640,14 @@ them).
 | `SCENE_CUT_LOCAL` | `auto` | Applies the scene-cut test per region (8×8 grid, blended between tile centres) instead of on the whole frame's mean cost, so a menu or overlay opening over part of the screen falls back to the real frame there instead of being warped, and a large fast object no longer pushes the whole frame toward the fallback. Each tile needs its own histogram evidence (`SCENE_CUT_HIST`, at four times the frame's distance: motion alone moves content in and out of a tile, a menu replaces it). On by default on a discrete GPU (automatic preset, or any preset but `performance`), where `PIXEL_VECTORS` is (up to 4K x3 of synthesis work). Offline vs off: a pause menu opening over a quarter of a panning scene +1.4 dB, flicker −6.4; demo, very fast demo, HUD, pan, occlusions, swing within ±0.01 dB. `0` / `1` force it. |
 | `DEBUG` | `none` | `flow` (visualise the flow), `split` (left generated / right real), `confidence` (red where `FLOW_CONFIDENCE` does not trust the flow), `passthrough` |
 | `STATS` / `STATS_INTERVAL` | `1` / `5` | terminal statistics, period in seconds |
-| `PROFILE` | `0` | GPU time per stage in the statistics (`gpu ms: analysis … flow … interp … copy …`). `2`: also the time of each engine step and optional pass a game frame, the costliest first (`per pass: synthesis 0.72 false_detail 0.45 flow 0.45 mosaic_blur 0.22 …`; under 0.005 ms together as `rest`) — what an option costs on this GPU, without comparing runs with it on and off. `bdex_offline` prints the same at its end |
+| `PROFILE` | `0` | GPU time per stage in the statistics (`gpu ms: analysis … flow … interp … copy …`). `2`: also the time of each engine step and optional pass a game frame, the costliest first (`per pass: synthesis 0.72 false_detail 0.45 flow 0.45 mosaic_blur 0.22 …`; under 0.005 ms together as `rest`) — what an option costs on this GPU, without comparing runs with it on and off. `chuds_fg_offline` prints the same at its end |
 | `LOG` / `LOG_FILE` | `1` / – | verbosity 0–3, output file |
-| `LATENCY_LOG` | – | a file: every frame the screen shows as `<game's present ms> <display ms> <real 0/1>` (steady clock, present feedback) — joined with `bdex_demo --latency-log` by `tools/latency_report.py` (see Latency) |
+| `LATENCY_LOG` | – | a file: every frame the screen shows as `<game's present ms> <display ms> <real 0/1>` (steady clock, present feedback) — joined with `chuds_fg_demo --latency-log` by `tools/latency_report.py` (see Latency) |
 | `DUMP` / `DUMP_FRAMES` | – / `24` | write the presented frames (PPM) into a directory |
 | `SHARED_QUEUE` | `0` | force sharing the game's queue (testing) |
 | `SYNC_PRESENT` | `0` | block the game's present call until the worker presented the frame (compatibility test) |
 | `BATTERY_SAVER` | `1` | On battery (laptops; `/sys/class/power_supply`, Windows' power status): `1` = the automatic preset takes the `performance` flow whatever the GPU (the flow is most of the generation's GPU time, so of its power); `2` = and the multiplier is capped at x2; `0` = off. Plugging in or out switches within 5 s (the output stage is rebuilt). Never on a Steam Deck (DMI board Jupiter / Galileo), where the battery is the normal state. |
-| `IGNORE_ANTICHEAT` | `0` | `1` keeps the layer on when a multiplayer anti-cheat (EAC, BattlEye…) or a listed competitive game is detected. **At your own risk**: the layer sits inside the game process, where the anti-cheat can see it — account bans are possible. For anti-cheat games on Windows, the capture app (`bdex_capture.exe`) is the safe route |
+| `IGNORE_ANTICHEAT` | `0` | `1` keeps the layer on when a multiplayer anti-cheat (EAC, BattlEye…) or a listed competitive game is detected. **At your own risk**: the layer sits inside the game process, where the anti-cheat can see it — account bans are possible. For anti-cheat games on Windows, the capture app (`chuds_fg_capture.exe`) is the safe route |
 | `HIDE_PRESENT_EXT` | `1` | hide the present-timing extensions (`swapchain_maintenance1`, `present_id`/`present_wait`) from the game: they would target the real swapchain, and VKD3D-Proton hangs otherwise (`FPS_LIMIT_WAIT`: DXVK / VKD3D-Proton see `present_id`/`present_wait`, answered by the layer) |
 | `CAPTURE_HDR` | `auto` | Windows capture app: `auto` captures in scRGB HDR when the game's display is in HDR mode, `0` always SDR, `1` HDR if possible |
 
@@ -658,7 +658,7 @@ whose command line contains an executable of that name (`.exe` optional,
 case-insensitive):
 
 ```ini
-# ~/.config/bdex-framegen.conf
+# ~/.config/chuds-fg.conf
 multiplier = 2
 log = 1
 
@@ -674,7 +674,7 @@ debug = flow
 
 ## Performance and quality
 
-GPU time per rendered frame, measured with `BDEX_FG_PROFILE=1` on an
+GPU time per rendered frame, measured with `CHUDS_FG_PROFILE=1` on an
 integrated **AMD Radeon Vega 8** (≈ 1.1 TFLOPS, laptop on battery), demo
 fullscreen at 1920×1080, x2:
 
@@ -688,7 +688,7 @@ The copies are the two 8 MB transfers into the real swapchain (generated +
 real frame); on this iGPU they are memory-bound. On a discrete GPU, with
 the automatic preset's quality options (per-pixel vectors, both-frame
 splatting, rotation-aware matching, local scene cuts) — RTX 3060 Ti,
-`bdex_offline` + `BDEX_FG_PROFILE=1`, x2, per generated frame:
+`chuds_fg_offline` + `CHUDS_FG_PROFILE=1`, x2, per generated frame:
 
 | Resolution | Analysis | Flow | Synthesis | Total |
 |---|:---:|:---:|:---:|:---:|
@@ -708,10 +708,10 @@ against the real frame rendered at 60 fps):
 |---|:---:|
 | Duplicating the previous frame | ≈ 22 dB |
 | Blending the two neighbouring frames | ≈ 25 dB |
-| **bdex-framegen**, `performance` | ≈ 27 dB |
-| **bdex-framegen**, `balanced` | **≈ 30 dB** |
-| **bdex-framegen**, `quality` | ≈ 31 dB |
-| **bdex-framegen**, `MODE=extrapolate` | ≈ 23 dB |
+| **chuds-fg**, `performance` | ≈ 27 dB |
+| **chuds-fg**, `balanced` | **≈ 30 dB** |
+| **chuds-fg**, `quality` | ≈ 31 dB |
+| **chuds-fg**, `MODE=extrapolate` | ≈ 23 dB |
 
 ### Game settings that help
 
@@ -791,8 +791,8 @@ first frame on screen carrying it, and to the real frame. Demo at 40 fps,
 
 With interpolation the first photon is a generated frame, half of it the new
 image; extrapolation costs nothing measurable. Run it for a setting with
-`tools/latency_bench.sh LABEL=BDEX_FG_X=Y,...`; on a real screen,
-`bdex_demo --latency-test` (key presses) with `BDEX_FG_LATENCY_LOG`, then
+`tools/latency_bench.sh LABEL=CHUDS_FG_X=Y,...`; on a real screen,
+`chuds_fg_demo --latency-test` (key presses) with `CHUDS_FG_LATENCY_LOG`, then
 `tools/latency_report.py`, or a photodiode on the flashes.
 
 **`INTERP_HOLD`** trades interpolation's even spacing for latency: below 1
@@ -816,7 +816,7 @@ it uses them. DXVK and VKD3D-Proton present from a thread of their own and
 let the game run up to three frames ahead of it: holding that present queued
 the frames behind it. With `FPS_LIMIT_WAIT` (the default) the layer holds
 these games where they wait for their earlier presents instead (the status
-says `cap_point=wait`). Demo presenting as they do (`bdex_demo
+says `cap_point=wait`). Demo presenting as they do (`chuds_fg_demo
 --present-thread L`), a 40 fps cap at x2, 144 Hz, input to the real frame on
 screen:
 
@@ -886,7 +886,7 @@ The layer is clean under `VK_LAYER_KHRONOS_validation`, synchronization
 validation included, with the demo, `vkcube` and `vkgears`:
 
 ```sh
-VK_LOADER_LAYERS_ENABLE='*validation' BDEX_FG=1 build/demo/bdex_demo --fps 30 --frames 90
+VK_LOADER_LAYERS_ENABLE='*validation' CHUDS_FG=1 build/demo/chuds_fg_demo --fps 30 --frames 90
 ```
 
 It also loads inside the Steam Linux Runtime container (pressure-vessel).
@@ -899,13 +899,13 @@ It also loads inside the Steam Linux Runtime container (pressure-vessel).
 cmake -S . -B build && cmake --build build -j
 ctest --test-dir build --output-on-failure     # unit, evaluator and GPU integration tests
 tools/run_eval.sh build 40                      # PSNR against ground truth
-BDEX_EVAL_ARGS="--speed 2.5" tools/run_eval.sh build 40   # fast-motion scene
+CHUDS_FG_EVAL_ARGS="--speed 2.5" tools/run_eval.sh build 40   # fast-motion scene
 ```
 
 **Online benchmark on recorded content** — `tools/replay_bench.py SEQ
-[--multiplier M] [--env BDEX_FG_MODE=...] [--other-layer NAME]` plays a
+[--multiplier M] [--env CHUDS_FG_MODE=...] [--other-layer NAME]` plays a
 recorded sequence (*Enregistrer* in the panel, `--record`, `make_corpus.py`)
-as a game (`bdex_demo --replay`) through the layer — pacing and swapchain
+as a game (`chuds_fg_demo --replay`) through the layer — pacing and swapchain
 included — and scores every frame actually presented against the frames left
 out, next to the repeat and cross-fade references. It gives exactly the
 offline engine's numbers (pan 47.29 dB, demo 23.36, occlusions 34.20 at x2
@@ -915,12 +915,12 @@ presents (its real frames are the ones identical to a recorded frame). Needs
 a display: Xvfb or headless gamescope.
 
 `tools/run_eval.sh` renders the demo at `30 × MULTIPLIER` fps (reference) and
-then at 30 fps through the layer. Set `BDEX_FG_MULTIPLIER=3` or `4` to evaluate
+then at 30 fps through the layer. Set `CHUDS_FG_MULTIPLIER=3` or `4` to evaluate
 every generated position. The report includes quality in changing regions and
 on moving edges, pixels revealed by the moving yellow bar, and moving edges
 around the rotating square, as well as whole-frame PSNR. The local scores
 exclude the demo's frame-counter patch, which is only used for temporal alignment. The
-runner ignores `~/.config/bdex-framegen.conf`; pass `BDEX_FG_*` variables to
+runner ignores `~/.config/chuds-fg.conf`; pass `CHUDS_FG_*` variables to
 compare variants. It prints aligned, expected and dumped frame counts, and
 fails below 75% of the expected generated frames (rounded down).
 
@@ -948,11 +948,11 @@ docs/                   Windows guides; MEMOIRE.md: the project's memory (in Fre
 ## Contributing
 
 Reports from real games (DXVK, VKD3D-Proton, NVIDIA, Intel…) are what the
-project needs most. While the game runs, `bdex-framegen --report` (or
-« Rapport… » in the panel) writes `bdex-framegen-report.txt` and prints a
+project needs most. While the game runs, `chuds-fg --report` (or
+« Rapport… » in the panel) writes `chuds-fg-report.txt` and prints a
 link to the issue form already filled with its summary (version,
 distribution, GPU, session, installation, quick read — not your settings or
-log): describe what you see and attach the file. `bdex-framegen --issue-url
+log): describe what you see and attach the file. `chuds-fg --issue-url
 FILE` makes the link again. What to try on which machine:
 [docs/linux-validation.md](../docs/linux-validation.md).
 

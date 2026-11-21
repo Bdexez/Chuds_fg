@@ -2,7 +2,7 @@
 """Coordinate-descent tuning of the flow / synthesis knobs on recorded sequences.
 
 For each parameter in turn, every value of its grid is evaluated (all other
-parameters at their current best) on every sequence with bdex_offline, and
+parameters at their current best) on every sequence with chuds_fg_offline, and
 the value with the best objective is kept; passes repeat until nothing
 changes. The objective is the mean over sequences of the PSNR gain against
 the defaults, so each sequence counts equally whatever its absolute dB; the
@@ -45,7 +45,7 @@ def spec(cfg):
 
 
 def evaluate(args, seq, configs, work):
-    """PSNR of each config on one sequence (one bdex_offline run per config)."""
+    """PSNR of each config on one sequence (one chuds_fg_offline run per config)."""
     out = work / "r.json"
     cmd = [sys.executable, str(ROOT / "tools" / "eval_sequence.py"), str(seq), "--build", args.build,
            "--json", str(out), "--multiplier", str(args.multiplier)]
@@ -53,7 +53,7 @@ def evaluate(args, seq, configs, work):
         cmd += ["--exclude", x]
     for c in configs:
         cmd += ["--variant", spec(c)]
-    env = dict(os.environ, BDEX_FG_MODE=args.mode)
+    env = dict(os.environ, CHUDS_FG_MODE=args.mode)
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     rows = json.loads(out.read_text())
     return rows[0]["psnr"], [r["psnr"] for r in rows[1:]]

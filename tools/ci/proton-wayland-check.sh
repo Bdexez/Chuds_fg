@@ -14,9 +14,9 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/src"
 (cd "$ROOT" && git ls-files -co --exclude-standard | grep -v '^build\|^dist' | tar -cf - -T - | tar -xf - -C "$work/src")
-docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/bdex-ci/apt-get:ro" -e dxvk_ver=$dxvk_ver -e dxvk_sha=$dxvk_sha -v "$work:/work" "$image" bash -euo pipefail -c '
+docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/chuds-fg-ci/apt-get:ro" -e dxvk_ver=$dxvk_ver -e dxvk_sha=$dxvk_sha -v "$work:/work" "$image" bash -euo pipefail -c '
 export DEBIAN_FRONTEND=noninteractive
-[ ! -x /usr/bin/apt-get ] || export PATH="/opt/bdex-ci:$PATH"  # tools/ci/apt-get
+[ ! -x /usr/bin/apt-get ] || export PATH="/opt/chuds-fg-ci:$PATH"  # tools/ci/apt-get
 dpkg --add-architecture i386
 apt-get update -qq
 apt-get install -y -qq --no-install-recommends cmake make g++ glslc libvulkan-dev python3 curl ca-certificates gnupg \
@@ -29,9 +29,9 @@ curl -sSL -o /etc/apt/sources.list.d/winehq.sources \
 apt-get update -qq >/dev/null
 apt-get install -y -qq --install-recommends winehq-stable >/tmp/wine.log 2>&1 || { tail -20 /tmp/wine.log; exit 1; }
 W=/opt/wine-stable/bin/wine
-cmake -S /work/src -B /tmp/b -DCMAKE_BUILD_TYPE=Release -DBDEX_BUILD_DEMO=OFF -DBDEX_BUILD_TESTS=OFF -DBDEX_BUILD_OFFLINE=OFF \
-  -DBDEX_BUILD_CAPTURE=OFF >/tmp/cfg.log 2>&1 || { tail -20 /tmp/cfg.log; exit 1; }
-cmake --build /tmp/b -j"$(nproc)" --target bdex_framegen >/tmp/build.log 2>&1 || { grep -E -A5 error /tmp/build.log | head -40; exit 1; }
+cmake -S /work/src -B /tmp/b -DCMAKE_BUILD_TYPE=Release -DCHUDS_FG_BUILD_DEMO=OFF -DCHUDS_FG_BUILD_TESTS=OFF -DCHUDS_FG_BUILD_OFFLINE=OFF \
+  -DCHUDS_FG_BUILD_CAPTURE=OFF >/tmp/cfg.log 2>&1 || { tail -20 /tmp/cfg.log; exit 1; }
+cmake --build /tmp/b -j"$(nproc)" --target chuds_fg >/tmp/build.log 2>&1 || { grep -E -A5 error /tmp/build.log | head -40; exit 1; }
 mkdir -p /tmp/xdg/vulkan/implicit_layer.d
 cp /tmp/b/layer/*.json /tmp/xdg/vulkan/implicit_layer.d/
 x86_64-w64-mingw32-g++ -O2 -static /work/src/tests/proton/d3d11_probe.cpp -ld3d11 -ldxgi -o /tmp/d3d11.exe
@@ -48,8 +48,8 @@ WINEDLLOVERRIDES="mscoree,mshtml=" timeout 120 "$W" wineboot -i >/dev/null 2>&1 
 "$W" reg add "HKCU\\Software\\Wine\\Drivers" /v Graphics /d wayland /f >/dev/null 2>&1
 cp /tmp/dxvk-$dxvk_ver/x64/d3d11.dll /tmp/dxvk-$dxvk_ver/x64/dxgi.dll "$WINEPREFIX/drive_c/windows/system32/"
 icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
-out="$(XDG_DATA_HOME=/tmp/xdg VK_ICD_FILENAMES=$icd BDEX_FG=1 BDEX_FG_CONFIG=/dev/null BDEX_FG_LOG=2 \
-  BDEX_FG_STATS_INTERVAL=3 DXVK_LOG_LEVEL=warn WINEDLLOVERRIDES="d3d11,dxgi=n;mscoree,mshtml=" \
+out="$(XDG_DATA_HOME=/tmp/xdg VK_ICD_FILENAMES=$icd CHUDS_FG=1 CHUDS_FG_CONFIG=/dev/null CHUDS_FG_LOG=2 \
+  CHUDS_FG_STATS_INTERVAL=3 DXVK_LOG_LEVEL=warn WINEDLLOVERRIDES="d3d11,dxgi=n;mscoree,mshtml=" \
   timeout 90 "$W" /tmp/d3d11.exe 12 2>&1 || true)"
 grep -q "frames presented" <<<"$out" || { echo "the program did not finish:"; tail -30 <<<"$out"; exit 1; }
 grep -q "generation on" <<<"$out" || { echo "no generation:"; tail -20 <<<"$out"; exit 1; }

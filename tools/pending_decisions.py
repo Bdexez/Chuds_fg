@@ -4,9 +4,9 @@
 Each option below was measured on the synthetic corpus and the demo, and is
 kept off until it is checked on what games actually show (docs/MEMOIRE.md
 §9). Give this script recordings — the panel's « Enregistrer » button,
-`bdex-framegen --record DIR`, or archives unpacked by tools/corpus_fetch.py —
+`chuds-fg --record DIR`, or archives unpacked by tools/corpus_fetch.py —
 and it scores every candidate against the defaults on every sequence, in
-each mode the option acts in, with bdex_offline (headless, no window), then
+each mode the option acts in, with chuds_fg_offline (headless, no window), then
 gives a verdict per option:
 
   default?   mean PSNR gain >= +0.10 dB and no sequence below -0.10 dB
@@ -14,7 +14,7 @@ gives a verdict per option:
   neutral    every sequence within 0.02 dB (the option changes nothing there)
   mixed      anything else (wins somewhere, loses elsewhere)
 
-  tools/pending_decisions.py ~/.cache/bdex-framegen/recordings/* [--build build]
+  tools/pending_decisions.py ~/.cache/chuds-fg/recordings/* [--build build]
                              [--preset auto] [--only dedup,chroma_weight] [--json out.json]
 
 The automatic preset (what a player gets on this GPU) is the reference by
@@ -58,8 +58,8 @@ def evaluate(build, seq, mode, variants, preset, work):
     cmd = [sys.executable, str(ROOT / "tools" / "eval_sequence.py"), str(seq), "--build", str(build), "--json", str(out)]
     for v in variants:
         cmd += ["--variant", v]
-    env = dict(os.environ, BDEX_FG_MODE=MODES[mode], BDEX_FG_PRESET=preset, BDEX_FG_CONFIG="/dev/null",
-               BDEX_FG_CACHE_DIR="")
+    env = dict(os.environ, CHUDS_FG_MODE=MODES[mode], CHUDS_FG_PRESET=preset, CHUDS_FG_CONFIG="/dev/null",
+               CHUDS_FG_CACHE_DIR="")
     r = subprocess.run(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
     if r.returncode != 0:
         print(f"  {seq.name} [{MODES[mode]}]: evaluation failed: {r.stderr.strip()[-300:]}", file=sys.stderr)
@@ -76,8 +76,8 @@ def main():
     ap.add_argument("--json", help="also write every score to this file")
     a = ap.parse_args()
 
-    if not (Path(a.build) / "tools" / "offline" / "bdex_offline").exists():
-        sys.exit(f"{a.build}/tools/offline/bdex_offline not found: build the project first")
+    if not (Path(a.build) / "tools" / "offline" / "chuds_fg_offline").exists():
+        sys.exit(f"{a.build}/tools/offline/chuds_fg_offline not found: build the project first")
     only = {o.strip() for o in a.only.split(",") if o.strip()}
     cands = [c for c in CANDIDATES if not only or any(kv.split("=")[0] in only for kv in c[0].split(","))]
     seqs = [Path(s) for s in a.sequences if Path(s).is_dir()]

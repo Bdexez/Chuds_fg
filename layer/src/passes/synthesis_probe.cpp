@@ -2,7 +2,7 @@
 #include "framegen_internal.h"
 #include "shaders.h"
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct ComposePC { int32_t size[2]; float extent[2]; };
@@ -134,4 +134,4 @@ bool SynthesisProbe::measure(FgContext& ctx, VkCommandBuffer cmd, uint32_t prev,
     return probed;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

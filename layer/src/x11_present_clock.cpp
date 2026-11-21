@@ -13,7 +13,7 @@
 #include <unistd.h>
 #endif
 
-namespace bdex {
+namespace chuds_fg {
 
 void PresentTimeline::add(uint64_t msc, double ustMs) {
     ++presents;
@@ -93,32 +93,32 @@ std::unique_ptr<X11PresentClock> X11PresentClock::start(uint32_t window, double 
     x->lib = dlopen("libxcb.so.1", RTLD_NOW | RTLD_LOCAL);
     x->presentLib = x->lib ? dlopen("libxcb-present.so.0", RTLD_NOW | RTLD_LOCAL) : nullptr;
     if (!x->presentLib) {
-        BDEX_INFO("x11_clock: libxcb-present not found");
+        CHUDS_FG_INFO("x11_clock: libxcb-present not found");
         return nullptr;
     }
     auto sym = [&](void* l, const char* n) { return dlsym(l, n); };
-#define BDEX_XCB(field, lib, name) x->field = reinterpret_cast<decltype(x->field)>(sym(x->lib, name))
-    BDEX_XCB(connect, lib, "xcb_connect");
-    BDEX_XCB(hasError, lib, "xcb_connection_has_error");
-    BDEX_XCB(disconnect, lib, "xcb_disconnect");
-    BDEX_XCB(fd, lib, "xcb_get_file_descriptor");
-    BDEX_XCB(flush, lib, "xcb_flush");
-    BDEX_XCB(generateId, lib, "xcb_generate_id");
-    BDEX_XCB(extensionData, lib, "xcb_get_extension_data");
-    BDEX_XCB(registerXge, lib, "xcb_register_for_special_xge");
-    BDEX_XCB(unregister, lib, "xcb_unregister_for_special_event");
-    BDEX_XCB(pollSpecial, lib, "xcb_poll_for_special_event");
-    BDEX_XCB(requestCheck, lib, "xcb_request_check");
-    BDEX_XCB(queryVersion, presentLib, "xcb_present_query_version");
-    BDEX_XCB(queryVersionReply, presentLib, "xcb_present_query_version_reply");
-    BDEX_XCB(selectInputChecked, presentLib, "xcb_present_select_input_checked");
-    BDEX_XCB(selectInput, presentLib, "xcb_present_select_input");
-#undef BDEX_XCB
+#define CHUDS_FG_XCB(field, lib, name) x->field = reinterpret_cast<decltype(x->field)>(sym(x->lib, name))
+    CHUDS_FG_XCB(connect, lib, "xcb_connect");
+    CHUDS_FG_XCB(hasError, lib, "xcb_connection_has_error");
+    CHUDS_FG_XCB(disconnect, lib, "xcb_disconnect");
+    CHUDS_FG_XCB(fd, lib, "xcb_get_file_descriptor");
+    CHUDS_FG_XCB(flush, lib, "xcb_flush");
+    CHUDS_FG_XCB(generateId, lib, "xcb_generate_id");
+    CHUDS_FG_XCB(extensionData, lib, "xcb_get_extension_data");
+    CHUDS_FG_XCB(registerXge, lib, "xcb_register_for_special_xge");
+    CHUDS_FG_XCB(unregister, lib, "xcb_unregister_for_special_event");
+    CHUDS_FG_XCB(pollSpecial, lib, "xcb_poll_for_special_event");
+    CHUDS_FG_XCB(requestCheck, lib, "xcb_request_check");
+    CHUDS_FG_XCB(queryVersion, presentLib, "xcb_present_query_version");
+    CHUDS_FG_XCB(queryVersionReply, presentLib, "xcb_present_query_version_reply");
+    CHUDS_FG_XCB(selectInputChecked, presentLib, "xcb_present_select_input_checked");
+    CHUDS_FG_XCB(selectInput, presentLib, "xcb_present_select_input");
+#undef CHUDS_FG_XCB
     x->presentId = sym(x->presentLib, "xcb_present_id");
     if (!x->connect || !x->hasError || !x->disconnect || !x->fd || !x->flush || !x->generateId || !x->extensionData ||
         !x->registerXge || !x->unregister || !x->pollSpecial || !x->requestCheck || !x->queryVersion ||
         !x->queryVersionReply || !x->selectInputChecked || !x->selectInput || !x->presentId) {
-        BDEX_INFO("x11_clock: libxcb lacks an entry point");
+        CHUDS_FG_INFO("x11_clock: libxcb lacks an entry point");
         return nullptr;
     }
     // ($DISPLAY: the game's, Wine's included; a connection of our own.)
@@ -126,13 +126,13 @@ std::unique_ptr<X11PresentClock> X11PresentClock::start(uint32_t window, double 
     if (!x->conn || x->hasError(x->conn)) {
         if (x->conn) x->disconnect(x->conn);
         x->conn = nullptr;
-        BDEX_INFO("x11_clock: no X server");
+        CHUDS_FG_INFO("x11_clock: no X server");
         return nullptr;
     }
     // xcb_query_extension_reply_t: `present` is its 9th byte.
     const uint8_t* ext = x->extensionData(x->conn, x->presentId);
     if (!ext || !ext[8]) {
-        BDEX_INFO("x11_clock: the X server has no Present extension");
+        CHUDS_FG_INFO("x11_clock: the X server has no Present extension");
         return nullptr;
     }
     if (void* reply = x->queryVersionReply(x->conn, x->queryVersion(x->conn, 1, 2), nullptr)) free(reply);
@@ -140,7 +140,7 @@ std::unique_ptr<X11PresentClock> X11PresentClock::start(uint32_t window, double 
     x->window = window;
     if (void* err = x->requestCheck(x->conn, x->selectInputChecked(x->conn, x->eid, window, kEventMaskComplete))) {
         free(err);
-        BDEX_INFO("x11_clock: window 0x%x not watchable", window);
+        CHUDS_FG_INFO("x11_clock: window 0x%x not watchable", window);
         return nullptr;
     }
     x->special = x->registerXge(x->conn, x->presentId, x->eid, nullptr);
@@ -152,7 +152,7 @@ std::unique_ptr<X11PresentClock> X11PresentClock::start(uint32_t window, double 
     c->timeline_.setHint(hintHz);
     c->xcb_ = std::move(x);
     c->thread_ = std::thread([p = c.get()] { p->run(); });
-    BDEX_INFO("x11_clock: watching the X Present completions of window 0x%x", window);
+    CHUDS_FG_INFO("x11_clock: watching the X Present completions of window 0x%x", window);
     return c;
 }
 
@@ -210,7 +210,7 @@ void X11PresentClock::run() {
             free(ev);
         }
         if (x.hasError(x.conn)) {
-            BDEX_INFO("x11_clock: X connection closed");
+            CHUDS_FG_INFO("x11_clock: X connection closed");
             return;
         }
         fds[0].revents = fds[1].revents = 0;
@@ -270,4 +270,4 @@ void X11PresentClock::unsent() {
     if (!sent_.empty()) sent_.pop_back();
 }
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -3,10 +3,10 @@
 ## Reporting a vulnerability
 
 Contact the maintainer (Bdexez) privately, not in a public issue. Give the
-version (`bdex-framegen --report`, or the Windows launcher's « Signaler un
+version (`chuds-fg --report`, or the Windows launcher's « Signaler un
 problème »), the system and the steps.
 
-## What bdex-framegen is, security-wise
+## What chuds-fg is, security-wise
 
 Local software, nothing else: a Vulkan layer loaded into games, a capture
 application, a control panel and command-line tools. It has **no server,
@@ -21,7 +21,7 @@ What it protects, and how:
 | Risk | Measure |
 |---|---|
 | Files it reads that another program could write (configuration, status and session files, recording requests, the injection marker next to a game) | Parsers bounded and fuzzed in CI (`tools/ci/fuzz.sh`: configuration, status, options UI, online_tune cache); the injection removal only deletes the translation DLLs it knows by name |
-| Shared directories | State lives in the user's home (`~/.cache/bdex-framegen`, `%TEMP%`, `%LOCALAPPDATA%`); without a home, a `/tmp` directory that must be ours alone (mode 0700, owned by us) or none is used |
+| Shared directories | State lives in the user's home (`~/.cache/chuds-fg`, `%TEMP%`, `%LOCALAPPDATA%`); without a home, a `/tmp` directory that must be ours alone (mode 0700, owned by us) or none is used |
 | Game, window and GPU names shown in the control panel | Plain text, never markup |
 | Third-party code it ships (DXVK, VKD3D-Proton) | Pinned versions, SHA256-checked downloads, license texts shipped, VKD3D-Proton's complete source on each release |
 | Supply chain of the build | Read-only CI token by default; third-party actions pinned by commit; Dependabot (monthly) for actions and the Decky plugin; `pnpm audit` of what the Decky plugin ships; secret scanning (gitleaks) of the whole history at every push |

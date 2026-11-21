@@ -12,9 +12,9 @@
 #include <cstdint>
 #include <vector>
 
-using bdex::Config;
-using bdex::FrameOrder;
-namespace pacing = bdex::pacing;
+using chuds_fg::Config;
+using chuds_fg::FrameOrder;
+namespace pacing = chuds_fg::pacing;
 
 namespace {
 

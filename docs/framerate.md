@@ -1,7 +1,7 @@
 # Cadences quelconques — analyse et validation
 
 Travail du 23 octobre 2026, à partir de `889ce3c` et de la mémoire de Claude
-(`~/.claude/projects/-home-bdex-delivery-bdex-frame-gen/memory/`,
+(`~/.claude/projects/-home-bdex-delivery-Chuds_fg/memory/`,
 `AGENTS.md`, `docs/MEMOIRE.md`).
 
 ## Comportement demandé
@@ -139,7 +139,7 @@ python3 tools/framerate_bench.py --output /tmp/fg-60x4 \
 
 `variable` est un rejeu d'images à horloge enregistrée, avec changements de
 cadence, rampe jusqu'à 220 i/s et alternance 45/200. `uncapped` utilise la
-nouvelle option `bdex_demo --uncapped`, sans sommeil limitant le jeu.
+nouvelle option `chuds_fg_demo --uncapped`, sans sommeil limitant le jeu.
 `summary.json` rapporte sorties, réelles seules, délai de la réelle et
 présence de la grille X. `--check` échoue si le multiplicateur mesuré
 en interpolation perd plus de 5 % de sorties ou si des rattrapages
@@ -173,7 +173,7 @@ conservent leur calcul complet ; sans grille GPU, aucune réutilisation.
 `ctest --test-dir build -R output_reuse --output-on-failure` compare les
 octets GPU au calcul complet, avec formats SDR/HDR, upscale/CAS,
 interpolation, hybride, prédiction, répétitions et filtres optionnels.
-Pour une comparaison manuelle, `bdex_offline --raw-dumps` exporte aussi
+Pour une comparaison manuelle, `chuds_fg_offline --raw-dumps` exporte aussi
 les pixels empaquetés ; `--no-output-reuse` force la référence complète.
 Ces options de vérification ne modifient pas les réglages du jeu.
 

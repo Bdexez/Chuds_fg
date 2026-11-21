@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # The online benchmark (tools/replay_bench.py) on a synthetic sequence: the
-# pan of tools/make_corpus.py replayed by bdex_demo --replay through the layer
+# pan of tools/make_corpus.py replayed by chuds_fg_demo --replay through the layer
 # at x2; every generated frame scored, clearly better than repeating or
-# cross-fading the real frames (the same frames bdex_offline makes).
-#   replay_bench.sh <bdex_demo> <layer_dir>
+# cross-fading the real frames (the same frames chuds_fg_offline makes).
+#   replay_bench.sh <chuds_fg_demo> <layer_dir>
 # Skips (77) without a display or numpy.
 set -u
 DEMO="$1"

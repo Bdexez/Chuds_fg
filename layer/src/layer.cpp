@@ -23,11 +23,11 @@
 #include <unordered_map>
 #include <vector>
 
-#ifndef BDEX_LAYER_NAME
-#define BDEX_LAYER_NAME "VK_LAYER_BDEX_framegen"
+#ifndef CHUDS_FG_LAYER_NAME
+#define CHUDS_FG_LAYER_NAME "VK_LAYER_CHUDS_fg"
 #endif
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace {
 
@@ -49,10 +49,10 @@ std::atomic<DeviceData*> g_depthDev{nullptr};
 std::once_flag g_logInit;
 
 const VkLayerProperties g_layerProps = {
-    BDEX_LAYER_NAME,
+    CHUDS_FG_LAYER_NAME,
     VK_MAKE_API_VERSION(0, 1, 4, 0),
     1,
-    "BDEX frame generation layer",
+    "CHUDS FG frame generation layer",
 };
 
 void initLogging() {
@@ -60,7 +60,7 @@ void initLogging() {
         Config c = Config::load();
         log_set_level(c.logLevel);
         if (!c.logFile.empty()) log_set_file(c.logFile.c_str());
-        BDEX_INFO("%s v%s loaded (%s)", BDEX_LAYER_NAME, BDEX_LAYER_VERSION_STR, c.describe().c_str());
+        CHUDS_FG_INFO("%s v%s loaded (%s)", CHUDS_FG_LAYER_NAME, CHUDS_FG_LAYER_VERSION_STR, c.describe().c_str());
     });
 }
 
@@ -135,7 +135,7 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateInstance(const VkInstanceCreateInfo* pCreat
         std::lock_guard<std::mutex> lock(g_mapMutex);
         g_instances[dispatchKey(*pInstance)] = std::move(data);
     }
-    BDEX_DBG("instance created (api %u.%u)", VK_API_VERSION_MAJOR(pCreateInfo->pApplicationInfo ? pCreateInfo->pApplicationInfo->apiVersion : 0),
+    CHUDS_FG_DBG("instance created (api %u.%u)", VK_API_VERSION_MAJOR(pCreateInfo->pApplicationInfo ? pCreateInfo->pApplicationInfo->apiVersion : 0),
              VK_API_VERSION_MINOR(pCreateInfo->pApplicationInfo ? pCreateInfo->pApplicationInfo->apiVersion : 0));
     return VK_SUCCESS;
 }
@@ -165,7 +165,7 @@ VKAPI_ATTR VkResult VKAPI_CALL EnumerateInstanceLayerProperties(uint32_t* pCount
 
 VKAPI_ATTR VkResult VKAPI_CALL EnumerateInstanceExtensionProperties(const char* pLayerName, uint32_t* pCount,
                                                                     VkExtensionProperties*) {
-    if (pLayerName && strcmp(pLayerName, BDEX_LAYER_NAME) == 0) { *pCount = 0; return VK_SUCCESS; }
+    if (pLayerName && strcmp(pLayerName, CHUDS_FG_LAYER_NAME) == 0) { *pCount = 0; return VK_SUCCESS; }
     return VK_ERROR_LAYER_NOT_PRESENT;
 }
 
@@ -200,7 +200,7 @@ bool hiddenFrom(const InstanceData& inst, const char* name) {
 
 VKAPI_ATTR VkResult VKAPI_CALL EnumerateDeviceExtensionProperties(VkPhysicalDevice physDev, const char* pLayerName,
                                                                   uint32_t* pCount, VkExtensionProperties* pProps) {
-    if (pLayerName && strcmp(pLayerName, BDEX_LAYER_NAME) == 0) { *pCount = 0; return VK_SUCCESS; }
+    if (pLayerName && strcmp(pLayerName, CHUDS_FG_LAYER_NAME) == 0) { *pCount = 0; return VK_SUCCESS; }
     InstanceData* inst = getInstance(dispatchKey(physDev));
     if (!inst) return VK_ERROR_INITIALIZATION_FAILED;
     if (pLayerName || !inst->config.enabled || !inst->config.hidePresentExt)
@@ -448,7 +448,7 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physDev, const VkDe
     // dropping the extension but leaving its feature enabled can fail device
     // creation. Preserve the application's request and use pass-through.
     if (data->config.enabled && data->config.hidePresentExt && requestedHiddenPresentExt) {
-        BDEX_WARN("application explicitly requested present extensions; keeping device and swapchains pass-through");
+        CHUDS_FG_WARN("application explicitly requested present extensions; keeping device and swapchains pass-through");
         data->config.enabled = false;
         inst->renderScaleAllowed.store(false, std::memory_order_relaxed);
     }
@@ -698,7 +698,7 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physDev, const VkDe
             res = createDevice(physDev, &fci, pAllocator, pDevice);
             if (res != VK_SUCCESS && timing && !(res == VK_ERROR_NOT_PERMITTED_EXT && prioInfo >= 0)) {
                 // (present timing is the newest piece: without it first)
-                BDEX_WARN("device creation with present timing failed (%s); retrying without it", vkResultName(res));
+                CHUDS_FG_WARN("device creation with present timing failed (%s); retrying without it", vkResultName(res));
                 timing = false;
                 fexts.resize(fexts.size() - 3);
                 chainFeatures(false);
@@ -709,7 +709,7 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physDev, const VkDe
             // (a refused queue priority is not the feedback's doing: the
             // caller drops the priority and keeps the feedback)
             if (res == VK_ERROR_NOT_PERMITTED_EXT && prioInfo >= 0) return res;
-            if (res != VK_SUCCESS) BDEX_WARN("device creation with present feedback failed (%s); retrying without", vkResultName(res));
+            if (res != VK_SUCCESS) CHUDS_FG_WARN("device creation with present feedback failed (%s); retrying without", vkResultName(res));
             else {
                 data->presentFeedback = true;
                 data->presentTiming = timing;
@@ -723,9 +723,9 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physDev, const VkDe
         // VK_ERROR_NOT_PERMITTED: the usual answer without privileges
         // (NVIDIA; amdgpu wants CAP_SYS_NICE above normal priority).
         if (r == VK_ERROR_NOT_PERMITTED_EXT)
-            BDEX_INFO("high-priority synthesis queue not permitted to this process; normal priority");
+            CHUDS_FG_INFO("high-priority synthesis queue not permitted to this process; normal priority");
         else
-            BDEX_WARN("device creation with a high-priority synthesis queue failed (%s); retrying without", vkResultName(r));
+            CHUDS_FG_WARN("device creation with a high-priority synthesis queue failed (%s); retrying without", vkResultName(r));
         qcis[prioInfo].pNext = prio.pNext;
         prioInfo = -1;
         if (prioExtAdded) exts.pop_back();
@@ -744,7 +744,7 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physDev, const VkDe
     // the driver, which may not have it: NVIDIA's has not).
     data->gamescope = gamescopeWsi() && data->vt.GetRefreshCycleDurationGOOGLE != nullptr;
     if (gamescopeWsi())
-        BDEX_INFO("presenting through gamescope's WSI layer: %s", data->gamescope ? "refresh rate and frame limit from gamescope"
+        CHUDS_FG_INFO("presenting through gamescope's WSI layer: %s", data->gamescope ? "refresh rate and frame limit from gamescope"
                                                                                   : "its refresh cycle is not available");
     inst->vt.GetPhysicalDeviceProperties(physDev, &data->props);
     if (inst->apiVersion >= VK_API_VERSION_1_1 && data->props.apiVersion >= VK_API_VERSION_1_1 &&
@@ -767,11 +767,11 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physDev, const VkDe
         g_depthDev.store(nullptr, std::memory_order_release);
         g_depthKey.store(dispatchKey(*pDevice), std::memory_order_release);
         g_depthDev.store(data.get(), std::memory_order_release);
-        BDEX_INFO("depth: the game's depth buffer is looked for in its commands");
+        CHUDS_FG_INFO("depth: the game's depth buffer is looked for in its commands");
     }
     if (!data->config.autoTunedTo.empty()) {
         static const char* kind[] = {"other", "integrated GPU", "discrete GPU", "virtual GPU", "software"};
-        BDEX_INFO("auto-tuned for '%s' (%s): preset %s", data->props.deviceName,
+        CHUDS_FG_INFO("auto-tuned for '%s' (%s): preset %s", data->props.deviceName,
                   kind[data->props.deviceType <= 4 ? data->props.deviceType : 0], data->config.autoTunedTo.c_str());
     }
 
@@ -789,18 +789,18 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physDev, const VkDe
         }
     }
     if (data->asyncCompute && data->splitQueue)
-        BDEX_INFO("synthesis on queue %u, copies and presents on queue %u (family %u)", data->computeIndex,
+        CHUDS_FG_INFO("synthesis on queue %u, copies and presents on queue %u (family %u)", data->computeIndex,
                   data->queueIndex, data->queueFamily);
     else if (data->asyncCompute)
-        BDEX_INFO("async compute: synthesis on queue family %u%s, presentation on family %u", data->computeFamily,
+        CHUDS_FG_INFO("async compute: synthesis on queue family %u%s, presentation on family %u", data->computeFamily,
                   data->synthPriorityHigh ? " (high priority)" : "", data->queueFamily);
     // Crash journal (crash.h), only where the layer is at work: never in a
     // game it stays out of (anti-cheat), never where it is pass-through.
     if (data->config.enabled && !data->config.antiCheatDisabled && data->config.crashLog &&
         crashLogInstall(platformCacheDir(), platformExeName(),
-                        std::string(BDEX_LAYER_NAME " v" BDEX_LAYER_VERSION_STR " on '") + data->props.deviceName +
+                        std::string(CHUDS_FG_LAYER_NAME " v" CHUDS_FG_LAYER_VERSION_STR " on '") + data->props.deviceName +
                             "', " + data->config.describe()))
-        BDEX_INFO("crash journal: %s (should the layer crash)", crashLogPath().c_str());
+        CHUDS_FG_INFO("crash journal: %s (should the layer crash)", crashLogPath().c_str());
     if (data->config.enabled || data->config.antiCheatDisabled) {
         StatusEntry e;
         e.kind = "device";
@@ -811,16 +811,16 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physDev, const VkDe
         e.antiCheat = data->config.antiCheatIgnored;
         statusSet(statusKey(*pDevice), e);
     }
-    BDEX_INFO("device '%s': layer %s (queue family %u index %u, %s%s)", data->props.deviceName,
+    CHUDS_FG_INFO("device '%s': layer %s (queue family %u index %u, %s%s)", data->props.deviceName,
               data->layerUsable ? "active" : "inactive", data->queueFamily, data->queueIndex,
               data->queueShared ? "shared with the application" : "private",
               data->presentTiming ? ", present feedback + timing" : data->presentFeedback ? ", present feedback" : "");
-    if (!hasSwapchainExt) BDEX_DBG("VK_KHR_swapchain not enabled on this device");
+    if (!hasSwapchainExt) CHUDS_FG_DBG("VK_KHR_swapchain not enabled on this device");
     if (data->gamePresentWait)
-        BDEX_INFO("fps_limit_wait: the game waits for its presents (VK_KHR_present_wait, answered by the layer): "
+        CHUDS_FG_INFO("fps_limit_wait: the game waits for its presents (VK_KHR_present_wait, answered by the layer): "
                   "a frame limit holds it there");
     else if (inst->presentWaitOffered && hasSwapchainExt)
-        BDEX_INFO("fps_limit_wait: the game did not enable VK_KHR_present_id and VK_KHR_present_wait%s: a frame limit "
+        CHUDS_FG_INFO("fps_limit_wait: the game did not enable VK_KHR_present_id and VK_KHR_present_wait%s: a frame limit "
                   "holds its present thread",
                   gameId || gameWait ? "" : " (the driver may not have them)");
 
@@ -847,7 +847,7 @@ VKAPI_ATTR void VKAPI_CALL DestroyDevice(VkDevice device, const VkAllocationCall
     }
     {
         std::lock_guard<std::mutex> lock(data->swapchainsMutex);
-        if (!data->swapchains.empty()) BDEX_WARN("%zu swapchain(s) still alive at device destruction", data->swapchains.size());
+        if (!data->swapchains.empty()) CHUDS_FG_WARN("%zu swapchain(s) still alive at device destruction", data->swapchains.size());
         data->swapchains.clear();
     }
     statusRemove(statusKey(device));
@@ -1173,10 +1173,10 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateSwapchainKHR(VkDevice device, const VkSwapc
                          : !cfg.enabled   ? "frame generation disabled"
                          : pAllocator     ? "custom allocator"
                                           : "";
-    if (virtualise && pCreateInfo->imageArrayLayers != 1) { BDEX_WARN("multi-layer swapchain: passing through"); virtualise = false; reason = "multi-layer swapchain"; }
-    if (virtualise && (pCreateInfo->flags & VK_SWAPCHAIN_CREATE_PROTECTED_BIT_KHR)) { BDEX_WARN("protected swapchain: passing through"); virtualise = false; reason = "protected swapchain"; }
+    if (virtualise && pCreateInfo->imageArrayLayers != 1) { CHUDS_FG_WARN("multi-layer swapchain: passing through"); virtualise = false; reason = "multi-layer swapchain"; }
+    if (virtualise && (pCreateInfo->flags & VK_SWAPCHAIN_CREATE_PROTECTED_BIT_KHR)) { CHUDS_FG_WARN("protected swapchain: passing through"); virtualise = false; reason = "protected swapchain"; }
     if (virtualise && !encodingForFormat(pCreateInfo->imageFormat).supported) {
-        BDEX_WARN("swapchain format %d not supported: passing through", static_cast<int>(pCreateInfo->imageFormat));
+        CHUDS_FG_WARN("swapchain format %d not supported: passing through", static_cast<int>(pCreateInfo->imageFormat));
         virtualise = false;
         reason = "swapchain format " + std::to_string(static_cast<int>(pCreateInfo->imageFormat)) + " not supported";
     }
@@ -1195,14 +1195,14 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateSwapchainKHR(VkDevice device, const VkSwapc
         if (support != VK_SUCCESS || pCreateInfo->imageExtent.width > props.maxExtent.width ||
             pCreateInfo->imageExtent.height > props.maxExtent.height ||
             !(props.sampleCounts & VK_SAMPLE_COUNT_1_BIT)) {
-            BDEX_WARN("swapchain image usage 0x%x cannot be preserved in virtual images: passing through",
+            CHUDS_FG_WARN("swapchain image usage 0x%x cannot be preserved in virtual images: passing through",
                       pCreateInfo->imageUsage);
             virtualise = false;
             reason = "image usage not available on plain images";
         }
     }
     if (virtualise && !dev->ensurePresentQueue(pCreateInfo->surface)) {
-        BDEX_WARN("no compute queue can present to this surface: passing through");
+        CHUDS_FG_WARN("no compute queue can present to this surface: passing through");
         virtualise = false;
         reason = "no compute queue can present to this surface";
     }
@@ -1218,10 +1218,10 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateSwapchainKHR(VkDevice device, const VkSwapc
             dev->swapchains.insert_or_assign(*pSwapchain, std::move(vs));
             return VK_SUCCESS;
         } catch (const VkError& e) {
-            BDEX_ERR("virtual swapchain creation failed (%s): passing through", e.what());
+            CHUDS_FG_ERR("virtual swapchain creation failed (%s): passing through", e.what());
             reason = std::string("virtual swapchain creation failed: ") + e.what();
         } catch (const std::exception& e) {
-            BDEX_ERR("virtual swapchain creation failed (%s): passing through", e.what());
+            CHUDS_FG_ERR("virtual swapchain creation failed (%s): passing through", e.what());
             reason = std::string("virtual swapchain creation failed: ") + e.what();
         }
     }
@@ -1456,7 +1456,7 @@ VKAPI_ATTR VkResult VKAPI_CALL LatencySleepNV(VkDevice device, VkSwapchainKHR sw
         if (dev->capFps.load(std::memory_order_relaxed) > 0.0 && dev->sleepModeSentOn) {
             dev->capAtSleepMs.store(steadyMs(), std::memory_order_relaxed);
             if (!dev->capAtSleepLogged.exchange(true))
-                BDEX_INFO("fps_limit: the game is held by its Reflex sleep (Reflex's own limiter), before it reads its input");
+                CHUDS_FG_INFO("fps_limit: the game is held by its Reflex sleep (Reflex's own limiter), before it reads its input");
         }
     }
     return dev->vt.LatencySleepNV(device, real, pInfo);
@@ -1485,7 +1485,7 @@ VKAPI_ATTR void VKAPI_CALL AntiLagUpdateAMD(VkDevice device, const VkAntiLagData
         if (pData->pPresentationInfo && pData->pPresentationInfo->stage == VK_ANTI_LAG_STAGE_INPUT_AMD) {
             dev->capAtSleep();
             if (dev->capFps.load(std::memory_order_relaxed) > 0.0 && !dev->capAtSleepLogged.exchange(true))
-                BDEX_INFO("fps_limit: the game is held at Anti-Lag's input stage, before it reads its input");
+                CHUDS_FG_INFO("fps_limit: the game is held at Anti-Lag's input stage, before it reads its input");
         }
     }
     dev->vt.AntiLagUpdateAMD(device, pData);
@@ -1533,7 +1533,7 @@ VKAPI_ATTR VkResult VKAPI_CALL QueuePresentKHR(VkQueue queue, const VkPresentInf
     if (!realPositions.empty()) {
         realPresent = std::make_unique<PresentSlice>(*pPresentInfo, realPositions, true);
         if (!realPresent->valid()) {
-            BDEX_ERR("cannot split mixed present: %s", realPresent->error());
+            CHUDS_FG_ERR("cannot split mixed present: %s", realPresent->error());
             return VK_ERROR_EXTENSION_NOT_PRESENT;
         }
     }
@@ -1543,7 +1543,7 @@ VKAPI_ATTR VkResult VKAPI_CALL QueuePresentKHR(VkQueue queue, const VkPresentInf
         virtualPresents[i] = std::make_unique<PresentSlice>(*pPresentInfo, std::vector<uint32_t>{i}, firstVirtual);
         firstVirtual = false;
         if (!virtualPresents[i]->valid()) {
-            BDEX_ERR("cannot split virtual present: %s", virtualPresents[i]->error());
+            CHUDS_FG_ERR("cannot split virtual present: %s", virtualPresents[i]->error());
             return VK_ERROR_EXTENSION_NOT_PRESENT;
         }
     }
@@ -1552,7 +1552,7 @@ VKAPI_ATTR VkResult VKAPI_CALL QueuePresentKHR(VkQueue queue, const VkPresentInf
         // Mixed present: forward the real swapchains in one call (it consumes
         // the wait semaphores), then handle ours without them.
         static bool warned = false;
-        if (!warned) { BDEX_WARN("present mixes layer and pass-through swapchains; synchronisation is best-effort"); warned = true; }
+        if (!warned) { CHUDS_FG_WARN("present mixes layer and pass-through swapchains; synchronisation is best-effort"); warned = true; }
         {
             std::lock_guard<std::mutex> lock(dev->queueMutex(queue));
             result = dev->vt.QueuePresentKHR(queue, &realPresent->info());
@@ -1681,9 +1681,9 @@ PFN_vkVoidFunction findHook(const Hook (&hooks)[N], const char* name) {
 }
 
 } // namespace
-} // namespace bdex
+} // namespace chuds_fg
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 // Internal versions of the two entry points: the exported names below can be
@@ -1737,32 +1737,32 @@ PFN_vkVoidFunction VKAPI_CALL layerGetDeviceProcAddr(VkDevice device, const char
 }
 
 } // namespace
-} // namespace bdex
+} // namespace chuds_fg
 
 // vulkan_core.h already declares vkGetInstanceProcAddr/vkGetDeviceProcAddr
 // (plain extern "C"), so MSVC rejects a redeclaration with dllexport
-// ("different linkage"): the Windows exports come from bdex_framegen.def
+// ("different linkage"): the Windows exports come from chuds_fg.def
 // instead, which also maps the __stdcall-decorated 32-bit names.
 #ifdef _WIN32
-#define BDEX_EXPORT extern "C"
+#define CHUDS_FG_EXPORT extern "C"
 #else
-#define BDEX_EXPORT extern "C" __attribute__((visibility("default")))
+#define CHUDS_FG_EXPORT extern "C" __attribute__((visibility("default")))
 #endif
 
-BDEX_EXPORT PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance, const char* pName) {
-    return bdex::layerGetInstanceProcAddr(instance, pName);
+CHUDS_FG_EXPORT PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance, const char* pName) {
+    return chuds_fg::layerGetInstanceProcAddr(instance, pName);
 }
 
-BDEX_EXPORT PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice device, const char* pName) {
-    return bdex::layerGetDeviceProcAddr(device, pName);
+CHUDS_FG_EXPORT PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice device, const char* pName) {
+    return chuds_fg::layerGetDeviceProcAddr(device, pName);
 }
 
-BDEX_EXPORT VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface* pVersionStruct) {
+CHUDS_FG_EXPORT VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface* pVersionStruct) {
     if (!pVersionStruct || pVersionStruct->sType != LAYER_NEGOTIATE_INTERFACE_STRUCT) return VK_ERROR_INITIALIZATION_FAILED;
     if (pVersionStruct->loaderLayerInterfaceVersion < 2) return VK_ERROR_INITIALIZATION_FAILED;
     pVersionStruct->loaderLayerInterfaceVersion = 2;
-    pVersionStruct->pfnGetInstanceProcAddr = bdex::layerGetInstanceProcAddr;
-    pVersionStruct->pfnGetDeviceProcAddr = bdex::layerGetDeviceProcAddr;
-    pVersionStruct->pfnGetPhysicalDeviceProcAddr = bdex::layerGetPhysicalDeviceProcAddr;
+    pVersionStruct->pfnGetInstanceProcAddr = chuds_fg::layerGetInstanceProcAddr;
+    pVersionStruct->pfnGetDeviceProcAddr = chuds_fg::layerGetDeviceProcAddr;
+    pVersionStruct->pfnGetPhysicalDeviceProcAddr = chuds_fg::layerGetPhysicalDeviceProcAddr;
     return VK_SUCCESS;
 }

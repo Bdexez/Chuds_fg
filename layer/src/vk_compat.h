@@ -5,7 +5,7 @@
 // definitions below are copied from the Khronos headers (1.3.260, Apache-2.0
 // OR MIT) and only compiled when the system's headers lack them. Debian 12's
 // 1.3.239 has them, with a non-const pNext on two present structures
-// (bdexNext).
+// (chudsFgNext).
 #include <vulkan/vulkan.h>
 
 #ifndef VK_EXT_surface_maintenance1
@@ -107,6 +107,6 @@ constexpr VkSwapchainCreateFlagBitsKHR VK_SWAPCHAIN_CREATE_DEFERRED_MEMORY_ALLOC
 // The next-pointer slot of a structure being chained, as `const void**`:
 // headers before 1.3.241 declare some present structures' pNext non-const.
 template <typename T>
-inline const void** bdexNext(T& s) {
+inline const void** chudsFgNext(T& s) {
     return static_cast<const void**>(static_cast<void*>(&s.pNext));
 }

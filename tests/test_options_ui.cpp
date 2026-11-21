@@ -4,10 +4,10 @@
 #include <fstream>
 #include <sstream>
 
-using namespace bdex;
+using namespace chuds_fg;
 
-#ifndef BDEX_SOURCE_DIR  // (set by tests/CMakeLists.txt)
-#define BDEX_SOURCE_DIR "."
+#ifndef CHUDS_FG_SOURCE_DIR  // (set by tests/CMakeLists.txt)
+#define CHUDS_FG_SOURCE_DIR "."
 #endif
 
 TEST(options_ui_parses_and_fills_from_the_registry) {
@@ -33,7 +33,7 @@ TEST(options_ui_parses_and_fills_from_the_registry) {
 }
 
 TEST(options_ui_the_shipped_file_is_valid) {
-    std::ifstream in(std::string(BDEX_SOURCE_DIR) + "/layer/options_ui.conf");
+    std::ifstream in(std::string(CHUDS_FG_SOURCE_DIR) + "/layer/options_ui.conf");
     CHECK(bool(in));
     std::stringstream text;
     text << in.rdbuf();
@@ -45,7 +45,7 @@ TEST(options_ui_the_shipped_file_is_valid) {
 
 TEST(options_ui_every_option_has_english_texts) {
     auto read = [](const char* name) {
-        std::ifstream in(std::string(BDEX_SOURCE_DIR) + "/layer/" + name);
+        std::ifstream in(std::string(CHUDS_FG_SOURCE_DIR) + "/layer/" + name);
         std::stringstream text;
         text << in.rdbuf();
         return text.str();

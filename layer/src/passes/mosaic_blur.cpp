@@ -13,7 +13,7 @@
 #include <cmath>
 #include <cstddef>
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct MbPC { int32_t size[2]; uint32_t encoding; int32_t mode; float strength; float threshold; float deviation; int32_t radius; float toFlow[2]; int32_t agree;
@@ -166,4 +166,4 @@ private:
 
 std::unique_ptr<FgPass> makeMosaicBlurPass() { return std::make_unique<MosaicBlurPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

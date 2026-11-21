@@ -7,7 +7,7 @@
 # it, x2 again without a queue left behind. As a native Vulkan game and as a
 # "frame limiter aware" one (DXVK, VKD3D-Proton: FIFO only, swapchain
 # re-created at each switch). Skipped (77) without gamescope 3.14+ and a GPU.
-#   tests/gamescope_limit.sh <bdex_demo> <build>/layer
+#   tests/gamescope_limit.sh <chuds_fg_demo> <build>/layer
 set -uo pipefail
 DEMO="$1" LAYER_DIR="$2"
 command -v gamescope >/dev/null && command -v gamescopectl >/dev/null || { echo "no gamescope: skipped"; exit 77; }
@@ -19,7 +19,7 @@ mkdir -p "$work/xdg/vulkan/implicit_layer.d"
 cp "$LAYER_DIR"/*.json "$work/xdg/vulkan/implicit_layer.d/"  # (XDG_DATA_HOME: gamescope's layer stays found)
 cat > "$work/run.sh" <<RUN
 #!/bin/sh
-XDG_DATA_HOME="$work/xdg" BDEX_FG=1 BDEX_FG_CONFIG=/dev/null BDEX_FG_LOG=2 BDEX_FG_STATS_INTERVAL=2 \\
+XDG_DATA_HOME="$work/xdg" CHUDS_FG=1 CHUDS_FG_CONFIG=/dev/null CHUDS_FG_LOG=2 CHUDS_FG_STATS_INTERVAL=2 \\
   GAMESCOPE_WSI_FRAME_LIMITER_AWARE=\$AWARE "$DEMO" --fps 30 --frames 100000 --duration 21 >"\$LOG" 2>&1 &
 pid=\$!
 sleep 7; gamescopectl debug_set_fps_limit 30 >/dev/null 2>&1
@@ -39,7 +39,7 @@ for aware in 0 1; do
     echo "FAIL aware=$aware: the layer did not take gamescope's refresh cycle"; status=1; continue
   fi
   # Statistics lines: time, game fps, output fps, present-to-screen.
-  stats="$(sed -nE 's/^\[bdex-fg +([0-9.]+) INFO\] game ([0-9.]+) fps -> output ([0-9.]+) fps.*present-to-screen ([0-9.]+) ms.*/\1 \2 \3 \4/p' "$log")"
+  stats="$(sed -nE 's/^\[chuds-fg +([0-9.]+) INFO\] game ([0-9.]+) fps -> output ([0-9.]+) fps.*present-to-screen ([0-9.]+) ms.*/\1 \2 \3 \4/p' "$log")"
   verdict="$(awk -v aware=$aware '
     $1 >= 3 && $1 < 6.9  { a++; ar += $3 / $2 }
     $1 >= 10 && $1 < 13.9 { b++; bg += $2; bo += $3; bl += $4 }

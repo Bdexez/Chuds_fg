@@ -1,4 +1,4 @@
-// Vulkan side of bdex-capture on Linux (the counterpart of the Windows
+// Vulkan side of chuds-fg-capture on Linux (the counterpart of the Windows
 // capture's VkCtx, capture/src/vkctx.h): the captured frames (MIT-SHM
 // segments, imported as host memory with VK_EXT_external_memory_host when
 // the driver accepts them, copied otherwise) go into a history ring, the
@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 class FrameGen;
 
@@ -141,4 +141,4 @@ private:
     Upload uploads_[X11Capture::kSlots];
 };
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -11,7 +11,7 @@
 #include <fstream>
 #include <string>
 
-using bdex::Config;
+using chuds_fg::Config;
 
 TEST(config_defaults) {
     Config c;
@@ -173,7 +173,7 @@ TEST(config_rejects_garbage) {
 }
 
 TEST(config_bundled_profiles_are_game_only) {
-    const std::string path = test::tmpPath("bdex_test_profiles.conf");
+    const std::string path = test::tmpPath("chuds_fg_test_profiles.conf");
     {
         std::ofstream f(path);
         f << "multiplier = 4\n"            // before any section: ignored when bundled
@@ -191,38 +191,38 @@ TEST(config_bundled_profiles_are_game_only) {
 }
 
 TEST(config_file_and_env_priority) {
-    const std::string path = test::tmpPath("bdex_test_config.conf");
+    const std::string path = test::tmpPath("chuds_fg_test_config.conf");
     {
         std::ofstream f(path);
         f << "# comment\nmultiplier = 3\nlevels=5\n\nbogus line\nsearch = 1\n";
     }
-    test::setEnv("BDEX_FG_CONFIG", path.c_str());
-    test::setEnv("BDEX_FG_LEVELS", "2");
-    test::unsetEnv("BDEX_FG_MULTIPLIER");
+    test::setEnv("CHUDS_FG_CONFIG", path.c_str());
+    test::setEnv("CHUDS_FG_LEVELS", "2");
+    test::unsetEnv("CHUDS_FG_MULTIPLIER");
     Config c = Config::load();
     CHECK(c.multiplier == 3);   // from file
     CHECK(c.levels == 2);       // env overrides file
     CHECK(c.searchRadius == 1);
-    test::unsetEnv("BDEX_FG_CONFIG");
-    test::unsetEnv("BDEX_FG_LEVELS");
+    test::unsetEnv("CHUDS_FG_CONFIG");
+    test::unsetEnv("CHUDS_FG_LEVELS");
     remove(path.c_str());
 }
 
 TEST(config_product_defaults_and_mode_priority) {
-    const std::string path = test::tmpPath("bdex_test_capture_defaults.conf");
+    const std::string path = test::tmpPath("chuds_fg_test_capture_defaults.conf");
     { std::ofstream f(path); f << "mode=interpolate\n"; }
-    test::setEnv("BDEX_FG_CONFIG", path.c_str());
-    test::unsetEnv("BDEX_FG_MODE");
+    test::setEnv("CHUDS_FG_CONFIG", path.c_str());
+    test::unsetEnv("CHUDS_FG_MODE");
     Config defaults;
     defaults.extrapolate = true;
     CHECK(!Config::loadWithDefaults(defaults).extrapolate); // file overrides capture default
-    test::setEnv("BDEX_FG_MODE", "extrapolate");
+    test::setEnv("CHUDS_FG_MODE", "extrapolate");
     CHECK(Config::loadWithDefaults(defaults).extrapolate);  // env overrides file
-    test::unsetEnv("BDEX_FG_MODE");
+    test::unsetEnv("CHUDS_FG_MODE");
     { std::ofstream f(path); f << ""; }
     CHECK(Config::loadWithDefaults(defaults).extrapolate);  // capture default survives
     CHECK(!Config::load().extrapolate);                     // layer default is unchanged
-    test::unsetEnv("BDEX_FG_CONFIG");
+    test::unsetEnv("CHUDS_FG_CONFIG");
     remove(path.c_str());
 }
 
@@ -231,7 +231,7 @@ TEST(config_game_mode_without_panel) {
     // a game's own section turns it on without the panel; [*] alone does not
     // name the process (desktop programs are then excluded, as under
     // require_app), and a shipped profile never can.
-    const std::string path = test::tmpPath("bdex_test_game_mode.conf");
+    const std::string path = test::tmpPath("chuds_fg_test_game_mode.conf");
     {
         std::ofstream f(path);
         f << "[*]\nenabled = 1\nrequire_app = 1\n[mygame]\nrequire_app = 0\n";
@@ -246,38 +246,38 @@ TEST(config_game_mode_without_panel) {
     bundled.loadFile(path, "/games/mygame.exe", true);
     CHECK(!bundled.processNamed);
     remove(path.c_str());
-    // BDEX_FG=1 (a Steam launch option) names the process too.
-    test::setEnv("BDEX_FG", "1");
+    // CHUDS_FG=1 (a Steam launch option) names the process too.
+    test::setEnv("CHUDS_FG", "1");
     Config env = Config::load();
     CHECK(env.enabled && !env.requireApp && env.processNamed);
-    test::unsetEnv("BDEX_FG");
+    test::unsetEnv("CHUDS_FG");
     // Game Mode's compositor and Steam's own processes are desktop programs.
-    CHECK(bdex::platformIsNonGame("gamescope") && bdex::platformIsNonGame("steamwebhelper") && bdex::platformIsNonGame("mangoapp"));
-    CHECK(bdex::platformIsNonGame("fossilize_replay"));  // (Steam's shader pre-caching)
-    CHECK(!bdex::platformIsNonGame("mygame"));
+    CHECK(chuds_fg::platformIsNonGame("gamescope") && chuds_fg::platformIsNonGame("steamwebhelper") && chuds_fg::platformIsNonGame("mangoapp"));
+    CHECK(chuds_fg::platformIsNonGame("fossilize_replay"));  // (Steam's shader pre-caching)
+    CHECK(!chuds_fg::platformIsNonGame("mygame"));
 }
 
 TEST(config_master_switch) {
-    test::setEnv("BDEX_FG", "0");
+    test::setEnv("CHUDS_FG", "0");
     Config c = Config::load();
     CHECK(!c.enabled);
-    test::setEnv("BDEX_FG", "1");
+    test::setEnv("CHUDS_FG", "1");
     c = Config::load();
     CHECK(c.enabled);
-    test::unsetEnv("BDEX_FG");
+    test::unsetEnv("CHUDS_FG");
 }
 
 TEST(config_scene_cut_ordering) {
-    test::setEnv("BDEX_FG_SCENE_CUT_LOW", "0.9");
-    test::setEnv("BDEX_FG_SCENE_CUT_HIGH", "0.1");
+    test::setEnv("CHUDS_FG_SCENE_CUT_LOW", "0.9");
+    test::setEnv("CHUDS_FG_SCENE_CUT_HIGH", "0.1");
     Config c = Config::load();
     CHECK(c.sceneCutHigh >= c.sceneCutLow);
-    test::unsetEnv("BDEX_FG_SCENE_CUT_LOW");
-    test::unsetEnv("BDEX_FG_SCENE_CUT_HIGH");
+    test::unsetEnv("CHUDS_FG_SCENE_CUT_LOW");
+    test::unsetEnv("CHUDS_FG_SCENE_CUT_HIGH");
 }
 
 TEST(config_sections) {
-    const std::string path = test::tmpPath("bdex_test_sections.conf");
+    const std::string path = test::tmpPath("chuds_fg_test_sections.conf");
     {
         std::ofstream f(path);
         f << "multiplier = 2\n[MyGame.exe]\nmultiplier = 3\n[*]\nlevels = 5\n[other]\nlevels = 1\n";
@@ -294,9 +294,9 @@ TEST(config_sections) {
 }
 
 TEST(config_enable_from_file) {
-    // The layer is always loaded now; a config file alone (no BDEX_FG env) must
+    // The layer is always loaded now; a config file alone (no CHUDS_FG env) must
     // be able to turn it on, globally via [*] or for one game via its section.
-    const std::string path = test::tmpPath("bdex_test_enable.conf");
+    const std::string path = test::tmpPath("chuds_fg_test_enable.conf");
     {
         std::ofstream f(path);
         f << "[*]\nenabled = 0\n[kenshi]\nenabled = 1\nmultiplier = 3\n";
@@ -335,51 +335,51 @@ TEST(config_presets) {
     CHECK(c.flowScaleFor(1920, 1080) == 1 && c.flowScaleFor(2560, 1440) == 2 && c.flowScaleFor(3840, 2160) == 2);
     CHECK(!c.apply("preset", "ultra"));
     // A preset in the environment is applied before the individual variables.
-    test::setEnv("BDEX_FG_FLOW_SCALE", "2");
-    test::setEnv("BDEX_FG_PRESET", "performance");
+    test::setEnv("CHUDS_FG_FLOW_SCALE", "2");
+    test::setEnv("CHUDS_FG_PRESET", "performance");
     Config d = Config::load();
     CHECK(d.flowScale == 2 && !d.refineAll);
-    test::unsetEnv("BDEX_FG_FLOW_SCALE");
-    test::unsetEnv("BDEX_FG_PRESET");
+    test::unsetEnv("CHUDS_FG_FLOW_SCALE");
+    test::unsetEnv("CHUDS_FG_PRESET");
 }
 
 // Competitive games keep the layer off even when their anti-cheat has no
 // process to detect (VAC, Vanguard...). Names arrive normalised.
 TEST(config_competitive_games) {
-    using bdex::platformIsCompetitiveGame;
+    using chuds_fg::platformIsCompetitiveGame;
     CHECK(platformIsCompetitiveGame("cs2"));
     CHECK(platformIsCompetitiveGame("dota2"));
     CHECK(platformIsCompetitiveGame("r5apex"));
     CHECK(platformIsCompetitiveGame("league of legends"));
-    CHECK(!platformIsCompetitiveGame("bdex_demo"));
+    CHECK(!platformIsCompetitiveGame("chuds_fg_demo"));
     CHECK(!platformIsCompetitiveGame("skyrimse"));
     CHECK(!platformIsCompetitiveGame("cs"));  // exact names only
 }
 
 // log_file may contain an environment reference in the platform's own syntax
-// (the Windows docs recommend `log_file=%TEMP%\bdex-fg.log`). Without
+// (the Windows docs recommend `log_file=%TEMP%\chuds-fg.log`). Without
 // expansion the layer opens a file named literally "%TEMP%\..." and silently
 // logs nowhere, which would break the very first Windows run.
 TEST(config_expand_log_file) {
-    using bdex::platformExpandPath;
+    using chuds_fg::platformExpandPath;
     CHECK(platformExpandPath("") == "");
     CHECK(platformExpandPath("plain/relative.log") == "plain/relative.log");
 #ifdef _WIN32
-    test::setEnv("BDEX_FG_TESTDIR", "C:\\tmp");
-    CHECK(platformExpandPath("%BDEX_FG_TESTDIR%\\bdex-fg.log") == "C:\\tmp\\bdex-fg.log");
-    test::unsetEnv("BDEX_FG_TESTDIR");
+    test::setEnv("CHUDS_FG_TESTDIR", "C:\\tmp");
+    CHECK(platformExpandPath("%CHUDS_FG_TESTDIR%\\chuds-fg.log") == "C:\\tmp\\chuds-fg.log");
+    test::unsetEnv("CHUDS_FG_TESTDIR");
     // An undefined variable is left verbatim rather than emptied.
-    CHECK(platformExpandPath("%BDEX_FG_NOPE%\\x") == "%BDEX_FG_NOPE%\\x");
+    CHECK(platformExpandPath("%CHUDS_FG_NOPE%\\x") == "%CHUDS_FG_NOPE%\\x");
 #else
-    test::setEnv("BDEX_FG_TESTDIR", "/var/tmp");
-    CHECK(platformExpandPath("$BDEX_FG_TESTDIR/bdex-fg.log") == "/var/tmp/bdex-fg.log");
-    CHECK(platformExpandPath("${BDEX_FG_TESTDIR}/bdex-fg.log") == "/var/tmp/bdex-fg.log");
-    test::unsetEnv("BDEX_FG_TESTDIR");
+    test::setEnv("CHUDS_FG_TESTDIR", "/var/tmp");
+    CHECK(platformExpandPath("$CHUDS_FG_TESTDIR/chuds-fg.log") == "/var/tmp/chuds-fg.log");
+    CHECK(platformExpandPath("${CHUDS_FG_TESTDIR}/chuds-fg.log") == "/var/tmp/chuds-fg.log");
+    test::unsetEnv("CHUDS_FG_TESTDIR");
     // An unknown variable is left as-is.
-    CHECK(platformExpandPath("$BDEX_FG_NOPE/x") == "$BDEX_FG_NOPE/x");
+    CHECK(platformExpandPath("$CHUDS_FG_NOPE/x") == "$CHUDS_FG_NOPE/x");
     // A leading ~ expands to $HOME.
     if (const char* h = std::getenv("HOME"))
-        CHECK(platformExpandPath("~/bdex-fg.log") == std::string(h) + "/bdex-fg.log");
+        CHECK(platformExpandPath("~/chuds-fg.log") == std::string(h) + "/chuds-fg.log");
 #endif
 }
 
@@ -450,8 +450,8 @@ TEST(config_preset_enhanced) {
 // pure modes keep their historical values exactly (i/m, 1 + i/m), hybrid
 // puts one interpolated frame first, then the real one, then predictions.
 TEST(frame_order_positions_and_times) {
-    using bdex::FrameOrder;
-    bdex::Config c;
+    using chuds_fg::FrameOrder;
+    chuds_fg::Config c;
     for (int m = 2; m <= 4; ++m) {
         c.extrapolate = false;
         c.hybrid = false;
@@ -481,10 +481,10 @@ TEST(frame_order_positions_and_times) {
 // frame come closer together, and every frame's content time stays a
 // constant distance behind its display time (no wrong motion).
 TEST(frame_order_interp_hold) {
-    using bdex::FrameOrder;
-    bdex::Config c;
+    using chuds_fg::FrameOrder;
+    chuds_fg::Config c;
     c.interpHold = 0.5f;
-    CHECK(FrameOrder::of(c, 2).hold == 1.f);         // not asked for: capture app, bdex_offline
+    CHECK(FrameOrder::of(c, 2).hold == 1.f);         // not asked for: capture app, chuds_fg_offline
     for (int m = 2; m <= 4; ++m) {
         c.interpHold = 1.f;
         const FrameOrder even = FrameOrder::of(c, m, true);
@@ -532,39 +532,39 @@ TEST(config_defaults_in_range) {
 }
 
 TEST(config_battery_saver) {
-    // On battery (BDEX_POWER pretends): the automatic preset takes the
+    // On battery (CHUDS_FG_POWER pretends): the automatic preset takes the
     // performance flow even on a discrete GPU; battery_saver = 2 caps the
     // multiplier; on mains nothing changes.
-    const std::string path = test::tmpPath("bdex_test_battery.conf");
+    const std::string path = test::tmpPath("chuds_fg_test_battery.conf");
     {
         std::ofstream f(path);
         f << "multiplier = 4\n";
     }
-    test::setEnv("BDEX_FG_CONFIG", path.c_str());
-    test::unsetEnv("BDEX_FG_MULTIPLIER");
+    test::setEnv("CHUDS_FG_CONFIG", path.c_str());
+    test::unsetEnv("CHUDS_FG_MULTIPLIER");
     VkPhysicalDeviceProperties props{};
     props.deviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
     VkPhysicalDeviceMemoryProperties mem{};
     mem.memoryHeapCount = 1;
     mem.memoryHeaps[0].size = 8ull << 30;
     mem.memoryHeaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-    test::setEnv("BDEX_POWER", "mains");
+    test::setEnv("CHUDS_FG_POWER", "mains");
     Config m = Config::load();
     m.autoConfigure(props, mem);
     CHECK(!m.onBattery && m.autoTunedTo == "balanced" && m.multiplier == 4);
-    test::setEnv("BDEX_POWER", "battery");
+    test::setEnv("CHUDS_FG_POWER", "battery");
     Config b = Config::load();
     b.autoConfigure(props, mem);
     CHECK(b.onBattery && b.autoTunedTo == "performance" && b.multiplier == 4 && !b.pixelVectors);
-    test::setEnv("BDEX_FG_BATTERY_SAVER", "2");
+    test::setEnv("CHUDS_FG_BATTERY_SAVER", "2");
     CHECK(Config::load().multiplier == 2);
-    test::setEnv("BDEX_FG_BATTERY_SAVER", "0");
+    test::setEnv("CHUDS_FG_BATTERY_SAVER", "0");
     Config off = Config::load();
     off.autoConfigure(props, mem);
     CHECK(!off.onBattery && off.autoTunedTo == "balanced");
-    test::unsetEnv("BDEX_FG_BATTERY_SAVER");
-    test::unsetEnv("BDEX_POWER");
-    test::unsetEnv("BDEX_FG_CONFIG");
+    test::unsetEnv("CHUDS_FG_BATTERY_SAVER");
+    test::unsetEnv("CHUDS_FG_POWER");
+    test::unsetEnv("CHUDS_FG_CONFIG");
     remove(path.c_str());
 }
 
@@ -573,24 +573,24 @@ TEST(config_battery_saver) {
 // not safe against the game's own setenv on another thread (glibc before
 // 2.41). A change made by this process is seen after platformEnvForget.
 TEST(platform_reads_the_environment_once) {
-    using namespace bdex;
-    setenv("BDEX_FG_TEST_ENV", "first", 1);
+    using namespace chuds_fg;
+    setenv("CHUDS_FG_TEST_ENV", "first", 1);
     platformEnvForget();
-    const char* v = platformEnv("BDEX_FG_TEST_ENV");
+    const char* v = platformEnv("CHUDS_FG_TEST_ENV");
     CHECK(v && std::string(v) == "first");
-    setenv("BDEX_FG_TEST_ENV", "second", 1);  // (the game, behind the layer's back)
-    setenv("BDEX_FG_TEST_ENV_NEW", "1", 1);
-    CHECK(std::string(platformEnv("BDEX_FG_TEST_ENV")) == "first");
-    CHECK(platformEnv("BDEX_FG_TEST_ENV_NEW") == nullptr);
-    CHECK(platformEnv("BDEX_FG_TEST") == nullptr);  // (a prefix of a name is not the name)
+    setenv("CHUDS_FG_TEST_ENV", "second", 1);  // (the game, behind the layer's back)
+    setenv("CHUDS_FG_TEST_ENV_NEW", "1", 1);
+    CHECK(std::string(platformEnv("CHUDS_FG_TEST_ENV")) == "first");
+    CHECK(platformEnv("CHUDS_FG_TEST_ENV_NEW") == nullptr);
+    CHECK(platformEnv("CHUDS_FG_TEST") == nullptr);  // (a prefix of a name is not the name)
     bool listed = false;
-    for (char** e = platformEnviron(); e && *e; ++e) listed = listed || std::string(*e) == "BDEX_FG_TEST_ENV=first";
+    for (char** e = platformEnviron(); e && *e; ++e) listed = listed || std::string(*e) == "CHUDS_FG_TEST_ENV=first";
     CHECK(listed);
     platformEnvForget();
-    CHECK(std::string(platformEnv("BDEX_FG_TEST_ENV")) == "second");
+    CHECK(std::string(platformEnv("CHUDS_FG_TEST_ENV")) == "second");
     CHECK(std::string(v) == "first");  // (a value handed out stays readable)
-    unsetenv("BDEX_FG_TEST_ENV");
-    unsetenv("BDEX_FG_TEST_ENV_NEW");
+    unsetenv("CHUDS_FG_TEST_ENV");
+    unsetenv("CHUDS_FG_TEST_ENV_NEW");
     platformEnvForget();
-    CHECK(platformEnv("BDEX_FG_TEST_ENV") == nullptr);
+    CHECK(platformEnv("CHUDS_FG_TEST_ENV") == nullptr);
 }

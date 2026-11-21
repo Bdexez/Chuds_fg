@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Control panel for the bdex-framegen Vulkan layer.
+"""Control panel for the chuds-fg Vulkan layer.
 
 The layer is an *implicit* Vulkan layer: once installed it loads into every
 Vulkan game automatically and stays a pure pass-through until it is turned on.
@@ -21,7 +21,7 @@ the window closed. Upscaling changes what the game renders, so it applies to
 games started while this window is open.
 
 Everything here is stored in the layer's config file
-(~/.config/bdex-framegen.conf); the layer reads it on its own, so changes take
+(~/.config/chuds-fg.conf); the layer reads it on its own, so changes take
 effect the next time a game starts.
 
 Depends only on Python 3 and PyGObject with GTK 4 (packages python-gobject,
@@ -47,9 +47,9 @@ import time
 
 def _french():
     """The panel's language: French when the system's is (LANGUAGE, LC_ALL,
-    LC_MESSAGES, LANG, the first one set), English otherwise; BDEX_LANG=fr|en
+    LC_MESSAGES, LANG, the first one set), English otherwise; CHUDS_FG_LANG=fr|en
     chooses."""
-    v = os.environ.get("BDEX_LANG", "")
+    v = os.environ.get("CHUDS_FG_LANG", "")
     for var in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
         if v:
             break
@@ -70,7 +70,7 @@ _EN = {
  'capture sur {} (le jeu rend sur {})': 'capture on {} (the game renders on {})',
  'capture (anti-triche : la couche reste hors du jeu)': 'capture (anti-cheat: the layer stays out of the game)',
  "capture (la couche n'a pas la fenêtre du jeu)": "capture (the layer does not have the game's window)",
- 'bdex-capture introuvable': 'bdex-capture not found',
+ 'chuds-fg-capture introuvable': 'chuds-fg-capture not found',
  'capture (fenêtre choisie)': 'capture (window picked)',
  'anti-triche': 'anti-cheat',
  'Enregistrement impossible : {}': 'Recording impossible: {}',
@@ -82,7 +82,7 @@ _EN = {
  "{} à {}×{}, {} Hz : profil {}, jusqu'à ×{} ({} ms de GPU par image du jeu)": '{} at {}×{}, {} Hz: {} preset, up to ×{} ({} ms of GPU a game frame)',
  'Calibration du GPU': 'GPU calibration',
  'Pas encore mesurée': 'Not measured yet',
- 'bdex-calibrate absent': 'bdex-calibrate missing',
+ 'chuds-fg-calibrate absent': 'chuds-fg-calibrate missing',
  'Mesurer': 'Measure',
  'Mesure en cours… (quelques secondes)': 'Measuring… (a few seconds)',
  'La mesure a échoué': 'The measurement failed',
@@ -98,7 +98,7 @@ _EN = {
  'Attention': 'Warning',
  '⚠ {} : anti-triche détecté ({}). La génération est injectée dans le jeu : un bannissement est possible, à tes risques. Le lancement continue.': '⚠ {}: anti-cheat detected ({}). Frame generation is injected into the game: a ban is possible, at your own risk. The launch goes ahead.',
  "⚠ {} : anti-triche détecté ({}). Capture de la fenêtre (rien n'est chargé dans le jeu), mais certains éditeurs interdisent tout logiciel tiers : à tes risques. Le lancement continue.": '⚠ {}: anti-cheat detected ({}). The window is captured (nothing is loaded into the game), but some publishers forbid any third-party software: at your own risk. The launch goes ahead.',
- 'Capture terminée (journal : ~/.cache/bdex-framegen/capture.log)': 'Capture ended (log: ~/.cache/bdex-framegen/capture.log)',
+ 'Capture terminée (journal : ~/.cache/chuds-fg/capture.log)': 'Capture ended (log: ~/.cache/chuds-fg/capture.log)',
  'fenêtre choisie': 'window picked',
  'Clique sur la fenêtre du jeu': "Click the game's window",
  'Méthode': 'Method',
@@ -182,9 +182,9 @@ _EN = {
  'Signaler un problème': 'Report a problem',
  'Écrit le rapport de diagnostic et ouvre le formulaire pré-rempli (à faire pendant que le jeu tourne)': 'Writes the diagnostic report and opens the pre-filled form (do it while the game runs)',
  'Rapport…': 'Report…',
- 'Rapport impossible : bdex-framegen introuvable': 'No report: bdex-framegen not found',
+ 'Rapport impossible : chuds-fg introuvable': 'No report: chuds-fg not found',
  'Rapport écrit dans {} — à joindre au formulaire': 'Report written to {} — attach it to the form',
- 'Ouvre le lien affiché par « bdex-framegen --issue-url »': 'Open the link « bdex-framegen --issue-url » prints',
+ 'Ouvre le lien affiché par « chuds-fg --issue-url »': 'Open the link « chuds-fg --issue-url » prints',
  "Lancé avant l'installation de cette version — relance le jeu": 'Started before this version was installed — restart the game',
  'Profil de qualité': 'Quality preset',
  'Images affichées par image rendue': 'Frames shown per frame rendered',
@@ -211,7 +211,7 @@ _EN = {
  '   ← actuel': '   ← current',
  'Choix (Entrée : inchangé) : ': 'Choice (Enter: unchanged): ',
  "Couche mise à jour dans {} (copie d'une version précédente)": 'Layer updated in {} (a copy of an earlier version)',
- 'bdex-framegen — panneau en mode texte': 'bdex-framegen — text-mode panel',
+ 'chuds-fg — panneau en mode texte': 'chuds-fg — text-mode panel',
  ' (GTK 4 absent)': ' (no GTK 4)',
  "  La couche n'est pas installée pour ce compte (install.sh, ou le paquet de la distribution).": "  The layer is not installed for this account (install.sh, or the distribution's package).",
  '  Lance le jeu normalement, puis choisis-le ici. Tant que ce panneau est ouvert,': '  Start the game as usual, then choose it here. While this panel is open,',
@@ -234,7 +234,7 @@ _EN = {
  'Oui': 'Yes',
  'Options de lancement Steam équivalentes (par jeu) :': 'Equivalent Steam launch options (per game):',
  'Rapport écrit dans {} — à joindre au formulaire :': 'Report written to {} — attach it to the form:',
- 'bdex-framegen introuvable : pas de rapport.': 'bdex-framegen not found: no report.',
+ 'chuds-fg introuvable : pas de rapport.': 'chuds-fg not found: no report.',
  "×{} : {} image(s) générée(s) entre deux images du jeu — {} fois plus d'images affichées.": '×{}: {} generated frame(s) between two game frames — {} times as many frames shown.',
  'Désactivé : aucune image générée, le jeu passe tel quel.': 'Off: no generated frames, the game passes through as it is.',
  "Adaptatif : vise toute la fréquence de l'écran, même en rapport fractionnaire (50 i/s → 144 i/s).": "Adaptive: aims at the screen's whole refresh rate, fractional ratios included (50 fps → 144 fps).",
@@ -283,7 +283,7 @@ _EN = {
  'Copier les options de lancement Steam': 'Copy the Steam launch options',
  'Ouvrir le fichier de configuration': 'Open the configuration file',
  'Signaler un problème…': 'Report a problem…',
- 'À propos de bdex-framegen': 'About bdex-framegen',
+ 'À propos de chuds-fg': 'About chuds-fg',
  'Menu': 'Menu',
  'Actualiser la liste (elle se met aussi à jour toute seule)': 'Refresh the list (it also updates by itself)',
  'Choisis le jeu': 'Pick the game',
@@ -357,7 +357,7 @@ _EN = {
  "Auto s'adapte à la puissance du GPU ; Performance pour les petits GPU, Qualité pour les plus gros.": "Auto adapts to the GPU's power; Performance for small GPUs, Quality for the bigger ones.",
  'Injection : dans la présentation du jeu, la latence la plus basse (jeux Vulkan, Proton). Capture : tout jeu, une image de latence en plus, sur le GPU de son choix.': "Injection: inside the game's presentation, the lowest latency (Vulkan games, Proton). Capture: any game, one more frame of latency, on the GPU of your choice.",
  'Un autre GPU que celui du jeu : capture sur ce GPU (le jeu rend sur le sien).': "Another GPU than the game's: capture on that GPU (the game renders on its own).",
- "Suspend la génération dans les jeux en cours (en moins d'une seconde ; raccourci : bdex-framegen --toggle).": 'Suspends generation in the running games (within a second; shortcut: bdex-framegen --toggle).',
+ "Suspend la génération dans les jeux en cours (en moins d'une seconde ; raccourci : chuds-fg --toggle).": 'Suspends generation in the running games (within a second; shortcut: chuds-fg --toggle).',
  'Affiche les FPS en surimpression dans le jeu (coin haut-gauche). Les 1 % / 0,1 % low sont les FPS aux 99e / 99,9e centiles.': 'Shows the FPS over the game (top-left corner). The 1 % / 0.1 % lows are the FPS at the 99th / 99.9th percentiles.',
  'Auto transforme le vsync (FIFO) du jeu en mailbox : moins de latence sans déchirement.': "Auto turns the game's vsync (FIFO) into mailbox: less latency, no tearing.",
  "Empêche le jeu de prendre de l'avance (utile en FIFO).": 'Keeps the game from running ahead (useful with FIFO).',
@@ -397,7 +397,7 @@ def tr(text):
 # GTK 4 through PyGObject; without it (Ubuntu 20.04, Debian 11: no GTK 4) the
 # same panel in text mode (text_main), in a terminal.
 try:
-    if os.environ.get("BDEX_FG_GUI_TEXT"):     # test the text mode
+    if os.environ.get("CHUDS_FG_GUI_TEXT"):     # test the text mode
         raise ImportError
     import gi
     gi.require_version("Gtk", "4.0")
@@ -430,7 +430,7 @@ except (ImportError, ValueError):
 # libadwaita 1.4+ when installed; otherwise (SteamOS, Debian 12, Ubuntu 22.04:
 # none, or too old for SwitchRow / SpinRow) the same widgets in plain GTK 4.
 try:
-    if os.environ.get("BDEX_FG_GUI_NO_ADW") or not HAVE_GTK:   # test the plain GTK 4 path
+    if os.environ.get("CHUDS_FG_GUI_NO_ADW") or not HAVE_GTK:   # test the plain GTK 4 path
         raise ImportError
     gi.require_version("Adw", "1")
     from gi.repository import Adw  # noqa: E402
@@ -712,7 +712,7 @@ class _PlainAdw:
 Adw = _PlainAdw(Adw) if HAVE_ADW else _Compat
 
 CONFIG_PATH = os.path.join(
-    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "bdex-framegen.conf"
+    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "chuds-fg.conf"
 )
 
 MODES = [(tr("Interpolation (défaut)"), "interpolate"),
@@ -777,12 +777,12 @@ def _fmt_num(value, digits):
 
 # The option sections are described once, in layer/options_ui.conf (labels,
 # help, UI ranges), completed from the engine's option registry (kinds,
-# defaults) by bdex_options at build time into options_ui.json — installed
+# defaults) by chuds_fg_options at build time into options_ui.json — installed
 # next to this panel, or found in the build tree when run from the sources.
 def options_ui_path():
     here = os.path.dirname(os.path.realpath(__file__))
-    for p in (os.environ.get("BDEX_FG_OPTIONS_UI"),
-              os.path.join(here, "..", "share", "bdex-framegen", "options_ui.json"),
+    for p in (os.environ.get("CHUDS_FG_OPTIONS_UI"),
+              os.path.join(here, "..", "share", "chuds-fg", "options_ui.json"),
               os.path.join(here, "..", "build", "options_ui.json")):
         if p and os.path.isfile(p):
             return p
@@ -793,8 +793,8 @@ def load_sections():
     """[(id, title, subtitle, expanded, [option dict, ...])] for the panel."""
     path = options_ui_path()
     if not path:
-        sys.stderr.write("bdex-framegen-gui: options_ui.json not found (build the project, or set "
-                         "BDEX_FG_OPTIONS_UI); the advanced options are not shown\n")
+        sys.stderr.write("chuds-fg-gui: options_ui.json not found (build the project, or set "
+                         "CHUDS_FG_OPTIONS_UI); the advanced options are not shown\n")
         return []
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
@@ -992,7 +992,7 @@ class ConfigFile:
         self.games = [g for g in self.games if g[0].lower() != name.lower()]
 
     def write(self, path=CONFIG_PATH):
-        out = ["# bdex-framegen — written by the control panel (bdex-framegen-gui).\n",
+        out = ["# chuds-fg — written by the control panel (chuds-fg-gui).\n",
                "# [*] applies to every game; a [name] section applies to that game only.\n",
                "\n[*]\n"]
         for k, v in self.glob.items():
@@ -1127,31 +1127,31 @@ class Options:
             glob.pop("target_fps")
 
     def steam_string(self):
-        """Equivalent per-game Steam launch options (BDEX_FG_* ... %command%)."""
-        e = ["BDEX_FG=1"]
+        """Equivalent per-game Steam launch options (CHUDS_FG_* ... %command%)."""
+        e = ["CHUDS_FG=1"]
         if self.preset != "auto":
-            e.append(f"BDEX_FG_PRESET={self.preset}")
-        e.append(f"BDEX_FG_MULTIPLIER={(auto_ceiling() if self.auto_mult or self.adaptive else self.multiplier) if self.generate else 1}")
+            e.append(f"CHUDS_FG_PRESET={self.preset}")
+        e.append(f"CHUDS_FG_MULTIPLIER={(auto_ceiling() if self.auto_mult or self.adaptive else self.multiplier) if self.generate else 1}")
         if (self.auto_mult or self.adaptive) and self.generate:
-            e.append("BDEX_FG_TARGET_FPS=auto")
+            e.append("CHUDS_FG_TARGET_FPS=auto")
         if self.adaptive and self.generate:
-            e.append("BDEX_FG_ADAPTIVE=1")
+            e.append("CHUDS_FG_ADAPTIVE=1")
         if self.generate:
-            e.append(f"BDEX_FG_MODE={self.mode}")
-        e.append(f"BDEX_FG_PRESENT_MODE={self.present}")
+            e.append(f"CHUDS_FG_MODE={self.mode}")
+        e.append(f"CHUDS_FG_PRESENT_MODE={self.present}")
         if self.low_latency:
-            e.append("BDEX_FG_LOW_LATENCY=1")
+            e.append("CHUDS_FG_LOW_LATENCY=1")
         if self.upscale and self.render_scale < 100:
-            e.append("BDEX_FG_RENDER_SCALE=" + f"{self.render_scale / 100:.3f}".rstrip("0").rstrip("."))
-            e.append(f"BDEX_FG_UPSCALE_FILTER={self.filter}")
+            e.append("CHUDS_FG_RENDER_SCALE=" + f"{self.render_scale / 100:.3f}".rstrip("0").rstrip("."))
+            e.append(f"CHUDS_FG_UPSCALE_FILTER={self.filter}")
             if self.sharpness > 0:
-                e.append("BDEX_FG_SHARPNESS=" + f"{self.sharpness / 100:.2f}".rstrip("0").rstrip("."))
+                e.append("CHUDS_FG_SHARPNESS=" + f"{self.sharpness / 100:.2f}".rstrip("0").rstrip("."))
         if self.hud > 0:
-            e.append(f"BDEX_FG_OVERLAY={self.hud}")
+            e.append(f"CHUDS_FG_OVERLAY={self.hud}")
         for o in OPTIONS:
             value = self.values[o["key"]]
             if value != o["default"]:
-                e.append(f"BDEX_FG_{o['key'].upper()}={shlex.quote(value)}")
+                e.append(f"CHUDS_FG_{o['key'].upper()}={shlex.quote(value)}")
         return " ".join(e) + " %command%"
 
 
@@ -1166,7 +1166,7 @@ def find_layer():
     for d in dirs:
         try:
             for f in os.listdir(d):
-                if "bdex" in f.lower():
+                if "chuds" in f.lower():
                     return True, os.path.join(d, f)
         except OSError:
             pass
@@ -1195,10 +1195,10 @@ def generation_gpus():
 
 
 def capture_binary():
-    """bdex-capture: beside this panel (installed), in the build tree, or on PATH."""
+    """chuds-fg-capture: beside this panel (installed), in the build tree, or on PATH."""
     here = os.path.dirname(os.path.realpath(__file__))
-    for p in (os.path.join(here, "bdex-capture"), os.path.join(here, "..", "build", "capture", "linux", "bdex-capture"),
-              shutil.which("bdex-capture")):
+    for p in (os.path.join(here, "chuds-fg-capture"), os.path.join(here, "..", "build", "capture", "linux", "chuds-fg-capture"),
+              shutil.which("chuds-fg-capture")):
         if p and os.path.isfile(p) and os.access(p, os.X_OK):
             return p
     return None
@@ -1208,7 +1208,7 @@ def plan(entries, opt, capture_available=True):
     """How to generate for a detected game, from its status entries: ("layer",
     why) — injection, inside the game's presentation: the lowest latency —
     where the layer has the game's swapchain on the GPU chosen; else
-    ("capture", why): bdex-capture on the chosen GPU (a game the layer stays
+    ("capture", why): chuds-fg-capture on the chosen GPU (a game the layer stays
     out of, another GPU than the game's, or capture chosen)."""
     dev = next((e for e in entries if e.get("kind") == "device"), {})
     armed = any(e.get("kind") == "swapchain" and e.get("state") in ("ready", "generating", "paused") for e in entries)
@@ -1274,7 +1274,7 @@ RECORD_FRAMES = 150   # 5 s at 30 fps, 2.5 s at 60: past the 121 frames corpus_p
 
 def recordings_dir():
     cache = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
-    return os.path.join(cache, "bdex-framegen", "recordings")
+    return os.path.join(cache, "chuds-fg", "recordings")
 
 
 def request_recording(pid, name):
@@ -1298,7 +1298,7 @@ def finish_recording(src):
     shutil.move(src, dest)
     here = os.path.dirname(os.path.realpath(__file__))
     packer = next((p for p in (os.path.join(here, "corpus_pack.py"),
-                               os.path.join(here, "..", "share", "bdex-framegen", "corpus_pack.py")) if os.path.isfile(p)), None)
+                               os.path.join(here, "..", "share", "chuds-fg", "corpus_pack.py")) if os.path.isfile(p)), None)
     if packer:
         name = re.sub(r"[^A-Za-z0-9_-]", "-", os.path.basename(dest))
         out = dest + ".tar.gz"
@@ -1314,11 +1314,11 @@ def finish_recording(src):
 
 def capture_log_path():
     cache = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
-    return os.path.join(cache, "bdex-framegen", "capture.log")
+    return os.path.join(cache, "chuds-fg", "capture.log")
 
 
 def capture_wayland_available():
-    """A Wayland session and a bdex-capture built with the screen-cast portal
+    """A Wayland session and a chuds-fg-capture built with the screen-cast portal
     (PipeWire): native Wayland windows can be captured too."""
     binary = capture_binary()
     if not binary or not os.environ.get("WAYLAND_DISPLAY"):
@@ -1331,18 +1331,18 @@ def capture_wayland_available():
 
 
 def start_capture(pid, gpu, wayland=False):
-    """bdex-capture on a game window (by its pid; pid 0: the next window
+    """chuds-fg-capture on a game window (by its pid; pid 0: the next window
     clicked; `wayland`: the window chosen in the desktop's screen-cast
     dialog), on `gpu` ("" = the best): the Popen, its output in capture.log."""
     binary = capture_binary()
     if not binary:
-        raise OSError(tr("bdex-capture introuvable"))
+        raise OSError(tr("chuds-fg-capture introuvable"))
     cmd = [binary] + (["--wayland"] if wayland else ["--pid", str(pid)] if pid else []) + (["--gpu", gpu] if gpu else [])
     os.makedirs(os.path.dirname(capture_log_path()), exist_ok=True)
     log = open(capture_log_path(), "w")
     try:
         env = dict(os.environ)
-        env.setdefault("BDEX_FG_LOG", "2")   # (its statistics, in capture.log)
+        env.setdefault("CHUDS_FG_LOG", "2")   # (its statistics, in capture.log)
         return subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, env=env)
     finally:
         log.close()
@@ -1362,14 +1362,14 @@ def status_dir():
     """Where the layer publishes one live status file per game (layer/src/status.h)
     and reads this panel's session: in the home, which Steam's container shares
     with Proton games (platformStatusDir)."""
-    if "BDEX_FG_STATUS_DIR" in os.environ:
-        return os.environ["BDEX_FG_STATUS_DIR"]
+    if "CHUDS_FG_STATUS_DIR" in os.environ:
+        return os.environ["CHUDS_FG_STATUS_DIR"]
     home = os.environ.get("HOME")
     if home:
-        return os.path.join(home, ".cache", "bdex-framegen", "run")
+        return os.path.join(home, ".cache", "chuds-fg", "run")
     # No home: as platformStatusDir, a /tmp directory that is ours alone (any
     # user could create the name first and plant files or symbolic links).
-    d = f"/tmp/bdex-framegen-{os.getuid()}"
+    d = f"/tmp/chuds-fg-{os.getuid()}"
     try:
         os.mkdir(d, 0o700)
     except OSError:
@@ -1398,7 +1398,7 @@ FLATPAK_APPS = ("com.valvesoftware.Steam", "com.heroicgameslauncher.hgl", "net.l
 SNAP_APPS = ("steam",)
 
 
-FLATPAK_EXTENSION = "org.freedesktop.Platform.VulkanLayer.BdexFramegen"
+FLATPAK_EXTENSION = "org.freedesktop.Platform.VulkanLayer.ChudsFg"
 
 
 def flatpak_extension_branch(app, roots=None):
@@ -1428,27 +1428,27 @@ def sandbox_dirs():
     out = []
     for app in FLATPAK_APPS:
         d = os.path.expanduser(f"~/.var/app/{app}")
-        if os.path.isfile(os.path.join(d, "data/vulkan/implicit_layer.d/VK_LAYER_BDEX_framegen.json")) or \
+        if os.path.isfile(os.path.join(d, "data/vulkan/implicit_layer.d/VK_LAYER_CHUDS_fg.json")) or \
                 (os.path.isdir(d) and flatpak_extension_branch(app)):
-            out.append((os.path.join(d, ".cache", "bdex-framegen", "run"), os.path.join(d, "config", "bdex-framegen.conf")))
+            out.append((os.path.join(d, ".cache", "chuds-fg", "run"), os.path.join(d, "config", "chuds-fg.conf")))
     for app in SNAP_APPS:
         d = os.path.expanduser(f"~/snap/{app}/current")
-        if os.path.isfile(os.path.join(d, ".local/share/vulkan/implicit_layer.d/VK_LAYER_BDEX_framegen.json")):
-            out.append((os.path.join(d, ".cache", "bdex-framegen", "run"), os.path.join(d, ".config", "bdex-framegen.conf")))
+        if os.path.isfile(os.path.join(d, ".local/share/vulkan/implicit_layer.d/VK_LAYER_CHUDS_fg.json")):
+            out.append((os.path.join(d, ".cache", "chuds-fg", "run"), os.path.join(d, ".config", "chuds-fg.conf")))
     return out
 
 
 def write_report():
-    """bdex-framegen --report into the cache directory: (report path, the
+    """chuds-fg --report into the cache directory: (report path, the
     pre-filled issue form's URL), (None, None) without the CLI."""
     here = os.path.dirname(os.path.realpath(__file__))
-    cli = os.path.join(here, "bdex-framegen")
+    cli = os.path.join(here, "chuds-fg")
     if not os.path.isfile(cli):
-        cli = shutil.which("bdex-framegen")
+        cli = shutil.which("chuds-fg")
     if not cli:
         return None, None
     cache = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
-    path = os.path.join(cache, "bdex-framegen", "bdex-framegen-report.txt")
+    path = os.path.join(cache, "chuds-fg", "chuds-fg-report.txt")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     try:
         subprocess.run(["bash", cli, "--report", path], capture_output=True, timeout=120)
@@ -1466,7 +1466,7 @@ def refresh_sandboxes():
     the library they mapped."""
     here = os.path.dirname(os.path.realpath(__file__))
     prefix = os.path.normpath(os.path.join(here, ".."))
-    for script in (os.path.join(prefix, "share", "bdex-framegen", "flatpak.sh"),
+    for script in (os.path.join(prefix, "share", "chuds-fg", "flatpak.sh"),
                    os.path.join(prefix, "packaging", "linux", "flatpak.sh")):
         if os.path.isfile(script):
             break
@@ -1519,10 +1519,10 @@ def game_paths(pid):
     same files as status_dir() / CONFIG_PATH for a game outside any sandbox."""
     env = proc_env(pid)
     home = env.get("HOME", "")
-    sdir = env.get("BDEX_FG_STATUS_DIR") or (
-        os.path.join(home, ".cache", "bdex-framegen", "run") if home else f"/tmp/bdex-framegen-{os.getuid()}")
-    cfg = env.get("BDEX_FG_CONFIG") or os.path.join(
-        env.get("XDG_CONFIG_HOME") or os.path.join(home, ".config"), "bdex-framegen.conf")
+    sdir = env.get("CHUDS_FG_STATUS_DIR") or (
+        os.path.join(home, ".cache", "chuds-fg", "run") if home else f"/tmp/chuds-fg-{os.getuid()}")
+    cfg = env.get("CHUDS_FG_CONFIG") or os.path.join(
+        env.get("XDG_CONFIG_HOME") or os.path.join(home, ".config"), "chuds-fg.conf")
     root = f"/proc/{pid}/root"
     return root + sdir, root + cfg
 
@@ -1639,7 +1639,7 @@ def auto_ceiling():
     """The multiplier ceiling of « Auto » / « Adaptatif »: enough frames to
     fill the screen from ~40 fps (x4 up to 165 Hz, x6 up to 250 Hz, x8
     above), without allocating the output images of x8 for a 60 Hz screen —
-    and no more than the GPU's calibration allows (bdex-calibrate)."""
+    and no more than the GPU's calibration allows (chuds-fg-calibrate)."""
     hz = display_hz()
     base = 4 if hz <= 165 else 6 if hz <= 250 else 8
     cal = read_calibration()
@@ -1650,15 +1650,15 @@ def auto_ceiling():
 
 def calibrate_binary():
     here = os.path.dirname(os.path.realpath(__file__))
-    for p in (os.path.join(here, "bdex-calibrate"), os.path.join(here, "..", "build", "tools", "calibrate", "bdex-calibrate")):
+    for p in (os.path.join(here, "chuds-fg-calibrate"), os.path.join(here, "..", "build", "tools", "calibrate", "chuds-fg-calibrate")):
         if os.access(p, os.X_OK):
             return p
-    return shutil.which("bdex-calibrate")
+    return shutil.which("chuds-fg-calibrate")
 
 
 def calibration_path():
     cache = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
-    return os.path.join(cache, "bdex-framegen", "calibration.json")
+    return os.path.join(cache, "chuds-fg", "calibration.json")
 
 
 def read_calibration():
@@ -1696,7 +1696,7 @@ def display_size():
 
 
 def run_calibration():
-    """bdex-calibrate at the screen's size and refresh: its result (None
+    """chuds-fg-calibrate at the screen's size and refresh: its result (None
     without the tool or on failure), saved where read_calibration() reads."""
     binary = calibrate_binary()
     if not binary:
@@ -1826,7 +1826,7 @@ def read_status(pid):
 def mirror_config():
     """Copies the settings file where sandboxed games read theirs: each
     Flatpak or Snap launcher's config directory, and any running game whose config
-    path is another file (its own XDG_CONFIG_HOME, BDEX_FG_CONFIG)."""
+    path is another file (its own XDG_CONFIG_HOME, CHUDS_FG_CONFIG)."""
     try:
         with open(CONFIG_PATH, "rb") as f:
             data = f.read()
@@ -1854,7 +1854,7 @@ def mirror_config():
 NOT_GAMES = {"steam", "steamwebhelper", "gamescope", "gamescopereaper", "gamescope-wl", "mangoapp",
              "steam-runtime-check-requirements", "chrome", "chromium",
              "firefox", "librewolf", "brave", "zen", "electron", "discord", "vesktop", "code",
-             "obs", "vulkaninfo", "vkcube", "bdex-framegen-gui", "bdex-capture",
+             "obs", "vulkaninfo", "vkcube", "chuds-fg-gui", "chuds-fg-capture",
              "zed-editor", "zeditor",   # the Zed editor draws with Vulkan (wgpu)
              "explorer", "xalia",   # Wine's desktop and accessibility helpers (Proton)
              "fossilize_replay"}   # Steam's shader pre-caching
@@ -1891,7 +1891,7 @@ def layer_replaced(pid):
     install or update while it ran): the new one loads at its next start."""
     try:
         with open(f"/proc/{pid}/maps", "rb") as f:
-            lines = [ln for ln in f.read().splitlines() if b"libVkLayer_bdex_framegen" in ln]
+            lines = [ln for ln in f.read().splitlines() if b"libVkLayer_chuds_fg" in ln]
     except OSError:
         return False
     return not lines or all(ln.endswith(b"(deleted)") for ln in lines)
@@ -1908,7 +1908,7 @@ def detect_games():
         try:
             with open(f"/proc/{p}/maps", "rb") as f:
                 maps = f.read()
-            if b"libgtk-4.so" in maps or not (b"libVkLayer_bdex_framegen" in maps or int(p) in fresh):
+            if b"libgtk-4.so" in maps or not (b"libVkLayer_chuds_fg" in maps or int(p) in fresh):
                 continue
             with open(f"/proc/{p}/cmdline", "rb") as f:
                 args = [a.decode(errors="replace") for a in f.read().split(b"\0") if a.strip()]
@@ -2050,48 +2050,48 @@ def describe_entry(e):
 FOCUS_WITHIN = getattr(Gtk.StateFlags, "FOCUS_WITHIN", None) or getattr(Gtk.StateFlags, "FOCUSED", 0) if HAVE_GTK else 0
 
 CSS = """
-.bdex-hero { border-radius: 18px; padding: 22px 26px; color: #ffffff;
+.chuds-fg-hero { border-radius: 18px; padding: 22px 26px; color: #ffffff;
   background-image: linear-gradient(135deg, #4c56d8, #7c5cff); }
-.bdex-hero.on { background-image: linear-gradient(135deg, #0b8f68, #1b6fd0); }
-.bdex-hero.idle { background-image: linear-gradient(135deg, #474d5e, #2c303d); }
-.bdex-hero.warn { background-image: linear-gradient(135deg, #c2410c, #a21c1c); }
-.bdex-hero label { color: #ffffff; }
-.bdex-hero .bdex-cta label { color: #1c1b29; }
-.bdex-hero .bdex-cta.stop label, .bdex-hero .bdex-cta:disabled label { color: #ffffff; }
-.bdex-eyebrow { font-size: 0.78em; font-weight: 800; letter-spacing: 1px; opacity: 0.85; }
-.bdex-hero-title { font-size: 1.8em; font-weight: 800; }
-.bdex-hero-sub { opacity: 0.92; }
-.bdex-cta { min-height: 46px; padding: 0 32px; border-radius: 999px; font-weight: 800; font-size: 1.12em;
+.chuds-fg-hero.on { background-image: linear-gradient(135deg, #0b8f68, #1b6fd0); }
+.chuds-fg-hero.idle { background-image: linear-gradient(135deg, #474d5e, #2c303d); }
+.chuds-fg-hero.warn { background-image: linear-gradient(135deg, #c2410c, #a21c1c); }
+.chuds-fg-hero label { color: #ffffff; }
+.chuds-fg-hero .chuds-fg-cta label { color: #1c1b29; }
+.chuds-fg-hero .chuds-fg-cta.stop label, .chuds-fg-hero .chuds-fg-cta:disabled label { color: #ffffff; }
+.chuds-fg-eyebrow { font-size: 0.78em; font-weight: 800; letter-spacing: 1px; opacity: 0.85; }
+.chuds-fg-hero-title { font-size: 1.8em; font-weight: 800; }
+.chuds-fg-hero-sub { opacity: 0.92; }
+.chuds-fg-cta { min-height: 46px; padding: 0 32px; border-radius: 999px; font-weight: 800; font-size: 1.12em;
   background: #ffffff; color: #1c1b29; box-shadow: none; border: none; }
-.bdex-cta:hover { background: #ece8ff; }
-.bdex-cta:disabled { background: rgba(255,255,255,0.3); color: rgba(255,255,255,0.75); }
-.bdex-cta.stop { background: rgba(255,255,255,0.18); color: #ffffff; }
-.bdex-cta.stop:hover { background: rgba(255,255,255,0.28); }
-.bdex-ghost { border-radius: 999px; padding: 4px 18px; background: rgba(255,255,255,0.14); color: #ffffff;
+.chuds-fg-cta:hover { background: #ece8ff; }
+.chuds-fg-cta:disabled { background: rgba(255,255,255,0.3); color: rgba(255,255,255,0.75); }
+.chuds-fg-cta.stop { background: rgba(255,255,255,0.18); color: #ffffff; }
+.chuds-fg-cta.stop:hover { background: rgba(255,255,255,0.28); }
+.chuds-fg-ghost { border-radius: 999px; padding: 4px 18px; background: rgba(255,255,255,0.14); color: #ffffff;
   border: none; box-shadow: none; }
-.bdex-ghost:hover { background: rgba(255,255,255,0.26); }
-.bdex-stat { background: rgba(255,255,255,0.15); border-radius: 12px; padding: 8px 16px; }
-.bdex-stat-value { font-size: 1.35em; font-weight: 800; }
-.bdex-stat-label { font-size: 0.72em; font-weight: 700; letter-spacing: 0.5px; opacity: 0.85; }
-.bdex-step { min-width: 26px; min-height: 26px; border-radius: 999px; background: #7c5cff; color: #ffffff;
+.chuds-fg-ghost:hover { background: rgba(255,255,255,0.26); }
+.chuds-fg-stat { background: rgba(255,255,255,0.15); border-radius: 12px; padding: 8px 16px; }
+.chuds-fg-stat-value { font-size: 1.35em; font-weight: 800; }
+.chuds-fg-stat-label { font-size: 0.72em; font-weight: 700; letter-spacing: 0.5px; opacity: 0.85; }
+.chuds-fg-step { min-width: 26px; min-height: 26px; border-radius: 999px; background: #7c5cff; color: #ffffff;
   font-weight: 800; }
-.bdex-section-title { font-size: 1.15em; font-weight: 800; }
-.bdex-row-sub { font-size: 0.87em; }
-.bdex-seg > button { padding: 6px 18px; font-weight: 700; }
-.bdex-seg > button:checked { background: #7c5cff; color: #ffffff; }
-.bdex-summary { border-radius: 12px; padding: 12px 16px; background: alpha(#7c5cff, 0.14); }
-.bdex-pill { font-size: 0.78em; font-weight: 800; padding: 2px 10px; border-radius: 999px;
+.chuds-fg-section-title { font-size: 1.15em; font-weight: 800; }
+.chuds-fg-row-sub { font-size: 0.87em; }
+.chuds-fg-seg > button { padding: 6px 18px; font-weight: 700; }
+.chuds-fg-seg > button:checked { background: #7c5cff; color: #ffffff; }
+.chuds-fg-summary { border-radius: 12px; padding: 12px 16px; background: alpha(#7c5cff, 0.14); }
+.chuds-fg-pill { font-size: 0.78em; font-weight: 800; padding: 2px 10px; border-radius: 999px;
   background: alpha(currentColor, 0.1); }
-.bdex-pill.on { background: alpha(#10b981, 0.2); color: #10b981; }
-.bdex-pill.ready { background: alpha(#7c5cff, 0.22); color: #8f76ff; }
-.bdex-pill.warn { background: alpha(#f59e0b, 0.2); color: #e8950a; }
-.bdex-modified { box-shadow: inset 3px 0 0 0 #7c5cff; }
-.bdex-badge { font-size: 0.75em; font-weight: 800; padding: 0 7px; border-radius: 999px; background: #7c5cff;
+.chuds-fg-pill.on { background: alpha(#10b981, 0.2); color: #10b981; }
+.chuds-fg-pill.ready { background: alpha(#7c5cff, 0.22); color: #8f76ff; }
+.chuds-fg-pill.warn { background: alpha(#f59e0b, 0.2); color: #e8950a; }
+.chuds-fg-modified { box-shadow: inset 3px 0 0 0 #7c5cff; }
+.chuds-fg-badge { font-size: 0.75em; font-weight: 800; padding: 0 7px; border-radius: 999px; background: #7c5cff;
   color: #ffffff; }
-.bdex-cat-title { font-size: 1.55em; font-weight: 800; }
-.bdex-sidebar { background: alpha(currentColor, 0.035); }
-.bdex-key { font-family: monospace; font-size: 0.85em; opacity: 0.75; }
-.bdex-help { line-height: 1.3; }
+.chuds-fg-cat-title { font-size: 1.55em; font-weight: 800; }
+.chuds-fg-sidebar { background: alpha(currentColor, 0.035); }
+.chuds-fg-key { font-family: monospace; font-size: 0.85em; opacity: 0.75; }
+.chuds-fg-help { line-height: 1.3; }
 """
 
 
@@ -2149,7 +2149,7 @@ def clamp(child, width):
 
 def ui_state_path():
     cache = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
-    return os.path.join(cache, "bdex-framegen", "panel-ui.json")
+    return os.path.join(cache, "chuds-fg", "panel-ui.json")
 
 
 def read_ui_state():
@@ -2398,8 +2398,8 @@ class SettingRow:
                       margin_top=6, margin_bottom=6)
         box.append(label(s.title, ("heading",), wrap=True, max_width_chars=56))
         if s.help:
-            box.append(label(s.help, ("bdex-help",), wrap=True, max_width_chars=56))
-        box.append(label(tr(f"Clé : {s.key} · par défaut : {s.value_label(s.default)}"), ("bdex-key",),
+            box.append(label(s.help, ("chuds-fg-help",), wrap=True, max_width_chars=56))
+        box.append(label(tr(f"Clé : {s.key} · par défaut : {s.value_label(s.default)}"), ("chuds-fg-key",),
                          wrap=True, max_width_chars=56, selectable=True))
         return Gtk.Popover(child=box)
 
@@ -2435,7 +2435,7 @@ class SettingRow:
         elif self._entry.get_text().strip() != v and not self._entry.get_state_flags() & FOCUS_WITHIN:
             self._entry.set_text(v)
         modified = v != s.default
-        (self.row.add_css_class if modified else self.row.remove_css_class)("bdex-modified")
+        (self.row.add_css_class if modified else self.row.remove_css_class)("chuds-fg-modified")
         self.reset.set_opacity(1.0 if modified else 0.0)
         self.reset.set_sensitive(modified)
         self.reset.set_tooltip_text(tr(f"Revenir à la valeur par défaut ({s.value_label(s.default)})")
@@ -2473,7 +2473,7 @@ class Segmented:
     def __init__(self, items, on_pick):
         self.box = Gtk.Box(halign=Gtk.Align.START)
         self.box.add_css_class("linked")
-        self.box.add_css_class("bdex-seg")
+        self.box.add_css_class("chuds-fg-seg")
         self.on_pick = on_pick
         self.buttons = {}
         self._quiet = False
@@ -2544,7 +2544,7 @@ class GameRow:
         self.radio.connect("toggled", win.on_pick, (pid, name))
         self.row.add_prefix(self.radio)
         self.row.set_activatable_widget(self.radio)
-        self.pill = label("", ("bdex-pill",), valign=Gtk.Align.CENTER, xalign=0.5)
+        self.pill = label("", ("chuds-fg-pill",), valign=Gtk.Align.CENTER, xalign=0.5)
         self.row.add_suffix(self.pill)
 
     def update(self, entries, how, replaced, targeted):
@@ -2564,7 +2564,7 @@ class GameRow:
 
 class Window(Adw.ApplicationWindow):
     def __init__(self, app):
-        super().__init__(application=app, title="bdex-framegen")
+        super().__init__(application=app, title="chuds-fg")
         self.set_default_size(1000, 780)
         self.cfg = ConfigFile.load()
         self.opt = Options()
@@ -2579,7 +2579,7 @@ class Window(Adw.ApplicationWindow):
             self.gpus.append(self.opt.gpu)   # (chosen before, not seen now)
         self.target = None          # (pid, name) where « Démarrer » started the generation
         self.target_how = None      # ("layer" | "capture", why) for the target
-        self.capture_proc = None    # bdex-capture, when the target is captured
+        self.capture_proc = None    # chuds-fg-capture, when the target is captured
         self._target_key = None     # (method, GPU) the target was started with
         self.selected = None        # (pid, name) chosen in « Choisis le jeu »
         self.game_rows = {}         # pid -> GameRow
@@ -2670,7 +2670,7 @@ class Window(Adw.ApplicationWindow):
         for text, name in ((tr("Copier les options de lancement Steam"), "copy-steam"),
                            (tr("Ouvrir le fichier de configuration"), "open-config"),
                            (tr("Signaler un problème…"), "report"),
-                           (tr("À propos de bdex-framegen"), "about")):
+                           (tr("À propos de chuds-fg"), "about")):
             menu.append(text, "win." + name)
         for name, cb in (("copy-steam", self.on_copy), ("open-config", self.on_open_config),
                          ("report", self.on_report), ("about", self.on_about)):
@@ -2689,9 +2689,9 @@ class Window(Adw.ApplicationWindow):
 
     def _section(self, step, title, suffix=None):
         head = Gtk.Box(spacing=10, margin_top=6)
-        num = label(step, ("bdex-step",), xalign=0.5, valign=Gtk.Align.CENTER)
+        num = label(step, ("chuds-fg-step",), xalign=0.5, valign=Gtk.Align.CENTER)
         head.append(num)
-        head.append(label(title, ("bdex-section-title",), hexpand=True, valign=Gtk.Align.CENTER))
+        head.append(label(title, ("chuds-fg-section-title",), hexpand=True, valign=Gtk.Align.CENTER))
         if suffix is not None:
             head.append(suffix)
         return head
@@ -2701,7 +2701,7 @@ class Window(Adw.ApplicationWindow):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, margin_start=12, margin_end=12,
                       margin_top=10, margin_bottom=12)
         box.append(label(title, wrap=True))
-        sub = label(subtitle, ("dim-label", "bdex-row-sub"), wrap=True, margin_bottom=6)
+        sub = label(subtitle, ("dim-label", "chuds-fg-row-sub"), wrap=True, margin_bottom=6)
         box.append(sub)
         for w in widgets:
             box.append(w)
@@ -2788,7 +2788,7 @@ class Window(Adw.ApplicationWindow):
         lst.append(self.hud_switch)
         page.append(lst)
 
-        self.summary = label("", ("bdex-summary",), wrap=True)
+        self.summary = label("", ("chuds-fg-summary",), wrap=True)
         page.append(self.summary)
         hint = label(tr("Les réglages s'appliquent en direct au jeu en cours. Tout le reste est dans « Avancé »."),
                      ("dim-label",), wrap=True, xalign=0.5, margin_top=4)
@@ -2800,32 +2800,32 @@ class Window(Adw.ApplicationWindow):
 
     def _build_hero(self):
         self.hero = Gtk.Box(spacing=20)
-        self.hero.add_css_class("bdex-hero")
+        self.hero.add_css_class("chuds-fg-hero")
         left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, hexpand=True, valign=Gtk.Align.CENTER)
-        self.hero_eyebrow = label("", ("bdex-eyebrow",))
-        self.hero_title = label("", ("bdex-hero-title",), wrap=True)
-        self.hero_sub = label("", ("bdex-hero-sub",), wrap=True)
+        self.hero_eyebrow = label("", ("chuds-fg-eyebrow",))
+        self.hero_title = label("", ("chuds-fg-hero-title",), wrap=True)
+        self.hero_sub = label("", ("chuds-fg-hero-sub",), wrap=True)
         for w in (self.hero_eyebrow, self.hero_title, self.hero_sub):
             left.append(w)
         self.hero_stats = Gtk.Box(spacing=8, margin_top=8)
         self.stat_values = []
         for name in (tr("JEU"), tr("AFFICHÉ"), tr("MULTIPLICATEUR"), tr("LATENCE")):
             tile = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-            tile.add_css_class("bdex-stat")
-            value = label("—", ("bdex-stat-value",))
+            tile.add_css_class("chuds-fg-stat")
+            value = label("—", ("chuds-fg-stat-value",))
             tile.append(value)
-            tile.append(label(name, ("bdex-stat-label",)))
+            tile.append(label(name, ("chuds-fg-stat-label",)))
             self.hero_stats.append(tile)
             self.stat_values.append(value)
         left.append(self.hero_stats)
         self.hero.append(left)
         right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, valign=Gtk.Align.CENTER)
         self.hero_btn = Gtk.Button()
-        self.hero_btn.add_css_class("bdex-cta")
+        self.hero_btn.add_css_class("chuds-fg-cta")
         self.hero_btn.connect("clicked", self.on_hero_button)
         right.append(self.hero_btn)
         self.hero_pause = Gtk.Button(halign=Gtk.Align.CENTER)
-        self.hero_pause.add_css_class("bdex-ghost")
+        self.hero_pause.add_css_class("chuds-fg-ghost")
         self.hero_pause.connect("clicked", self.on_pause)
         right.append(self.hero_pause)
         self.hero.append(right)
@@ -3014,7 +3014,7 @@ class Window(Adw.ApplicationWindow):
                         [(n, n) for n in self.gpus]),
                 Setting("paused", tr("En pause"),
                         tr("Suspend la génération dans les jeux en cours (en moins d'une seconde ; raccourci : "
-                           "bdex-framegen --toggle)."),
+                           "chuds-fg --toggle)."),
                         "switch", "0", lambda: "1" if o.paused else "0", flag("paused"), enabled=gen),
             ],
             "display": [
@@ -3086,7 +3086,7 @@ class Window(Adw.ApplicationWindow):
     def _build_advanced(self):
         root = Gtk.Box()
         side = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, width_request=262)
-        side.add_css_class("bdex-sidebar")
+        side.add_css_class("chuds-fg-sidebar")
         self.nav = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, vexpand=True)
         self.nav.add_css_class("navigation-sidebar")
         self.nav.connect("row-selected", self._on_nav)
@@ -3126,7 +3126,7 @@ class Window(Adw.ApplicationWindow):
             head = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, margin_top=8 if i == 0 else 28)
             line = Gtk.Box(spacing=10)
             line.append(Gtk.Image(icon_name=icon, pixel_size=22, valign=Gtk.Align.CENTER))
-            line.append(label(title, ("bdex-cat-title",), valign=Gtk.Align.CENTER))
+            line.append(label(title, ("chuds-fg-cat-title",), valign=Gtk.Align.CENTER))
             head.append(line)
             if desc:
                 head.append(label(desc, ("dim-label",), wrap=True))
@@ -3148,7 +3148,7 @@ class Window(Adw.ApplicationWindow):
             nb = Gtk.Box(spacing=10, margin_start=6, margin_end=6, margin_top=4, margin_bottom=4)
             nb.append(Gtk.Image(icon_name=icon))
             nb.append(label(title, hexpand=True, ellipsize=Pango.EllipsizeMode.END))
-            badge = label("", ("bdex-badge",), visible=False, valign=Gtk.Align.CENTER)
+            badge = label("", ("chuds-fg-badge",), visible=False, valign=Gtk.Align.CENTER)
             nb.append(badge)
             nav_row.set_child(nb)
             nav_row.cat = cid
@@ -3183,7 +3183,7 @@ class Window(Adw.ApplicationWindow):
         self.cal_row = Adw.ActionRow(
             title=tr("Calibration du GPU"),
             subtitle=calibration_summary(cal) if cal else
-            (tr("Pas encore mesurée") if calibrate_binary() else tr("bdex-calibrate absent")))
+            (tr("Pas encore mesurée") if calibrate_binary() else tr("chuds-fg-calibrate absent")))
         self.cal_row.add_prefix(Gtk.Image(icon_name="power-profile-performance-symbolic", valign=Gtk.Align.CENTER))
         self.cal_btn = Gtk.Button(label=tr("Mesurer"), valign=Gtk.Align.CENTER, sensitive=calibrate_binary() is not None)
         self.cal_btn.connect("clicked", lambda *_: self.calibrate())
@@ -3195,7 +3195,7 @@ class Window(Adw.ApplicationWindow):
         self.adv_content.append(g)
         out.append((g, [ExtraRow(self.status_row, tr("Couche Vulkan"), tr("Installer"), "layer install"),
                         ExtraRow(gpu_row, tr("Carte graphique"), "gpu", *gpus),
-                        ExtraRow(self.cal_row, tr("Calibration du GPU"), "calibrate bdex-calibrate")]))
+                        ExtraRow(self.cal_row, tr("Calibration du GPU"), "calibrate chuds-fg-calibrate")]))
 
         # Steam's Game Mode: the selected game (or any) without the panel
         g = Adw.PreferencesGroup(title=tr("Mode Jeu — par jeu"),
@@ -3492,7 +3492,7 @@ class Window(Adw.ApplicationWindow):
             # the capture ended: the game closed, or it failed (capture.log)
             self.capture_proc = None
             self.target, self.target_how = None, None
-            self.toast(tr("Capture terminée (journal : ~/.cache/bdex-framegen/capture.log)"))
+            self.toast(tr("Capture terminée (journal : ~/.cache/chuds-fg/capture.log)"))
             self._refresh_hero()
         try:
             layer = self.target and self.target_how and self.target_how[0] == "layer"
@@ -3512,7 +3512,7 @@ class Window(Adw.ApplicationWindow):
 
     def _set_target(self, target, pick=False, wayland=False):
         """Generation for `target` (pid, name), or none: injection through the
-        layer's session where plan() says so, else bdex-capture on the game's
+        layer's session where plan() says so, else chuds-fg-capture on the game's
         window (`pick`: on the next window clicked, any program)."""
         stop_capture(self.capture_proc)
         self.capture_proc = None
@@ -3638,14 +3638,14 @@ class Window(Adw.ApplicationWindow):
     def on_report(self, _btn):
         path, url = write_report()
         if not path:
-            self.toast(tr("Rapport impossible : bdex-framegen introuvable"))
+            self.toast(tr("Rapport impossible : chuds-fg introuvable"))
             return
         self.toast(tr(f"Rapport écrit dans {path} — à joindre au formulaire"))
         if url:
             try:
                 Gio.AppInfo.launch_default_for_uri(url, None)
             except GLib.Error:
-                self.toast(tr("Ouvre le lien affiché par « bdex-framegen --issue-url »"))
+                self.toast(tr("Ouvre le lien affiché par « chuds-fg --issue-url »"))
 
     def on_copy(self, _btn):
         Gdk.Display.get_default().get_clipboard().set(self.opt.steam_string())
@@ -3660,12 +3660,12 @@ class Window(Adw.ApplicationWindow):
             self.toast(CONFIG_PATH)
 
     def on_about(self, _btn):
-        texts = dict(application_name="bdex-framegen", developer_name="Bdexez", application_icon="input-gaming-symbolic",
+        texts = dict(application_name="chuds-fg", developer_name="Bdexez", application_icon="input-gaming-symbolic",
                      comments=tr("Génération d'images par flux optique pour les jeux Vulkan et Proton."))
         if HAVE_ADW and hasattr(Adw._adw, "AboutDialog"):
             Adw._adw.AboutDialog(**texts).present(self)
             return
-        Gtk.AboutDialog(transient_for=self, modal=True, program_name="bdex-framegen", authors=["Bdexez"],
+        Gtk.AboutDialog(transient_for=self, modal=True, program_name="chuds-fg", authors=["Bdexez"],
                         logo_icon_name="input-gaming-symbolic", comments=texts["comments"]).present()
 
     def on_install(self, btn):
@@ -3703,7 +3703,7 @@ class Window(Adw.ApplicationWindow):
 class App(Adw.Application):
     def __init__(self):
         # One window: the session file has a single owner.
-        super().__init__(application_id="dev.bdex.framegen.Gui")
+        super().__init__(application_id="dev.chuds.fg.Gui")
 
     def do_startup(self):
         Adw.Application.do_startup(self)
@@ -3781,8 +3781,8 @@ def text_main():
             except OSError:
                 continue
     if not sys.stdin.isatty():
-        sys.stderr.write("bdex-framegen-gui: GTK 4 (PyGObject) is not installed; run it in a terminal for "
-                         "the text mode, or use bdex-framegen (--help)\n")
+        sys.stderr.write("chuds-fg-gui: GTK 4 (PyGObject) is not installed; run it in a terminal for "
+                         "the text mode, or use chuds-fg (--help)\n")
         return 1
     cfg = ConfigFile.load()
     opt = Options()
@@ -3835,7 +3835,7 @@ def text_main():
         return 1
     threading.Thread(target=beat, daemon=True).start()
     installed, _ = find_layer()
-    print(tr("bdex-framegen — panneau en mode texte") + ("" if HAVE_GTK else tr(" (GTK 4 absent)")))
+    print(tr("chuds-fg — panneau en mode texte") + ("" if HAVE_GTK else tr(" (GTK 4 absent)")))
     if not installed:
         print(tr("  La couche n'est pas installée pour ce compte (install.sh, ou le paquet de la distribution)."))
     print(tr("  Lance le jeu normalement, puis choisis-le ici. Tant que ce panneau est ouvert,"))
@@ -3845,7 +3845,7 @@ def text_main():
             games = detect_games()
             if state["proc"] is not None and state["proc"].poll() is not None:
                 state["proc"], state["target"], state["how"] = None, None, None
-                print(tr("Capture terminée (journal : ~/.cache/bdex-framegen/capture.log)"))
+                print(tr("Capture terminée (journal : ~/.cache/chuds-fg/capture.log)"))
             if state["target"] and state["target"][0] and state["target"][0] not in [pid for pid, _ in games]:
                 stop_capture(state["proc"])
                 state["proc"], state["target"], state["how"] = None, None, None
@@ -3914,7 +3914,7 @@ def text_main():
                 print(tr("Mesure en cours… (quelques secondes)"))
                 d = run_calibration()
                 if not d:
-                    print(tr("La mesure a échoué") if calibrate_binary() else tr("bdex-calibrate absent"))
+                    print(tr("La mesure a échoué") if calibrate_binary() else tr("chuds-fg-calibrate absent"))
                     continue
                 print(calibration_summary(d))
                 if input(tr("Appliquer ? (o/n) ")).strip().lower() in ("o", "y", "oui", "yes"):
@@ -3978,9 +3978,9 @@ def text_main():
                 path, url = write_report()
                 if path:
                     print(tr(f"Rapport écrit dans {path} — à joindre au formulaire :"))
-                    print("  " + (url or "(bdex-framegen --issue-url " + path + ")"))
+                    print("  " + (url or "(chuds-fg --issue-url " + path + ")"))
                 else:
-                    print(tr("bdex-framegen introuvable : pas de rapport."))
+                    print(tr("chuds-fg introuvable : pas de rapport."))
     except KeyboardInterrupt:
         print()
     finally:

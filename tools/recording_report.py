@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Report a recording's source frame times, sampled on the game's thread.
 
-    python3 tools/recording_report.py ~/.cache/bdex-framegen/recordings/SEQUENCE
+    python3 tools/recording_report.py ~/.cache/chuds-fg/recordings/SEQUENCE
 
 timestamps.csv describes source presents, not GPU completion or display.
 Older recordings have no per-frame clock; file modification times cannot

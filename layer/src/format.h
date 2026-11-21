@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-namespace bdex {
+namespace chuds_fg {
 
 // Packing performed by the interpolation shader. The shader writes raw bits
 // into a mandatory-storage uint image which is then copied verbatim into the
@@ -34,4 +34,4 @@ struct OutputEncoding {
 OutputEncoding encodingForFormat(VkFormat swapchainFormat,
                                  VkColorSpaceKHR colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -1,7 +1,7 @@
 #include "descriptor_planner.h"
 #include "test.h"
 
-using namespace bdex;
+using namespace chuds_fg;
 
 namespace {
 // Non-dispatchable handles are pointers on 64-bit targets and uint64_t on

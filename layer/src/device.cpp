@@ -10,7 +10,7 @@
 #include <iterator>
 #include <thread>
 
-namespace bdex {
+namespace chuds_fg {
 
 std::mutex& DeviceData::queueMutex(VkQueue q) {
     std::lock_guard<std::mutex> lock(queueMapMutex);
@@ -69,7 +69,7 @@ bool DeviceData::ensurePresentQueue(VkSurfaceKHR surface) {
         queueFamily = f;
         queueIndex = 0;
         queueShared = true;
-        BDEX_INFO("layer queue switched to application family %u for surface presentation", f);
+        CHUDS_FG_INFO("layer queue switched to application family %u for surface presentation", f);
         return true;
     }
     return false;
@@ -279,7 +279,7 @@ void DeviceData::pollRecordRequest() {
     recordDir = out.string();
     recordFrames = std::min(frames, 3600);
     ++recordSerial;
-    BDEX_INFO("recording %d real frames into %s", recordFrames, recordDir.c_str());
+    CHUDS_FG_INFO("recording %d real frames into %s", recordFrames, recordDir.c_str());
 }
 
 void DeviceData::pollConfig() {
@@ -311,7 +311,7 @@ void DeviceData::pollConfig() {
         batteryChecked = now;
         const bool battery = !platformIsSteamDeck() && platformOnBattery() == 1;
         if (battery != config.onBattery) {
-            BDEX_INFO("power: %s — %s", battery ? "on battery" : "on mains",
+            CHUDS_FG_INFO("power: %s — %s", battery ? "on battery" : "on mains",
                       battery ? "the automatic preset takes the performance flow" : "the automatic preset is back");
             fileChanged = true;
         }
@@ -344,7 +344,7 @@ void DeviceData::pollConfig() {
     config.panelDisplayHz = panelHz;
     ++configVersion;
     setFrameLimitHint();
-    BDEX_INFO("%s%s", fileChanged ? "config file changed: live settings reloaded" : "control panel: generation target changed",
+    CHUDS_FG_INFO("%s%s", fileChanged ? "config file changed: live settings reloaded" : "control panel: generation target changed",
               config.paused != wasPaused ? (config.paused ? " (frame generation paused)" : " (frame generation resumed)") : "");
 }
 
@@ -370,9 +370,9 @@ VkResult DeviceData::submit(const VkSubmitInfo& info, VkFence fence) {
     return vt.QueueSubmit(queue, 1, &info, fence);
 }
 
-} // namespace bdex
+} // namespace chuds_fg
 
-namespace bdex {
+namespace chuds_fg {
 
 void sleepUntilSteadyMs(double ms) {
     using clock = std::chrono::steady_clock;
@@ -390,4 +390,4 @@ void FrameCap::wait(double fps) {
     sleepUntilSteadyMs(schedule.release(steadyMs(), 1000.0 / fps));
 }
 
-} // namespace bdex
+} // namespace chuds_fg

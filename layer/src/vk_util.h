@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace bdex {
+namespace chuds_fg {
 
 const char* vkResultName(VkResult r);
 
@@ -16,7 +16,7 @@ struct VkError : std::runtime_error {
 #define VK_CHECK(expr)                                                  \
     do {                                                                \
         VkResult _r = (expr);                                           \
-        if (_r < 0) throw ::bdex::VkError(_r, #expr);                   \
+        if (_r < 0) throw ::chuds_fg::VkError(_r, #expr);                   \
     } while (0)
 
 inline VkImageSubresourceRange colorRange() {
@@ -48,4 +48,4 @@ const T* findChain(const void* pNext, VkStructureType type) {
     return nullptr;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

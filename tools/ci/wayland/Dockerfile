@@ -1,4 +1,4 @@
-# bdex-capture --wayland, end to end without a screen: sway headless (two
+# chuds-fg-capture --wayland, end to end without a screen: sway headless (two
 # outputs), PipeWire + WirePlumber, xdg-desktop-portal with the wlr backend
 # choosing the first output itself, Xwayland, lavapipe.
 FROM archlinux:latest

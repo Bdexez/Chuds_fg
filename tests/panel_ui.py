@@ -8,7 +8,7 @@ the search; « Tout réinitialiser ») — each checked in the file the layer
 reads. The running game is a stand-in (detect_games), nothing is mirrored
 anywhere. Exits 77 (skipped) without GTK 4 or a display.
 
-Usage: panel_ui.py <bdex-framegen-gui>"""
+Usage: panel_ui.py <chuds-fg-gui>"""
 import faulthandler
 import importlib.machinery
 import importlib.util
@@ -20,14 +20,14 @@ import traceback
 # A home of its own, in the environment the process starts with: the panel
 # reads the stand-in game's (this process's) directories from
 # /proc/<pid>/environ — set later, the session went to the real home's.
-if "BDEX_PANEL_UI_HOME" not in os.environ:
+if "CHUDS_FG_PANEL_UI_HOME" not in os.environ:
     home = tempfile.mkdtemp()
-    env = dict(os.environ, BDEX_PANEL_UI_HOME=home, HOME=home, XDG_CONFIG_HOME=os.path.join(home, ".config"),
+    env = dict(os.environ, CHUDS_FG_PANEL_UI_HOME=home, HOME=home, XDG_CONFIG_HOME=os.path.join(home, ".config"),
                XDG_CACHE_HOME=os.path.join(home, ".cache"), XDG_DATA_HOME=os.path.join(home, ".local", "share"),
-               BDEX_FG_STATUS_DIR=os.path.join(home, "run"))
-    env.pop("BDEX_FG_CONFIG", None)
+               CHUDS_FG_STATUS_DIR=os.path.join(home, "run"))
+    env.pop("CHUDS_FG_CONFIG", None)
     os.execve(sys.executable, [sys.executable] + sys.argv, env)
-os.makedirs(os.environ["BDEX_FG_STATUS_DIR"])
+os.makedirs(os.environ["CHUDS_FG_STATUS_DIR"])
 os.makedirs(os.environ["XDG_CONFIG_HOME"])
 if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
     print("skipped: no display")
@@ -47,11 +47,11 @@ from gi.repository import GLib  # noqa: E402
 
 # A game that runs (this process stands for it), armed by the layer.
 GAME = os.getpid()
-with open(os.path.join(os.environ["BDEX_FG_STATUS_DIR"], f"{GAME}.status"), "w") as f:
+with open(os.path.join(os.environ["CHUDS_FG_STATUS_DIR"], f"{GAME}.status"), "w") as f:
     f.write(f"process=mygame\npid={GAME}\ntime=0\n\n[device 1]\nstate=active\ndevice=Test GPU\n\n"
             "[swapchain 2]\nstate=ready\nsize=1920x1080\nmode=interpolate\nmultiplier=0\ngame_fps=40.0\n"
             "output_fps=40.0\nrefresh_hz=0.0\n")
-panel.find_layer = lambda: (True, "bdex_framegen.json")
+panel.find_layer = lambda: (True, "chuds_fg.json")
 panel.detect_games = lambda: [(GAME, "mygame")]
 panel.layer_replaced = lambda pid: False
 panel.mirror_config = lambda: None
@@ -111,14 +111,14 @@ def steps(win):
     win.hud_switch.set_active(True)
     check(conf(win)[0].get("overlay") == "2", "fps counter on")
     win.on_hero_button(None)
-    session = open(os.path.join(os.environ["BDEX_FG_STATUS_DIR"], "app.session")).read().split()
+    session = open(os.path.join(os.environ["CHUDS_FG_STATUS_DIR"], "app.session")).read().split()
     check(win.target == (GAME, "mygame") and session[1] == str(GAME), f"Démarrer targets the game: {session}")
     check(win.hero_btn.get_label() == panel.tr("Arrêter") and win.hero_pause.get_visible(), "« Arrêter », « Pause »")
     win.on_pause(None)
     check(conf(win)[0].get("paused") == "1", "paused")
     win.on_pause(None)
     win.on_hero_button(None)
-    session = open(os.path.join(os.environ["BDEX_FG_STATUS_DIR"], "app.session")).read().split()
+    session = open(os.path.join(os.environ["CHUDS_FG_STATUS_DIR"], "app.session")).read().split()
     check(win.target is None and session[1] == "0", "Arrêter")
 
     # -- « Avancé »: every option has its row
@@ -132,7 +132,7 @@ def steps(win):
     check(conf(win)[0].get("mosaic_blur") == "1", "mosaic_blur leaves « Auto » at full effect")
     mb._spin.set_value(0)
     check(conf(win)[0].get("mosaic_blur") == "0", "mosaic_blur 0 is written (pins it off)")
-    check("bdex-modified" in mb.row.get_css_classes() and mb.reset.get_sensitive(), "modified mark")
+    check("chuds-fg-modified" in mb.row.get_css_classes() and mb.reset.get_sensitive(), "modified mark")
     mb.reset.emit("clicked")
     check("mosaic_blur" not in conf(win)[0] and mb.value() == "auto", "back to the default")
     pv = row(win, "pixel_vectors")

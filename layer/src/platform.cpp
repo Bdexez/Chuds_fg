@@ -12,7 +12,7 @@
 #include <cstring>
 
 #ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN  // (bdex_capture defines it for the whole target)
+#ifndef WIN32_LEAN_AND_MEAN  // (chuds_fg_capture defines it for the whole target)
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
@@ -29,7 +29,7 @@
 extern char** environ;
 #endif
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 // Lower-cased basename, extension dropped: "BEService64.exe" -> "beservice64",
@@ -223,20 +223,20 @@ void platformEnvForget() {
 std::string platformConfigPath() {
 #ifdef _WIN32
     const char* appdata = platformEnv("APPDATA");
-    if (appdata && *appdata) return std::string(appdata) + "\\bdex-framegen\\bdex-framegen.conf";
+    if (appdata && *appdata) return std::string(appdata) + "\\chuds-fg\\chuds-fg.conf";
     return "";
 #else
-    if (const char* x = platformEnv("XDG_CONFIG_HOME")) return std::string(x) + "/bdex-framegen.conf";
-    if (const char* h = platformEnv("HOME")) return std::string(h) + "/.config/bdex-framegen.conf";
+    if (const char* x = platformEnv("XDG_CONFIG_HOME")) return std::string(x) + "/chuds-fg.conf";
+    if (const char* h = platformEnv("HOME")) return std::string(h) + "/.config/chuds-fg.conf";
     return "";
 #endif
 }
 
 std::string platformBundledProfilesPath() {
-    if (const char* p = platformEnv("BDEX_FG_PROFILES")) return p;  // "" disables them
+    if (const char* p = platformEnv("CHUDS_FG_PROFILES")) return p;  // "" disables them
 #ifdef _WIN32
     // Next to the module that contains this code (the layer DLL, or
-    // bdex_capture.exe): the release zip ships profiles.conf beside both.
+    // chuds_fg_capture.exe): the release zip ships profiles.conf beside both.
     HMODULE self = nullptr;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                             reinterpret_cast<LPCWSTR>(&platformBundledProfilesPath), &self))
@@ -248,8 +248,8 @@ std::string platformBundledProfilesPath() {
     size_t slash = path.find_last_of("\\/");
     return slash == std::string::npos ? "" : path.substr(0, slash + 1) + "profiles.conf";
 #else
-    // Installed layout: <prefix>/lib[32]/libVkLayer_bdex_framegen.so and
-    // <prefix>/share/bdex-framegen/profiles.conf — or one level deeper for a
+    // Installed layout: <prefix>/lib[32]/libVkLayer_chuds_fg.so and
+    // <prefix>/share/chuds-fg/profiles.conf — or one level deeper for a
     // distribution's library dir (Debian: lib/x86_64-linux-gnu).
     Dl_info info{};
     if (!dladdr(reinterpret_cast<void*>(&platformBundledProfilesPath), &info) || !info.dli_fname) return "";
@@ -257,8 +257,8 @@ std::string platformBundledProfilesPath() {
     size_t slash = lib.rfind('/');
     if (slash == std::string::npos) return "";
     const std::string dir = lib.substr(0, slash);
-    const std::string near = dir + "/../share/bdex-framegen/profiles.conf";
-    const std::string deep = dir + "/../../share/bdex-framegen/profiles.conf";
+    const std::string near = dir + "/../share/chuds-fg/profiles.conf";
+    const std::string deep = dir + "/../../share/chuds-fg/profiles.conf";
     if (access(near.c_str(), R_OK) != 0 && access(deep.c_str(), R_OK) == 0) return deep;
     return near;
 #endif
@@ -306,21 +306,21 @@ std::string platformExpandPath(const std::string& in) {
 }
 
 std::string platformStatusDir() {
-    if (const char* p = platformEnv("BDEX_FG_STATUS_DIR")) return p;
+    if (const char* p = platformEnv("CHUDS_FG_STATUS_DIR")) return p;
 #ifdef _WIN32
     const char* tmp = platformEnv("TEMP");
-    if (tmp && *tmp) return std::string(tmp) + "\\bdex-framegen";
+    if (tmp && *tmp) return std::string(tmp) + "\\chuds-fg";
     return "";
 #else
     // In the home, not $XDG_RUNTIME_DIR: Steam's container (pressure-vessel,
     // every Proton game) shares the home but only a few sockets of the
     // runtime directory, and the control panel must see the games' status
     // files and they its session file.
-    if (const char* h = platformEnv("HOME"); h && *h) return std::string(h) + "/.cache/bdex-framegen/run";
+    if (const char* h = platformEnv("HOME"); h && *h) return std::string(h) + "/.cache/chuds-fg/run";
     // No home: /tmp, where any user can create this name first and plant a
     // session file, or symbolic links our writes would follow. Ours alone,
     // or no status files.
-    const std::string dir = "/tmp/bdex-framegen-" + std::to_string(static_cast<long>(getuid()));
+    const std::string dir = "/tmp/chuds-fg-" + std::to_string(static_cast<long>(getuid()));
     mkdir(dir.c_str(), 0700);
     struct stat st;
     if (lstat(dir.c_str(), &st) != 0 || !S_ISDIR(st.st_mode) || st.st_uid != getuid() || (st.st_mode & 077)) return "";
@@ -388,12 +388,12 @@ bool platformIsDesktopApp() {
 }
 
 bool platformIsNonGame(const std::string& name) {
-    // Keep in sync with NOT_GAMES in tools/bdex-framegen-gui.
+    // Keep in sync with NOT_GAMES in tools/chuds-fg-gui.
     static const char* const kNonGames[] = {
         "steam", "steamwebhelper", "gamescope", "gamescopereaper", "gamescope-wl", "mangoapp",
         "steam-runtime-check-requirements", "chrome", "chromium",
         "firefox", "librewolf", "brave", "zen", "electron", "discord", "vesktop", "code",
-        "obs", "vulkaninfo", "vkcube", "bdex-framegen-gui", "bdex-capture", "bdex_capture",
+        "obs", "vulkaninfo", "vkcube", "chuds-fg-gui", "chuds-fg-capture", "chuds_fg_capture",
         "zed-editor", "zeditor",  // the Zed editor draws with Vulkan (wgpu)
         "explorer", "xalia",  // Wine's desktop and accessibility helpers (Proton: next to every game)
         // Steam's shader pre-caching: it replays a game's pipelines into the
@@ -469,14 +469,14 @@ void platformSleepUntil(std::chrono::steady_clock::time_point until) {
 }
 
 std::string platformCacheDir() {
-    if (const char* p = platformEnv("BDEX_FG_CACHE_DIR")) return p;
+    if (const char* p = platformEnv("CHUDS_FG_CACHE_DIR")) return p;
 #ifdef _WIN32
     const char* app = platformEnv("LOCALAPPDATA");
-    if (app && *app) return std::string(app) + "\\bdex-framegen";
+    if (app && *app) return std::string(app) + "\\chuds-fg";
     return "";
 #else
-    if (const char* x = platformEnv("XDG_CACHE_HOME"); x && *x) return std::string(x) + "/bdex-framegen";
-    if (const char* h = platformEnv("HOME"); h && *h) return std::string(h) + "/.cache/bdex-framegen";
+    if (const char* x = platformEnv("XDG_CACHE_HOME"); x && *x) return std::string(x) + "/chuds-fg";
+    if (const char* h = platformEnv("HOME"); h && *h) return std::string(h) + "/.cache/chuds-fg";
     return "";
 #endif
 }
@@ -526,8 +526,8 @@ bool platformAntiCheatPresent(std::string* foundName) {
 }
 
 int platformOnBattery() {
-    // (Tests: BDEX_POWER=battery|mains.)
-    if (const char* v = platformEnv("BDEX_POWER"); v && *v) return v[0] == 'b' ? 1 : 0;
+    // (Tests: CHUDS_FG_POWER=battery|mains.)
+    if (const char* v = platformEnv("CHUDS_FG_POWER"); v && *v) return v[0] == 'b' ? 1 : 0;
 #ifdef _WIN32
     SYSTEM_POWER_STATUS st;
     if (!GetSystemPowerStatus(&st)) return -1;
@@ -622,4 +622,4 @@ std::string platformAntiCheatRunning() {
 #endif
 }
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -3,10 +3,10 @@
 # Heroic, Lutris, Bottles...) loads it, 64 and 32-bit, and `flatpak update`
 # keeps it current — no copy in each app's directory (packaging/linux/
 # flatpak.sh skips the apps that have it).
-#   flatpak-builder --user --install build-dir org.freedesktop.Platform.VulkanLayer.BdexFramegen.yml
-# The layer is inert until turned on (panel, BDEX_FG=1, or the app's config:
-# ~/.var/app/<app>/config/bdex-framegen.conf, mirrored by the panel).
-id: org.freedesktop.Platform.VulkanLayer.BdexFramegen
+#   flatpak-builder --user --install build-dir org.freedesktop.Platform.VulkanLayer.ChudsFg.yml
+# The layer is inert until turned on (panel, CHUDS_FG=1, or the app's config:
+# ~/.var/app/<app>/config/chuds-fg.conf, mirrored by the panel).
+id: org.freedesktop.Platform.VulkanLayer.ChudsFg
 branch: '25.08'
 sdk: org.freedesktop.Sdk
 runtime: org.freedesktop.Platform
@@ -16,16 +16,16 @@ sdk-extensions:
   - org.freedesktop.Sdk.Compat.i386
   - org.freedesktop.Sdk.Extension.toolchain-i386
 build-options:
-  prefix: /usr/lib/extensions/vulkan/BdexFramegen
+  prefix: /usr/lib/extensions/vulkan/ChudsFg
   strip: true
 # The libraries in lib/<triplet> (the layer finds its profiles two levels up).
 x-arch-build-options:
   x86_64: &x86_64-build-options
-    config-opts: [-DBDEX_INSTALL_LIBDIR=lib/x86_64-linux-gnu]
+    config-opts: [-DCHUDS_FG_INSTALL_LIBDIR=lib/x86_64-linux-gnu]
   aarch64: &aarch64-build-options
-    config-opts: [-DBDEX_INSTALL_LIBDIR=lib/aarch64-linux-gnu]
+    config-opts: [-DCHUDS_FG_INSTALL_LIBDIR=lib/aarch64-linux-gnu]
   i386: &i386-build-options
-    config-opts: [-DBDEX_32BIT=ON, -DBDEX_INSTALL_LIBDIR=lib/i386-linux-gnu]
+    config-opts: [-DCHUDS_FG_32BIT=ON, -DCHUDS_FG_INSTALL_LIBDIR=lib/i386-linux-gnu]
     append-path: /usr/lib/sdk/toolchain-i386/bin
     env:
       CC: i686-unknown-linux-gnu-gcc
@@ -33,10 +33,10 @@ x-arch-build-options:
 cleanup:
   - /bin
   - /share/applications
-  - /share/bdex-framegen/flatpak.sh
-  - /share/bdex-framegen/options_ui.json
+  - /share/chuds-fg/flatpak.sh
+  - /share/chuds-fg/options_ui.json
 modules:
-  - name: bdex-framegen
+  - name: chuds-fg
     buildsystem: cmake-ninja
     build-options:
       arch:
@@ -44,19 +44,19 @@ modules:
         aarch64: *aarch64-build-options
     config-opts: &config-opts
       - -DCMAKE_BUILD_TYPE=Release
-      - -DBDEX_BUILD_DEMO=OFF
-      - -DBDEX_BUILD_TESTS=OFF
-      - -DBDEX_BUILD_OFFLINE=OFF
-      - -DBDEX_STATIC_RUNTIME=ON
+      - -DCHUDS_FG_BUILD_DEMO=OFF
+      - -DCHUDS_FG_BUILD_TESTS=OFF
+      - -DCHUDS_FG_BUILD_OFFLINE=OFF
+      - -DCHUDS_FG_STATIC_RUNTIME=ON
     sources: &sources
       - type: git
-        url: https://github.com/Bdexez/bdex_frame_gen.git
+        url: https://github.com/Bdexez/Chuds_fg.git
         tag: v0.5.6
       # A local checkout instead (tools/ci/flatpak-check.sh):
       # - type: dir
       #   path: ../..
 
-  - name: bdex-framegen-32bit
+  - name: chuds-fg-32bit
     only-arches:
       - x86_64
     buildsystem: cmake-ninja
@@ -72,4 +72,4 @@ modules:
         --result-root=${FLATPAK_DEST} --data-dir=${FLATPAK_DEST}/share/app-info/xmls ${FLATPAK_DEST}
     sources:
       - type: file
-        path: org.freedesktop.Platform.VulkanLayer.BdexFramegen.metainfo.xml
+        path: org.freedesktop.Platform.VulkanLayer.ChudsFg.metainfo.xml

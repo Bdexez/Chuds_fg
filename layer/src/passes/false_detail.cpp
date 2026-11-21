@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace bdex {
+namespace chuds_fg {
 namespace {
 
 struct FdPC { int32_t size[2]; uint32_t encoding; int32_t mode; float strength; float ratio; float guard; int32_t blur; int32_t both; };
@@ -151,4 +151,4 @@ private:
 
 std::unique_ptr<FgPass> makeFalseDetailPass() { return std::make_unique<FalseDetailPass>(); }
 
-} // namespace bdex
+} // namespace chuds_fg

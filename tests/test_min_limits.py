@@ -3,7 +3,7 @@
 
 Vulkan guarantees 4 storage images per shader stage and 16 KB of compute
 shared memory; small GPUs (Raspberry Pi's V3D, some mobile ones) have just
-that. bdex_offline --limit-storage-images 4 --limit-shared 16 makes the engine
+that. chuds_fg_offline --limit-storage-images 4 --limit-shared 16 makes the engine
 see those limits on any GPU, and checks:
   - with the default settings, the frames are byte-identical to the ones the
     engine makes with this GPU's real limits (the lean matcher and every pass
@@ -22,12 +22,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 LIMITS = ["--limit-storage-images", "4", "--limit-shared", "16"]
 EVERY_PASS = {
-    "BDEX_FG_FLOW_TEMPORAL": "1", "BDEX_FG_SUBPIXEL_LK": "2", "BDEX_FG_HUD_MASK": "24",
-    "BDEX_FG_ONLINE_TUNE": "1", "BDEX_FG_DEDUP": "1", "BDEX_FG_FRAME_TIMING": "1",
-    "BDEX_FG_SCENE_CUT_LOCAL": "1", "BDEX_FG_CHROMA_WEIGHT": "1", "BDEX_FG_ROT_WEIGHT": "1",
-    "BDEX_FG_SYNTH_BICUBIC": "1", "BDEX_FG_STATIC_GUARD": "1", "BDEX_FG_OCCLUSION_STRENGTH": "1",
-    "BDEX_FG_EXTRAPOLATE_ACCEL": "1", "BDEX_FG_EXTRAPOLATE_SPLAT": "1", "BDEX_FG_REVEAL_FILL": "1",
-    "BDEX_FG_PIXEL_VECTORS": "1", "BDEX_FG_UPSCALE_TEMPORAL": "0.3",
+    "CHUDS_FG_FLOW_TEMPORAL": "1", "CHUDS_FG_SUBPIXEL_LK": "2", "CHUDS_FG_HUD_MASK": "24",
+    "CHUDS_FG_ONLINE_TUNE": "1", "CHUDS_FG_DEDUP": "1", "CHUDS_FG_FRAME_TIMING": "1",
+    "CHUDS_FG_SCENE_CUT_LOCAL": "1", "CHUDS_FG_CHROMA_WEIGHT": "1", "CHUDS_FG_ROT_WEIGHT": "1",
+    "CHUDS_FG_SYNTH_BICUBIC": "1", "CHUDS_FG_STATIC_GUARD": "1", "CHUDS_FG_OCCLUSION_STRENGTH": "1",
+    "CHUDS_FG_EXTRAPOLATE_ACCEL": "1", "CHUDS_FG_EXTRAPOLATE_SPLAT": "1", "CHUDS_FG_REVEAL_FILL": "1",
+    "CHUDS_FG_PIXEL_VECTORS": "1", "CHUDS_FG_UPSCALE_TEMPORAL": "0.3",
 }
 
 
@@ -38,13 +38,13 @@ def generated(out):
 
 def main():
     build = Path(sys.argv[1])
-    tool = build / "tools" / "offline" / "bdex_offline"
+    tool = build / "tools" / "offline" / "chuds_fg_offline"
     if not tool.exists():
-        print("bdex_offline not built, skipping")
+        print("chuds_fg_offline not built, skipping")
         return 77
     # rot_weight off: a discrete GPU turns it on with any preset but
     # performance, and the minimum limits leave only the lean matcher.
-    env = dict(os.environ, BDEX_FG_CONFIG="/dev/null", BDEX_FG_PRESET="balanced", BDEX_FG_ROT_WEIGHT="0")
+    env = dict(os.environ, CHUDS_FG_CONFIG="/dev/null", CHUDS_FG_PRESET="balanced", CHUDS_FG_ROT_WEIGHT="0")
     failures = 0
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -63,7 +63,7 @@ def main():
             out = tmp / f"every_{mode}"
             r = subprocess.run([str(tool), str(seq), str(out)] + base + LIMITS +
                                ["--multiplier", "3", "--render-scale", "0.75"],
-                               env=dict(env, BDEX_FG_MODE=mode, **EVERY_PASS), capture_output=True, text=True)
+                               env=dict(env, CHUDS_FG_MODE=mode, **EVERY_PASS), capture_output=True, text=True)
             n = generated(out)
             print(f"{mode}, every optional pass, minimum limits: {n} generated frame(s)"
                   + ("" if r.returncode == 0 else f" — exit {r.returncode}: {r.stderr.strip().splitlines()[-1:]}"))

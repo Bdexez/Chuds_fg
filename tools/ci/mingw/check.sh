@@ -10,30 +10,30 @@
 # on 2026-11-01, after a month without the Windows CI). Run through tools/ci/run.sh mingw (Docker), or
 # directly where both MinGW toolchains are installed (the CI's Linux job).
 #
-# In the CI's Linux job (2026-11-01, Actions minutes): BDEX_MINGW_ARCHS=i686
+# In the CI's Linux job (2026-11-01, Actions minutes): CHUDS_FG_MINGW_ARCHS=i686
 # (MSVC x64 itself runs on the pushes that change what it compiles) and
-# BDEX_MINGW_GEN=build (the job's own build already generated shaders.h).
+# CHUDS_FG_MINGW_GEN=build (the job's own build already generated shaders.h).
 # The files are checked in parallel (one compiler per CPU).
 set -uo pipefail
 cd "$(dirname "$0")/../../.."
-archs="${BDEX_MINGW_ARCHS:-x86_64 i686}"
-gen="${BDEX_MINGW_GEN:-build-gen}"
+archs="${CHUDS_FG_MINGW_ARCHS:-x86_64 i686}"
+gen="${CHUDS_FG_MINGW_GEN:-build-gen}"
 # shaders.h (generated) is included by the engine files.
 if [ ! -f "$gen/layer/generated/shaders.h" ]; then
-  cmake -S . -B "$gen" -DCMAKE_BUILD_TYPE=Release >/dev/null && cmake --build "$gen" --target bdex_layer_shaders >/dev/null || exit 1
+  cmake -S . -B "$gen" -DCMAKE_BUILD_TYPE=Release >/dev/null && cmake --build "$gen" --target chuds_fg_layer_shaders >/dev/null || exit 1
 fi
 # Only the Vulkan headers of the system (the rest would be glibc's).
 mkdir -p /tmp/vkinc && ln -sf /usr/include/vulkan /usr/include/vk_video /tmp/vkinc/
 # What the Windows CI builds (CMakeLists.txt): the layer and the unit tests
 # for both architectures (tests that open a GLFW window are Linux-only), the
-# capture app for x64 only; bdex_offline is not built on Windows.
+# capture app for x64 only; chuds_fg_offline is not built on Windows.
 common=$(ls layer/src/*.cpp layer/src/passes/*.cpp tests/test_*.cpp | xargs grep -L "GLFW/glfw3.h")
 status=0
 # One file: its errors, and a non-zero status when it fails.
 check_one() {
   local cxx=$1 f=$2 out
   out=$($cxx -std=c++20 -fsyntax-only -Werror=shadow=local -DWIN32_LEAN_AND_MEAN -DNOMINMAX \
-        -DVK_USE_PLATFORM_WIN32_KHR -DBDEX_LAYER_NAME='"VK_LAYER_BDEX_framegen"' -DBDEX_LAYER_VERSION_STR='"0"' -DBDEX_VERSION_STR='"0"' \
+        -DVK_USE_PLATFORM_WIN32_KHR -DCHUDS_FG_LAYER_NAME='"VK_LAYER_CHUDS_fg"' -DCHUDS_FG_LAYER_VERSION_STR='"0"' -DCHUDS_FG_VERSION_STR='"0"' \
         -Ilayer/src -Icapture/src -Itests -I"$GEN/layer/generated" -isystem /tmp/vkinc "$f" 2>&1) && return 0
   printf 'FAIL [%s] %s\n%s\n' "$cxx" "$f" "$(grep -E "error" <<<"$out" | head -5)"
   return 1
@@ -43,7 +43,7 @@ export GEN="$gen"
 for arch in $archs; do
   cxx=$arch-w64-mingw32-g++-posix
   files=$common
-  [ "$arch" = x86_64 ] && files="$files capture/src/vkctx.cpp capture/src/launcher.cpp capture/src/main.cpp capture/src/tray.cpp capture/src/injection.cpp capture/src/report.cpp tools/calibrate/bdex_calibrate.cpp"
+  [ "$arch" = x86_64 ] && files="$files capture/src/vkctx.cpp capture/src/launcher.cpp capture/src/main.cpp capture/src/tray.cpp capture/src/injection.cpp capture/src/report.cpp tools/calibrate/chuds_fg_calibrate.cpp"
   n=$(wc -w <<<"$files")
   printf '%s\n' $files | xargs -P "$(nproc)" -I{} bash -c 'check_one "$0" "$1"' "$cxx" {} || status=1
   echo "$cxx: $n files checked"
@@ -55,7 +55,7 @@ if [[ " $archs " != *" x86_64 "* ]]; then exit $status; fi
 n=0
 for f in layer/src/*.cpp layer/src/passes/*.cpp; do
   out=$(x86_64-w64-mingw32-g++-posix -std=c++20 -fsyntax-only -DWIN32_LEAN_AND_MEAN -DNOMINMAX \
-        -DVK_USE_PLATFORM_WIN32_KHR -DBDEX_LAYER_NAME='"VK_LAYER_BDEX_framegen"' -DBDEX_LAYER_VERSION_STR='"0"' -DBDEX_VERSION_STR='"0"' \
+        -DVK_USE_PLATFORM_WIN32_KHR -DCHUDS_FG_LAYER_NAME='"VK_LAYER_CHUDS_fg"' -DCHUDS_FG_LAYER_VERSION_STR='"0"' -DCHUDS_FG_VERSION_STR='"0"' \
         -Ilayer/src -I"$gen/layer/generated" -Icapture/src -isystem /tmp/vkinc "$f" 2>&1)
   if [ $? -ne 0 ]; then echo "FAIL [capture include order] $f"; grep -E "error" <<<"$out" | head -5; status=1; fi
   n=$((n + 1))
@@ -63,21 +63,21 @@ done
 echo "capture include order: $n files checked"
 # Linkage, which a syntax check cannot see (vécu: a function the launcher's
 # header declares, defined inside an anonymous namespace — LNK2019 under
-# MSVC only): every bdex:: function main.cpp calls that the capture app's
+# MSVC only): every chuds_fg:: function main.cpp calls that the capture app's
 # own headers declare must be defined, with external linkage, in one of its
 # objects. (capture.cpp — C++/WinRT — is not compiled here: its class's
 # members are left out.)
 obj=$(mktemp -d)
 for f in capture/src/main.cpp capture/src/launcher.cpp capture/src/injection.cpp capture/src/report.cpp capture/src/tray.cpp capture/src/vkctx.cpp; do
-  x86_64-w64-mingw32-g++-posix -std=c++20 -c -o "$obj/$(basename "$f" .cpp).o" -DWIN32_LEAN_AND_MEAN -DNOMINMAX     -DVK_USE_PLATFORM_WIN32_KHR -DBDEX_LAYER_NAME='"VK_LAYER_BDEX_framegen"' -DBDEX_LAYER_VERSION_STR='"0"' -DBDEX_VERSION_STR='"0"'     -Ilayer/src -I"$gen/layer/generated" -Icapture/src -isystem /tmp/vkinc "$f" 2>/dev/null || { echo "FAIL [objects] $f"; status=1; }
+  x86_64-w64-mingw32-g++-posix -std=c++20 -c -o "$obj/$(basename "$f" .cpp).o" -DWIN32_LEAN_AND_MEAN -DNOMINMAX     -DVK_USE_PLATFORM_WIN32_KHR -DCHUDS_FG_LAYER_NAME='"VK_LAYER_CHUDS_fg"' -DCHUDS_FG_LAYER_VERSION_STR='"0"' -DCHUDS_FG_VERSION_STR='"0"'     -Ilayer/src -I"$gen/layer/generated" -Icapture/src -isystem /tmp/vkinc "$f" 2>/dev/null || { echo "FAIL [objects] $f"; status=1; }
 done
 declared=$(grep -hoE "\b[a-zA-Z_][a-zA-Z0-9_]*\(" capture/src/launcher.h capture/src/injection.h capture/src/report.h capture/src/tray.h capture/src/vkctx.h | tr -d '(' | sort -u)
 defined=$(for o in "$obj"/*.o; do x86_64-w64-mingw32-nm -C --defined-only "$o"; done | awk '$2 == "T" { $1 = ""; $2 = ""; print }')
 missing=0
-for sym in $(x86_64-w64-mingw32-nm -C --undefined-only "$obj/main.o" | grep -oE "bdex::[A-Za-z_][A-Za-z0-9_:]*" | sort -u); do
+for sym in $(x86_64-w64-mingw32-nm -C --undefined-only "$obj/main.o" | grep -oE "chuds_fg::[A-Za-z_][A-Za-z0-9_:]*" | sort -u); do
   name=${sym##*::}
   grep -qx "$name" <<<"$declared" || continue
-  case $sym in bdex::Capture::*) continue ;; esac
+  case $sym in chuds_fg::Capture::*) continue ;; esac
   grep -qE "${sym}(\[abi:[a-z0-9]+\])?\(" <<<"$defined" || { echo "FAIL [link] $sym: called by main.cpp, defined nowhere with external linkage"; missing=1; }
 done
 rm -rf "$obj"

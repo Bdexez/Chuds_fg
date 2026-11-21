@@ -61,9 +61,9 @@ int main(int argc, char** argv) {
     WNDCLASSA wc{};
     wc.lpfnWndProc = wndProc;
     wc.hInstance = GetModuleHandleA(nullptr);
-    wc.lpszClassName = "bdex_vkprobe";
+    wc.lpszClassName = "chuds_fg_vkprobe";
     RegisterClassA(&wc);
-    HWND hwnd = CreateWindowA("bdex_vkprobe", "bdex vulkan probe", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 640, 360,
+    HWND hwnd = CreateWindowA("chuds_fg_vkprobe", "chuds-fg vulkan probe", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 640, 360,
                               nullptr, nullptr, wc.hInstance, nullptr);
     VkWin32SurfaceCreateInfoKHR sci{VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
     sci.hinstance = wc.hInstance;

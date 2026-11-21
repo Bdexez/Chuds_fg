@@ -7,11 +7,11 @@
 #include <utility>
 #include <vector>
 
-namespace bdex {
+namespace chuds_fg {
 
 // Runtime configuration of the layer. Values come from (lowest to highest
-// priority): built-in defaults, ~/.config/bdex-framegen.conf, environment
-// variables named BDEX_FG_<KEY>.
+// priority): built-in defaults, ~/.config/chuds-fg.conf, environment
+// variables named CHUDS_FG_<KEY>.
 struct Config {
     enum class Debug { None, Flow, Split, Passthrough, Confidence, Depth };
 
@@ -22,17 +22,17 @@ struct Config {
 
     bool  enabled       = false;  // the layer is now always loaded (no enable_environment);
                                   // it stays a pure pass-through until turned on by the
-                                  // config file ([*] or a [game] section) or BDEX_FG=1.
+                                  // config file ([*] or a [game] section) or CHUDS_FG=1.
     bool  requireApp    = false;  // the control panel decides, like the Windows launcher: every game is armed (virtual
                                   // swapchain, frames passed through) and generates only once « Démarrer » targets it
-                                  // (platformAppSession); set by the panel. BDEX_FG=1 bypasses it.
+                                  // (platformAppSession); set by the panel. CHUDS_FG=1 bypasses it.
     bool  appTargeted   = false;  // require_app, runtime: the panel's session targets this process
     // fps_limit holds this game: always without the panel's model
-    // (require_app = 0: Game Mode, a [game] section, BDEX_FG=1), else only
+    // (require_app = 0: Game Mode, a [game] section, CHUDS_FG=1), else only
     // the game the panel's session targets (« Démarrer ») — not an armed
     // game it has not started, nor one it stopped or left when it closed.
     bool  capsThisGame() const { return !requireApp || appTargeted; }
-    bool  processNamed  = false;  // runtime: this process's own [section] or BDEX_FG=1 turned the layer on or
+    bool  processNamed  = false;  // runtime: this process's own [section] or CHUDS_FG=1 turned the layer on or
                                   // set require_app — never taken for a desktop program (platformIsNonGame)
     double panelDisplayHz = 0.0;  // require_app, runtime: the monitor's refresh rate as the panel reads it (0 unknown)
     uint64_t rebuildGen = 0;      // require_app, runtime: bumped when the panel changes settings that size the
@@ -64,9 +64,9 @@ struct Config {
     bool  borderPredict = false;    // matcher: a block whose predicted match lies mostly off-screen keeps the prediction (camera moves: content entering / leaving the picture)
     float falseDetail = 0.0f;       // generated frames: detail neither input has within 16 px leans to its 5x5 average (false_detail.comp), 0 = off .. 1; packed 8/10-bit SDR or HDR10 without upscaling
     float learnedCorrection = 0.0f; // interpolation: the trained correction network (tools/train_correction.py) over each generated frame, 0 = off .. 1 = as trained; 8-bit formats without upscaling
-    bool  crashLog      = true;   // Linux: a crash in the layer writes ~/.cache/bdex-framegen/crash-<game>-<pid>.txt (signal, offsets in the layer, settings); other faults go untouched to the game's handlers
+    bool  crashLog      = true;   // Linux: a crash in the layer writes ~/.cache/chuds-fg/crash-<game>-<pid>.txt (signal, offsets in the layer, settings); other faults go untouched to the game's handlers
     bool  skipFast      = false;  // opt-in: suspend a fixed multiplier near the screen's refresh rate (85 % in, 75 % out); off keeps xN at arbitrary game rates
-    bool  pipelineCache = true;   // the passes' compiled shaders kept on disk (~/.cache/bdex-framegen/pipelines-*.bin): faster starts
+    bool  pipelineCache = true;   // the passes' compiled shaders kept on disk (~/.cache/chuds-fg/pipelines-*.bin): faster starts
     bool  threadPriority = true;  // the presentation thread at a higher scheduling priority: real-time round-robin where permitted, else nice -10 from rtkit (as PipeWire's audio threads), else unchanged
     bool  preciseWake   = true;   // the presentation thread drops the kernel's timer slack (50 us by default on Linux): its sleeps until each present's moment end closer to it
     int   refreshFill   = 0;      // pure interpolation: follow the refresh rate with 2..m+1 outputs (at most 8) while the allocated outputs can fill it; also cap a multiplier that exceeds the screen; 0 off (the default since 20/10: xN is exactly N frames a game frame, as asked), 1 from x3, 2 from x2 (x2 at 60 fps on 144 Hz holds the real frame ~7 ms more)
@@ -114,7 +114,7 @@ struct Config {
     // how — 0 auto (injection by this layer where it runs in the game,
     // capture otherwise or on another GPU), 1 injection only, 2 capture
     // only. The control panel and the launchers decide with them;
-    // bdex-capture takes `gpu` when --gpu is not given. `hotkey`: the
+    // chuds-fg-capture takes `gpu` when --gpu is not given. `hotkey`: the
     // capture apps' generation toggle.
     std::string gpu;
     int method = 0;
@@ -158,7 +158,7 @@ struct Config {
     bool  contentClock  = true;   // with display-timed frames (a refresh grid, measured or virtual; adaptive), t within the actual interval between the two real frames, as frame_timing
     bool  frameTiming   = false;  // t of each generated frame from the real content times (frame-time spikes) instead of the fixed i/multiplier (opt-in)
     bool  dedup         = false;  // detect frames the game presents twice: keep the previous motion, time the output on first appearances (opt-in)
-    bool  paused        = false;  // live toggle: present only the real frames (reloaded while running; see tools/bdex-framegen --toggle)
+    bool  paused        = false;  // live toggle: present only the real frames (reloaded while running; see tools/chuds-fg --toggle)
     float targetFps     = 0.0f;   // dynamic multiplier: aim at this output rate (the refresh rate), up to `multiplier` (0 = fixed multiplier, -1 = auto: the measured refresh rate)
     bool  adaptive      = false;  // with target_fps: every game frame gets as many frames as fit at that rate, fractional ratios included (50 fps on 144 Hz: 3, 3, 2, ...), one per refresh; `multiplier` is the ceiling
     float gpuBudget     = 0.0f;   // share of the game's frame interval the generation may take on the GPU; above it the quality steps down (0 = off)
@@ -190,7 +190,7 @@ struct Config {
     int   dumpFrames    = 24;     // how many presented frames to dump
 
     // Apply a single key=value pair (keys are case-insensitive, without the
-    // BDEX_FG_ prefix). Returns false for unknown keys or unparsable values.
+    // CHUDS_FG_ prefix). Returns false for unknown keys or unparsable values.
     bool apply(const std::string& key, const std::string& value);
 
     // Reads `clé = valeur` lines. A `[name]` section restricts the options
@@ -221,12 +221,12 @@ struct Config {
 
     // defaults + file + env. `extraProcess` (an executable name, `.exe`
     // optional) is added to the process names that `[section]` headers match,
-    // so a caller that runs on behalf of another process — bdex_capture, which
+    // so a caller that runs on behalf of another process — chuds_fg_capture, which
     // targets a game window — gets that game's `[game]` section applied even
     // though it is not the current process. Empty (the default) = current
     // process only, the layer's case.
     static Config load(const std::string& extraProcess = "");
-    static std::string filePath();  // BDEX_FG_CONFIG, else the platform's config file
+    static std::string filePath();  // CHUDS_FG_CONFIG, else the platform's config file
     // Copies the settings that can change while a game runs (see config.cpp).
     void applyLive(const Config& fresh);
     // require_app: `fresh` with the settings fixed at swapchain / device
@@ -286,4 +286,4 @@ struct Config {
 
 const char* presentModeName(int mode);
 
-} // namespace bdex
+} // namespace chuds_fg

@@ -28,7 +28,7 @@ trap 'rm -f "$job"' EXIT
 cat > "$job" <<'JOB'
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
-[ ! -x /usr/bin/apt-get ] || export PATH="/opt/bdex-ci:$PATH"  # tools/ci/apt-get
+[ ! -x /usr/bin/apt-get ] || export PATH="/opt/chuds-fg-ci:$PATH"  # tools/ci/apt-get
 suite="${1:-}"
 if [ -n "$suite" ]; then
   # arm64: a Debian tree unpacked (nothing run in it), its programs run by
@@ -81,25 +81,25 @@ export HOME=/tmp/home XDG_DATA_HOME=/tmp/home/.local/share
 mkdir -p "$HOME"
 case "$(ls /work/pkg.*)" in
   *.deb) apt-get install -y -qq --no-install-recommends /work/pkg.deb >/tmp/pkg.log 2>&1 || { tail -5 /tmp/pkg.log; exit 1; }
-         echo "installed $(dpkg-query -W bdex-framegen), $(dpkg -L bdex-framegen | grep '\.so$' | tr '\n' ' ')" ;;
+         echo "installed $(dpkg-query -W chuds-fg), $(dpkg -L chuds-fg | grep '\.so$' | tr '\n' ' ')" ;;
   *.rpm) if command -v dnf >/dev/null; then dnf install -y -q /work/pkg.rpm >/tmp/pkg.log 2>&1
          else zypper -q -n --no-gpg-checks install --allow-unsigned-rpm /work/pkg.rpm >/tmp/pkg.log 2>&1; fi ||
            { tail -5 /tmp/pkg.log; exit 1; }
-         echo "installed $(rpm -q bdex-framegen), $(rpm -ql bdex-framegen | grep '\.so$' | tr '\n' ' ')" ;;
+         echo "installed $(rpm -q chuds-fg), $(rpm -ql chuds-fg | grep '\.so$' | tr '\n' ' ')" ;;
   *) mkdir -p /tmp/a && tar -xzf /work/pkg.tar.gz -C /tmp/a
      PATH=$install_path bash /tmp/a/*/install.sh >/dev/null ;;
 esac
-export BDEX_FG=1 BDEX_FG_LOG=2 VK_ICD_FILENAMES="$icd"
+export CHUDS_FG=1 CHUDS_FG_LOG=2 VK_ICD_FILENAMES="$icd"
 run() { ${emu[@]+"${emu[@]}"} "$bin/$1" "${@:2}"; }
 out="$(VK_LOADER_DEBUG=warn run vulkaninfo --summary 2>&1 || true)"
 if grep -qE '^USAGE: .*vulkaninfo' <<<"$out"; then  # (no --summary before 1.2.1xx)
   out="$(VK_LOADER_DEBUG=warn run vulkaninfo 2>&1 || true)"
 fi
-grep -E 'bdex-fg.*(loaded|layer (in)?active|error|failed)' <<<"$out" | cut -c1-140 | head -4
+grep -E 'chuds-fg.*(loaded|layer (in)?active|error|failed)' <<<"$out" | cut -c1-140 | head -4
 # The shipped profiles are found from the library's own directory, however
 # deep the distribution puts it (lib/x86_64-linux-gnu): a profile for
 # vulkaninfo shows in its startup line.
-profiles="$(ls /usr/share/bdex-framegen/profiles.conf "$HOME"/.local/share/bdex-framegen/profiles.conf 2>/dev/null | head -1 || true)"
+profiles="$(ls /usr/share/chuds-fg/profiles.conf "$HOME"/.local/share/chuds-fg/profiles.conf 2>/dev/null | head -1 || true)"
 if [ -n "$profiles" ] && [ -z "${emu[*]:-}" ]; then
   cp "$profiles" /tmp/profiles.orig
   printf '\n[vulkaninfo]\nmultiplier = 3\n' >> "$profiles"
@@ -110,7 +110,7 @@ if [ -n "$profiles" ] && [ -z "${emu[*]:-}" ]; then
 fi
 # Every loader accepts the manifest's format (1.2.x: loaders before 1.3 warn
 # that it is invalid).
-if grep -E 'VK_LAYER_BDEX_framegen[_0-9]*\.json.*invalid' <<<"$out" | cut -c1-160 | head -2 | grep .; then
+if grep -E 'VK_LAYER_CHUDS_fg[_0-9]*\.json.*invalid' <<<"$out" | cut -c1-160 | head -2 | grep .; then
   exit 1
 fi
 # Through vkCreateDevice: active, or inactive for want of VK_KHR_swapchain
@@ -120,7 +120,7 @@ grep -qE "device '.*': layer (active|inactive)" <<<"$out"
 # Generation: vkcube through the layer on Xvfb (in this container).
 Xvfb :99 -screen 0 1280x800x24 >/dev/null 2>&1 &
 sleep 2
-cube="$(DISPLAY=:99 BDEX_FG_STATS_INTERVAL=$stats timeout $secs ${emu[@]+"${emu[@]}"} "$bin/vkcube" 2>&1 || true)"
+cube="$(DISPLAY=:99 CHUDS_FG_STATS_INTERVAL=$stats timeout $secs ${emu[@]+"${emu[@]}"} "$bin/vkcube" 2>&1 || true)"
 if grep -qE 'No DRI3 support' <<<"$cube"; then
   echo "(generation not checked: this Mesa cannot present to Xvfb)"
   exit 0
@@ -164,7 +164,7 @@ for target in "${targets[@]}"; do
   fi
   ext=tar.gz
   case "$archive" in *.deb) ext=deb ;; *.rpm) ext=rpm ;; esac
-  if docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/bdex-ci/apt-get:ro" -v "$archive:/work/pkg.$ext:ro" -v "$job:/work/job.sh:ro" "${cmd[@]}" 2>&1 |
+  if docker run --rm -v "$ROOT/tools/ci/apt-get:/opt/chuds-fg-ci/apt-get:ro" -v "$archive:/work/pkg.$ext:ro" -v "$job:/work/job.sh:ro" "${cmd[@]}" 2>&1 |
      sed "s|^|[$target] |"; then
     echo "[$target] OK"
   else

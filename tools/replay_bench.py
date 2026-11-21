@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Online benchmark on a recorded sequence: the sequence is played as a game
-(bdex_demo --replay: every m-th frame presented, at a steady rate) through
+(chuds_fg_demo --replay: every m-th frame presented, at a steady rate) through
 the whole online path — the layer, its pacing, a real swapchain — and the
 frames actually presented are scored against the frames left out.
 
     tools/replay_bench.py SEQ [--multiplier 2] [--fps 30] [--presents N]
-                          [--demo build/demo/bdex_demo] [--layer-dir build/layer]
+                          [--demo build/demo/chuds_fg_demo] [--layer-dir build/layer]
                           [--env KEY=VALUE ...] [--other-layer NAME] [--json FILE]
 
 SEQ is a directory of consecutive fNNNN.ppm frames (« Enregistrer » in the
-panel, bdex-framegen --record, tools/make_corpus.py).
+panel, chuds-fg --record, tools/make_corpus.py).
 
 Our layer generates the frames: it dumps everything it presents, generated
 frames with their time t, and each is compared with recorded frame
@@ -58,7 +58,7 @@ def psnr(a, b):
 def layer_env(layer_dir):
     """The environment that makes the loader use the layer of `layer_dir`
     (tools/layer_env.sh: its manifest in a private XDG_DATA_HOME)."""
-    out = subprocess.run(["bash", "-c", f'. "{ROOT}/tools/layer_env.sh"; bdex_use_layer "{layer_dir}"; env -0'],
+    out = subprocess.run(["bash", "-c", f'. "{ROOT}/tools/layer_env.sh"; chuds_fg_use_layer "{layer_dir}"; env -0'],
                          capture_output=True, check=True).stdout
     env = dict(kv.split("=", 1) for kv in out.decode().split("\0") if "=" in kv)
     return env
@@ -67,23 +67,23 @@ def layer_env(layer_dir):
 def run(args, seq, frames, size, dump, other):
     env = layer_env(args.layer_dir)
     env.update({
-        "BDEX_FG": "1", "BDEX_FG_CONFIG": "/dev/null", "BDEX_FG_LOG": "2",
+        "CHUDS_FG": "1", "CHUDS_FG_CONFIG": "/dev/null", "CHUDS_FG_LOG": "2",
         # t exactly i/m (no display-time placement), every presented frame dumped.
-        "BDEX_FG_PRESENT_FEEDBACK": "0", "BDEX_FG_FRAME_TIMING": "0",
-        "BDEX_FG_DUMP": str(dump), "BDEX_FG_DUMP_FRAMES": str(args.presents * args.multiplier * 2 + 8),
-        "BDEX_FG_MULTIPLIER": "1" if other else str(args.multiplier),
+        "CHUDS_FG_PRESENT_FEEDBACK": "0", "CHUDS_FG_FRAME_TIMING": "0",
+        "CHUDS_FG_DUMP": str(dump), "CHUDS_FG_DUMP_FRAMES": str(args.presents * args.multiplier * 2 + 8),
+        "CHUDS_FG_MULTIPLIER": "1" if other else str(args.multiplier),
     })
     for kv in args.env:
         k, _, v = kv.partition("=")
         env[k] = v
     if other:
-        env["VK_INSTANCE_LAYERS"] = f"{other}:VK_LAYER_BDEX_framegen"
+        env["VK_INSTANCE_LAYERS"] = f"{other}:VK_LAYER_CHUDS_fg"
     cmd = [args.demo, "--replay", str(seq), "--replay-step", str(args.multiplier), "--fps", str(args.fps),
            "--size", f"{size[0]}x{size[1]}", "--frames", str(args.presents), "--ignore-resize", "--duration", "120"]
     r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300)
     if r.returncode != 0:
         sys.stderr.write(r.stdout[-2000:] + r.stderr[-2000:])
-        raise SystemExit(f"bdex_demo failed ({r.returncode})")
+        raise SystemExit(f"chuds_fg_demo failed ({r.returncode})")
     return r.stdout + r.stderr
 
 
@@ -155,7 +155,7 @@ def main():
     ap.add_argument("--multiplier", type=int, default=2)
     ap.add_argument("--fps", type=float, default=30.0, help="the replayed game's frame rate")
     ap.add_argument("--presents", type=int, default=0, help="presents to run (default: as many as the sequence has)")
-    ap.add_argument("--demo", default=str(ROOT / "build" / "demo" / "bdex_demo"))
+    ap.add_argument("--demo", default=str(ROOT / "build" / "demo" / "chuds_fg_demo"))
     ap.add_argument("--layer-dir", default=str(ROOT / "build" / "layer"))
     ap.add_argument("--env", action="append", default=[], help="KEY=VALUE for the run (our settings, or the other layer's)")
     ap.add_argument("--other-layer", default="", help="another frame generation layer to measure, above ours")
@@ -176,13 +176,13 @@ def main():
             cache[i] = read_ppm(frames[min(i, len(frames) - 1)])
         return cache[i]
 
-    dump = Path(tempfile.mkdtemp(prefix="bdex-replay-"))
+    dump = Path(tempfile.mkdtemp(prefix="chuds-fg-replay-"))
     try:
         log = run(a, a.seq, frames, size, dump, a.other_layer)
         dumps = dumps_in_order(dump)
         if not dumps:
             sys.stderr.write(log[-3000:])
-            raise SystemExit("nothing was dumped (is the layer loaded? BDEX_FG_LOG output above)")
+            raise SystemExit("nothing was dumped (is the layer loaded? CHUDS_FG_LOG output above)")
         if read_ppm(dumps[0][0]).shape != first.shape:
             raise SystemExit(f"the window was not given the sequence's size ({size[0]}x{size[1]}): "
                              "run under Xvfb or headless gamescope, not a tiling desktop")
@@ -202,7 +202,7 @@ def main():
         g = np.array(rows)
         worst = np.sort(g[:, 0])[: max(1, len(g) // 10)].mean()
         result = {
-            "sequence": a.seq.name, "layer": a.other_layer or "bdex-framegen", "multiplier": a.multiplier,
+            "sequence": a.seq.name, "layer": a.other_layer or "chuds-fg", "multiplier": a.multiplier,
             "presented": len(dumps), "scored": len(rows), "expected": (a.presents - 1) * (a.multiplier - 1),
             "psnr_mean": round(float(g[:, 0].mean()), 3), "psnr_worst10": round(float(worst), 3),
             "repeat_psnr": round(float(g[:, 1].mean()), 3), "fade_psnr": round(float(g[:, 2].mean()), 3),

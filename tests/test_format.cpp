@@ -1,7 +1,7 @@
 #include "format.h"
 #include "test.h"
 
-using namespace bdex;
+using namespace chuds_fg;
 
 TEST(format_8bit_classes) {
     OutputEncoding e = encodingForFormat(VK_FORMAT_B8G8R8A8_UNORM);

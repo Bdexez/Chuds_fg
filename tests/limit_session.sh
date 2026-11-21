@@ -6,7 +6,7 @@
 # after the panel closes (its session no longer refreshed). Until 31/10 the
 # limit held every armed game, started or not, and stayed after the panel
 # closed. A sleeping process and a touch loop stand in for the panel.
-#   limit_session.sh <bdex_demo> <layer_dir> [demo args...]
+#   limit_session.sh <chuds_fg_demo> <layer_dir> [demo args...]
 # (with --present-thread 3: presented as DXVK / VKD3D-Proton do — where the
 # driver has present wait, « Démarrer » makes it take FIFO and the limit
 # holds it at its present wait)
@@ -17,15 +17,15 @@ LAYER_DIR="$2"
 shift 2
 if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${DISPLAY:-}" ]; then echo "no display available, skipping"; exit 77; fi
 . "$(dirname "$0")/../tools/layer_env.sh"
-bdex_use_layer "$LAYER_DIR"
+chuds_fg_use_layer "$LAYER_DIR"
 dir="$(mktemp -d)"
 panel=""; beat=""
-trap 'kill $panel $beat 2>/dev/null; rm -rf "$dir" "$BDEX_LAYER_XDG"' EXIT
+trap 'kill $panel $beat 2>/dev/null; rm -rf "$dir" "$CHUDS_FG_LAYER_XDG"' EXIT
 printf '[*]\nenabled = 1\nrequire_app = 1\nmultiplier = 2\nfps_limit = 20\n' > "$dir/conf"
-bash -c 'exec -a bdex-framegen-gui sleep 120' & panel=$!
+bash -c 'exec -a chuds-fg-gui sleep 120' & panel=$!
 echo "$panel 0" > "$dir/app.session"
 ( while kill -0 $panel 2>/dev/null; do touch "$dir/app.session"; sleep 1; done ) & beat=$!  # the heartbeat
-BDEX_FG_CONFIG="$dir/conf" BDEX_FG_STATUS_DIR="$dir" BDEX_FG_LOG=2 BDEX_FG_STATS_INTERVAL=1 \
+CHUDS_FG_CONFIG="$dir/conf" CHUDS_FG_STATUS_DIR="$dir" CHUDS_FG_LOG=2 CHUDS_FG_STATS_INTERVAL=1 \
   timeout 90 "$DEMO" --fps 60 --size 640x400 --duration 40 "$@" >"$dir/log" 2>&1 &
 demo=$!
 # The game's frame rate at the end of a phase: the layer's last statistics line.

@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace bdex {
+namespace chuds_fg {
 
 namespace fg {
 
@@ -70,4 +70,4 @@ enum { kStateReset = 1, kStateDedup = 2, kStateExtrap = 4, kStateDisplay = 8, kS
 inline uint32_t divUp(uint32_t a, uint32_t b) { return (a + b - 1) / b; }
 
 } // namespace fg
-} // namespace bdex
+} // namespace chuds_fg

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every output encoding and the upscaling path, headless.
 
-Runs bdex_offline on the corpus's HUD sequence with each swapchain format the
+Runs chuds_fg_offline on the corpus's HUD sequence with each swapchain format the
 engine packs for (RGBA8, BGRA8, sRGB, A2B10G10R10, RGBA16F) and with the
 "game" rendering at 0.75 and 0.5 of the display size, and checks:
   - BGRA8 is byte-identical to RGBA8 (same data, other channel order);
@@ -44,13 +44,13 @@ def psnr(a, b):
 
 def main():
     build = Path(sys.argv[1])
-    tool = build / "tools" / "offline" / "bdex_offline"
+    tool = build / "tools" / "offline" / "chuds_fg_offline"
     if not tool.exists():
-        print("bdex_offline not built, skipping")
+        print("chuds_fg_offline not built, skipping")
         return 77
-    env = dict(os.environ, BDEX_FG_CONFIG="/dev/null", BDEX_FG_PRESET="balanced", BDEX_FG_BORDER_FILL="0", BDEX_FG_STILL_OCCLUDER="0",
-               BDEX_FG_MOSAIC_BLUR="0", BDEX_FG_HUD_LAYER="0")  # (packed formats only: the encodings compared without them)
-    envFill = dict(env, BDEX_FG_BORDER_FILL="1")
+    env = dict(os.environ, CHUDS_FG_CONFIG="/dev/null", CHUDS_FG_PRESET="balanced", CHUDS_FG_BORDER_FILL="0", CHUDS_FG_STILL_OCCLUDER="0",
+               CHUDS_FG_MOSAIC_BLUR="0", CHUDS_FG_HUD_LAYER="0")  # (packed formats only: the encodings compared without them)
+    envFill = dict(env, CHUDS_FG_BORDER_FILL="1")
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         subprocess.run([sys.executable, str(ROOT / "tools" / "make_corpus.py"), str(tmp / "c")], check=True,

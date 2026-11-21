@@ -5,10 +5,10 @@
 
 #include <iterator>
 
-namespace bdex {
+namespace chuds_fg {
 
 // (depth::choose and the format / layout helpers: depth_select.cpp, in
-// bdex_core with the unit tests.)
+// chuds_fg_core with the unit tests.)
 
 namespace {
 const float kNoClear = std::numeric_limits<float>::quiet_NaN();
@@ -338,7 +338,7 @@ bool DepthTracker::pick(VkExtent2D target, Pick& out, std::string& why) {
         }
     }
     if (h != picked_)
-        BDEX_INFO("depth: %ux%u (format %d, drawn %ux%u at %d,%d), %u passes a frame, %s Z", img.extent.width,
+        CHUDS_FG_INFO("depth: %ux%u (format %d, drawn %ux%u at %d,%d), %u passes a frame, %s Z", img.extent.width,
                   img.extent.height, int(img.format), used[size_t(i)].area.extent.width, used[size_t(i)].area.extent.height,
                   used[size_t(i)].area.offset.x, used[size_t(i)].area.offset.y, used[size_t(i)].passes,
                   img.clear < 0.5f ? "reversed" : "standard");
@@ -361,4 +361,4 @@ void DepthTracker::readOn(VkImage image, VkQueue queue) {
     if (it != images_.end()) it->second.readQueue = queue;
 }
 
-} // namespace bdex
+} // namespace chuds_fg

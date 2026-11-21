@@ -6,7 +6,7 @@
 
 Synthetic sequences whose true motion is known (tools/make_corpus.py's pans
 at several speeds, sub-pixel pan, swinging camera, zoom — other seeds and
-speeds than the evaluation corpus) go through bdex_offline --dump-flow; per
+speeds than the evaluation corpus) go through chuds_fg_offline --dump-flow; per
 flow texel the network sees what the shader computes (the 8 neighbours
 relative to the vector, the matching error and its slope one pixel away in
 each direction, the vector's fractional part) and learns the correction to
@@ -112,9 +112,9 @@ def collect(build, seqs, work, tag):
         d = Path(work) / f"{tag}-{name}"
         (d / "frames").mkdir(parents=True, exist_ok=True)
         make(d / "frames")
-        env = dict(os.environ, BDEX_FG_CONFIG="/dev/null", BDEX_FG_PRESET=os.environ.get("BDEX_FG_PRESET", "auto"),
-                   BDEX_FG_LEARNED_FLOW="0")
-        subprocess.run([str(Path(build) / "tools" / "offline" / "bdex_offline"), str(d / "frames"), str(d / "out"),
+        env = dict(os.environ, CHUDS_FG_CONFIG="/dev/null", CHUDS_FG_PRESET=os.environ.get("CHUDS_FG_PRESET", "auto"),
+                   CHUDS_FG_LEARNED_FLOW="0")
+        subprocess.run([str(Path(build) / "tools" / "offline" / "chuds_fg_offline"), str(d / "frames"), str(d / "out"),
                         "--multiplier", "2", "--dump-flow", str(d / "flow")], check=True, capture_output=True, env=env)
         for f in sorted((d / "flow").glob("flow_*.bin")):
             k = int(f.stem.split("_")[1])

@@ -1,6 +1,6 @@
 #include "vk_util.h"
 
-namespace bdex {
+namespace chuds_fg {
 
 const char* vkResultName(VkResult r) {
     switch (r) {
@@ -18,4 +18,4 @@ const char* vkResultName(VkResult r) {
     }
 }
 
-} // namespace bdex
+} // namespace chuds_fg
