@@ -861,6 +861,7 @@ réintroduire) :
 
 ## 9. Pièges transverses
 
+- **La build de référence `f2cec5f` garde l'ancien nom** (21/11) : `bdex_demo`, `VK_LAYER_BDEX_framegen`, variables `BDEX_FG_*`. Le renommage en chuds-fg (`d86e708`) avait aussi renommé ce que `check_matcher_invariant.py` lui passe → `chuds_fg_demo` introuvable, lot `core` de la CI en échec. Le script choisit maintenant le nom par build (`naming`). Tout renommage futur : ne pas toucher à ce que reçoit une build figée.
 - **Jamais de `getenv` dans le moteur** (11/11) : `platformEnv(nom)` /
   `platformEnviron()` — une copie de l'environnement prise à la première
   lecture. La couche relit sa config deux fois par seconde depuis les fils
