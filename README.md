@@ -12,23 +12,82 @@ An independent C++20 / Vulkan engine that estimates motion between rendered imag
 
 [See it in motion](#see-it-in-motion) · [How it works](#how-it-works) · [Get started](#installation) · [Technical reference](docs/REFERENCE.md) · [Windows](docs/windows-README.md)
 
+<p align="center">
+  <img src="docs/visuals/hero-x4.gif" width="100%" alt="Vulkan demo at 30 rendered fps on the left, and with chuds-fg x4 at 120 fps on the right, in 4x slow motion. A strip under each view marks rendered, generated and repeated frames.">
+</p>
+
+<p align="center"><sub><b>30 fps → 120 fps (×4)</b>, shown in 4× slow motion. Left: each rendered frame is repeated until the next one. Right: three engine-generated frames fill every gap. The strip under each view follows the displayed frames — light = rendered, green = generated, dark = repeated.</sub></p>
+
 | Generation | Integration | Control |
 | :--- | :--- | :--- |
 | **×2–×8**, plus adaptive output | Native Vulkan and Proton through **DXVK / VKD3D-Proton** | Per-game profiles, live settings and a desktop panel |
 | Interpolation, extrapolation and hybrid modes | Layer and capture share the same GPU engine | GPU calibration, frame recording and offline evaluation |
 
-<sub>The cover is conceptual artwork. The demonstration and frame comparison below are output from the project's Vulkan demo.</sub>
-
 ## See it in motion
 
+Every generated image in these animations is a frame produced by the engine itself (`chuds_fg_offline`, the same code as the layer, default settings on an RTX 3060 Ti). Only the labels, frame strips and error maps are drawn around them. The sources are the project's Vulkan demo, rendered deterministically at 120 fps so that every generated frame has an exact ground truth, and a synthetic game-like scene. [How they are made](#how-these-animations-are-made).
+
+### Motion compensation, not blending
+
 <p align="center">
-  <img src="docs/demo.gif" width="100%" alt="Actual Vulkan demo: 30 rendered fps on the left, x2 frame generation on the right, shown at four times slow motion.">
+  <img src="docs/visuals/crossfade-vs-flow.gif" width="100%" alt="Three views of the same moment: a cross-fade of two frames showing double images, the chuds-fg generated frame, and the rendered ground truth.">
 </p>
 
-**30 rendered fps → 60 presented fps, shown in 4× slow motion.** The right-hand view inserts a synthesized image between consecutive rendered frames. This is a controlled demo of interpolation; performance and visible quality depend on the scene, GPU and presentation stack.
+The cheapest way to invent a frame is to fade between two real ones: every moving object then appears twice (left). chuds-fg measures where each block of pixels went and moves it along that path (centre), close to the image the game would have rendered (right). This clip uses a 15 fps input at ×2, so the motion between frames is large.
+
+### What the engine sees
+
+<p align="center">
+  <img src="docs/visuals/optical-flow.gif" width="100%" alt="The rendered demo on the left and the estimated optical flow on the right, coloured by direction and brightened by speed.">
+</p>
+
+The optical flow the engine measures on each pair of frames, straight from its GPU buffers: hue is the direction of motion, brightness its speed. Each ball, the rotating square and the scrolling backdrop get their own vectors; the flat squares of the backdrop, which carry no texture, are the hardest to pin down.
+
+### ×2, ×4, ×8
+
+<p align="center">
+  <img src="docs/visuals/multipliers.gif" width="100%" alt="Four views of the same 15 fps input: alone, and with x2, x4 and x8 frame generation, giving 30, 60 and 120 fps. Strips show rendered, generated and repeated frames.">
+</p>
+
+The same 15 fps input, alone and multiplied. A higher multiplier puts more generated frames between the same two real ones: motion gets smoother, but every extra frame is built from the same information, so artifacts at fast edges (the pink ball) do not go away. A low source frame rate is the hardest case; at 30 fps and above the motion between frames is half as large.
+
+### Three generation modes
+
+<p align="center">
+  <img src="docs/visuals/modes.gif" width="100%" alt="The same 30 fps input at x4 in interpolation, hybrid and extrapolation modes, each with its error compared to the rendered ground truth below it.">
+</p>
+
+Each mode at ×4 on the same 30 fps input; below each, the difference from the image the demo rendered for that instant (brighter = larger error).
+
+| Mode | Source of generated images | Trade-off |
+| :--- | :--- | :--- |
+| **Interpolation** | Two available rendered frames | Most information for synthesis; delays output to use the next source frame. |
+| **Hybrid** | Interpolation before the real frame, prediction after it | Available from ×3; balances source-frame delay and predicted output. |
+| **Extrapolation** | Motion estimated from previous frames | Predicts forward with almost no holding; errors grow with unpredictable motion. |
+
+### A game-like scene
+
+<p align="center">
+  <img src="docs/visuals/game-scene-x4.gif" width="100%" alt="A synthetic first-person camera turn at 30 fps, alone and with chuds-fg x4 at 120 fps, in 4x slow motion: motion-blurred world, static HUD, weapon held at the bottom right.">
+</p>
+
+A fast first-person turn from the project's test scenes (`tools/edge_bench/make_game.py fps`): a textured world with parallax, the game's own motion blur, a static HUD and a weapon that stays on screen. The HUD and the weapon must stay put while the world slides behind them. Most of the remaining error sits at occlusions: the edges of layers moving against each other, where background appears in one frame and is hidden in the other.
+
+### Measured on these clips
+
+Mean PSNR of the generated frames against the frames rendered for the same instants (whole image, higher is better). *Repeat* is what the player sees without frame generation, *cross-fade* the naive blend.
+
+| Clip | chuds-fg | Repeat | Cross-fade |
+| :--- | ---: | ---: | ---: |
+| Vulkan demo, 30 fps ×4, interpolation | **29.4 dB** | 23.4 dB | 24.8 dB |
+| Vulkan demo, 30 fps ×4, extrapolation | **26.8 dB** | — | — |
+| Vulkan demo, 15 fps ×8, interpolation | **25.7 dB** | 21.4 dB | 22.5 dB |
+| Game-like turn, 30 fps ×4, interpolation | **31.2 dB** | 21.6 dB | 22.6 dB |
+
+<sub>Offline measurements on these synthetic sequences only. They do not include a real game's content, its frame pacing or the compositor; see [Performance and quality](#performance-and-quality) for timing.</sub>
 
 <details>
-<summary><b>Inspect an actual generated frame and its optical flow</b></summary>
+<summary><b>Still frames: one generated image and its optical flow</b></summary>
 
 ![Real frame A, the engine-generated intermediate image, real frame B](docs/comparison.png)
 
@@ -36,9 +95,17 @@ The middle image is generated from its two neighbours. Fast edges and occlusions
 
 ![Estimated optical flow from the demo](docs/flow.png)
 
-In the diagnostic view, hue represents motion direction and saturation its magnitude.
+In the diagnostic view (`CHUDS_FG_DEBUG=flow`), hue represents motion direction and saturation its magnitude.
 
 </details>
+
+### How these animations are made
+
+```bash
+tools/readme_gifs.py build /tmp/chuds-fg-gifs     # rewrites docs/visuals/*.gif
+```
+
+The Vulkan demo is recorded through the layer at ×1 (`CHUDS_FG_DUMP`, `--deterministic --fps 120`) in a headless gamescope: every 4th frame is the input of a 30 fps game, every 8th of a 15 fps game, and the frames in between are the exact ground truth. `tools/edge_bench/make_game.py` writes the game-like scene. `chuds_fg_offline` then runs the engine with the default configuration in each mode and multiplier, and the frames are assembled and encoded with an ffmpeg palette. The capture and the engine are deterministic: running the script again gives identical files.
 
 ## How it works
 
@@ -53,14 +120,6 @@ In the diagnostic view, hue represents motion direction and saturation its magni
 | **Measure the result** | Offline replay compares generated images with held-out rendered frames and repetition/blend baselines; pacing tools inspect presentation timing. |
 
 The pipeline runs on the GPU. The core optical-flow method is image-based; it does not require a game's motion-vector integration. The optional `depth` path can additionally use a depth buffer tracked by the layer.
-
-### Three generation modes
-
-| Mode | Source of generated images | Trade-off |
-| :--- | :--- | :--- |
-| **Interpolation** | Two available rendered frames | More information for synthesis; delays output to use the next source frame. |
-| **Extrapolation** | Motion estimated from previous frames | Predicts forward with less holding; errors grow with unpredictable motion. |
-| **Hybrid** | Interpolation before the real frame, prediction after it | Available from ×3; balances source-frame delay and predicted output. |
 
 ## Which games
 
