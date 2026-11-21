@@ -28,36 +28,52 @@ def layer_env(build, work):
     return {"VK_IMPLICIT_LAYER_PATH": str(build / "layer"), "XDG_DATA_HOME": str(work)}
 
 
+# The baseline (f2cec5f) predates the rename to chuds-fg: its demo is
+# bdex_demo and its layer reads BDEX_FG_* (detected per build, not by commit).
+PREFIXES = ("CHUDS_FG", "BDEX_FG")
+
+
+def naming(build):
+    if (build / "demo" / "chuds_fg_demo").exists():
+        return "CHUDS_FG", build / "demo" / "chuds_fg_demo"
+    if (build / "demo" / "bdex_demo").exists():
+        return "BDEX_FG", build / "demo" / "bdex_demo"
+    raise RuntimeError(f"no demo (chuds_fg_demo or bdex_demo) in {build / 'demo'}")
+
+
 def render(build, dump):
+    prefix, demo = naming(build)
     # Compare the historical default path, regardless of the caller's game
-    # profile or experimental CHUDS_FG_* settings.
+    # profile or experimental settings, under either name.
     env = {k: v for k, v in os.environ.items()
-           if k != "CHUDS_FG" and not k.startswith("CHUDS_FG_") and k != "VK_ADD_IMPLICIT_LAYER_PATH"}
-    env.update({
-        **layer_env(build, Path(dump).parent / f"xdg-{build.resolve().as_posix().replace('/', '_')}"),
-        "CHUDS_FG_CONFIG": "/dev/null",
-        "CHUDS_FG": "1",
-        "CHUDS_FG_PRESET": "balanced",
-        "CHUDS_FG_MULTIPLIER": "2",
-        "CHUDS_FG_GRAD_WEIGHT": "0",
+           if k not in PREFIXES and not k.startswith(tuple(p + "_" for p in PREFIXES))
+           and k != "VK_ADD_IMPLICIT_LAYER_PATH"}
+    settings = {
+        "CONFIG": "/dev/null",
+        "PRESET": "balanced",
+        "MULTIPLIER": "2",
+        "GRAD_WEIGHT": "0",
         # The default since 0.4, absent from the baseline: off for the historical path.
-        "CHUDS_FG_ZERO_BIAS_CONTRAST": "0",
+        "ZERO_BIAS_CONTRAST": "0",
         # Likewise (0.6): the histogram gate of the scene-cut fallback, the
         # capped zero bias.
-        "CHUDS_FG_SCENE_CUT_HIST": "0",
-        "CHUDS_FG_ZERO_BIAS_CAP": "0",
-        "CHUDS_FG_HUD": "0",
+        "SCENE_CUT_HIST": "0",
+        "ZERO_BIAS_CAP": "0",
+        "HUD": "0",
         # What a discrete GPU turns on by itself with any preset but
         # performance (Config::autoConfigure): off, as on the CI's lavapipe.
-        "CHUDS_FG_PIXEL_VECTORS": "0", "CHUDS_FG_INTERP_SPLAT": "0", "CHUDS_FG_ROT_WEIGHT": "0",
-        "CHUDS_FG_TEMPORAL_PREDICTION": "0", "CHUDS_FG_ZERO_BIAS": "0.002", "CHUDS_FG_SCENE_CUT_LOCAL": "0",
-        "CHUDS_FG_EXTRAPOLATE_SPLAT": "0", "CHUDS_FG_REVEAL_FILL": "0", "CHUDS_FG_GLOBAL_MOTION": "0", "CHUDS_FG_HUD_MASK": "0", "CHUDS_FG_STATIC_SOFT": "0", "CHUDS_FG_INTERP_ACCEL": "0", "CHUDS_FG_FALSE_DETAIL": "0", "CHUDS_FG_BORDER_PREDICT": "0", "CHUDS_FG_BORDER_FILL": "0", "CHUDS_FG_STILL_OCCLUDER": "0", "CHUDS_FG_HUD_AVOID": "0", "CHUDS_FG_MOSAIC_BLUR": "0", "CHUDS_FG_SEARCH_FINE": "2", "CHUDS_FG_SMOOTHNESS": "0.004",
-        "CHUDS_FG_LOG": "0",
-        "CHUDS_FG_STATS": "0",
-        "CHUDS_FG_DUMP": str(dump),
-        "CHUDS_FG_DUMP_FRAMES": "24",
-    })
-    return subprocess.Popen([str(build / "demo" / "chuds_fg_demo"), "--fps", "30",
+        "PIXEL_VECTORS": "0", "INTERP_SPLAT": "0", "ROT_WEIGHT": "0",
+        "TEMPORAL_PREDICTION": "0", "ZERO_BIAS": "0.002", "SCENE_CUT_LOCAL": "0",
+        "EXTRAPOLATE_SPLAT": "0", "REVEAL_FILL": "0", "GLOBAL_MOTION": "0", "HUD_MASK": "0", "STATIC_SOFT": "0", "INTERP_ACCEL": "0", "FALSE_DETAIL": "0", "BORDER_PREDICT": "0", "BORDER_FILL": "0", "STILL_OCCLUDER": "0", "HUD_AVOID": "0", "MOSAIC_BLUR": "0", "SEARCH_FINE": "2", "SMOOTHNESS": "0.004",
+        "LOG": "0",
+        "STATS": "0",
+        "DUMP": str(dump),
+        "DUMP_FRAMES": "24",
+    }
+    env.update(layer_env(build, Path(dump).parent / f"xdg-{build.resolve().as_posix().replace('/', '_')}"))
+    env[prefix] = "1"
+    env.update({f"{prefix}_{k}": v for k, v in settings.items()})
+    return subprocess.Popen([str(demo), "--fps", "30",
                              "--frames", "12", "--size", "800x600", "--deterministic"],
                             env=env, stdout=subprocess.DEVNULL)
 
