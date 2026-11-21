@@ -4691,3 +4691,35 @@ propre valeur depuis son signal bloquait la fenêtre (corrigé).
 **Non vérifié** : le panneau sur le bureau de l'utilisateur avec un vrai jeu
 (volontairement : jamais de fenêtre de test sur son écran), le lanceur sur
 un vrai Windows.
+
+### 21/11 — le README refait autour de GIF animés
+
+Demande de l'utilisateur : refaire le README « afin d'y inclure plus de
+rendus graphiques en gif animés ». Section « See it in motion » réécrite,
+six GIF dans `docs/visuals/`, tous des **sorties réelles du moteur**
+(`chuds_fg_offline`, configuration par défaut, RTX 3060 Ti) ; seuls les
+libellés, les bandes d'images (réelle / générée / répétée) et les cartes
+d'erreur sont dessinés autour : `hero-x4` (30 → 120 i/s), `crossfade-vs-flow`
+(fondu contre compensation de mouvement, 15 i/s ×2), `optical-flow` (flux
+avant lu dans les tampons du moteur, `--dump-flow`), `multipliers`
+(15 i/s ×1/×2/×4/×8), `modes` (interpolation / hybride / extrapolation ×4
+avec erreur contre la vérité terrain), `game-scene-x4` (`make_game.py fps`).
+L'ancien `docs/demo.gif` (libellé « bdex-framegen » d'avant le renommage)
+est retiré.
+- **Générateur** : `tools/readme_gifs.py BUILD WORK` — démo enregistrée par
+  la couche à ×1 (`CHUDS_FG_DUMP`, `--deterministic --fps 120`, 960×540) dans
+  gamescope sans tête ; une image sur 4 = jeu à 30 i/s, sur 8 = 15 i/s, les
+  autres = vérité exacte. **Le dossier de `CHUDS_FG_DUMP` doit exister**
+  (sinon « could not write », rien d'enregistré). Deux exécutions depuis un
+  dossier vide : GIF identiques octet pour octet (~2 min 30).
+- **Chiffres** (PSNR image entière contre l'image rendue au même instant) :
+  démo 30 i/s ×4 interpolation 29,4 dB (répétition 23,4, fondu 24,8),
+  extrapolation 26,8 ; démo 15 i/s ×8 25,7 (21,4 / 22,5) ; virage
+  `make_game fps` ×4 31,2 (21,6 / 22,6). Hors ligne, séquences synthétiques.
+- **Écarté** : un GIF de coupure de scène (`chuds_fg_demo --cut`). La paire
+  qui contient la coupure sort en fondu, et la seconde scène de la démo
+  (rayures périodiques qui défilent vite) est mal suivie : la légende
+  « coupure détectée » aurait été fausse. À reprendre si une scène B moins
+  ambiguë est ajoutée à la démo.
+- Poids : ~15,6 Mo de GIF au total (0,75 à 3,9 Mo chacun ; palette ffmpeg
+  sans tramage, ≤ 96 couleurs pour la démo à aplats).
