@@ -6,6 +6,16 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Animated README (2026-11-21)
+
+- **The README shows the engine at work in six animated GIFs**: 30 → 120 fps
+  side by side, a cross-fade against motion compensation, the optical flow
+  the engine measures, ×1 / ×2 / ×4 / ×8 on the same input, the three modes
+  with their error against the ground truth, and a game-like first-person
+  turn — every generated image is real engine output, with the PSNR measured
+  on these clips. `tools/readme_gifs.py` rebuilds them (identical files on
+  every run). The old `docs/demo.gif` (pre-rename label) is removed.
+
 ### A new control panel: « Simple » and « Avancé » (2026-11-19)
 
 - **`chuds-fg-gui` rebuilt around two pages** (header switcher,
