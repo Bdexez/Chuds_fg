@@ -739,6 +739,10 @@ void main() {
         bool found = false, bestSame = false;
         vec4 bestC = c;
         vec2 bestV = vec2(0.0);
+        // (The last vector's windowed error: neighbouring flow texels often
+        // carry the same vector, and the error depends on it alone here.)
+        vec2 lastV = vec2(1e30);
+        float lastE = 0.0;
         // (One loop over the 32 slots, not unrolled: an unrolled body 24
         // times over weighed on the registers of the whole synthesis.)
         [[dont_unroll]] for (int k = 0; k < 32; ++k) {
@@ -769,8 +773,19 @@ void main() {
                     bool same = false;
                     float e;
                     if (sameDepth(za, zb)) {
-                        e = quadError(a, b, fsz);
+                        if (any(notEqual(V, lastV))) {
+                            lastE = quadError(a, b, fsz);
+                            lastV = V;
+                        }
+                        e = lastE;
                         minE = min(minE, e);
+                        // A trajectory explains q: the block changes nothing
+                        // (it applies only over DEPTH_GATE, and minE only
+                        // falls) — the rest of the candidates unread. Same
+                        // output bit for bit; with the error kept per vector
+                        // above, 1440p x3 on a first-person turn: the
+                        // synthesis 3.77 -> 3.30 ms a game frame (22/11).
+                        if (minE <= DEPTH_GATE) break;
                         same = e < 0.04 && sameDepth(zt, za);
                     } else if (oneP || oneC) {
                         e = colourError(texture(prevTex, a / fsz), texture(curTex, b / fsz));
