@@ -4723,3 +4723,78 @@ est retiré.
   ambiguë est ajoutée à la démo.
 - Poids : ~15,6 Mo de GIF au total (0,75 à 3,9 Mo chacun ; palette ffmpeg
   sans tramage, ≤ 96 couleurs pour la démo à aplats).
+
+### 22/11 — saccades à haut FPS avec un jeu lourd : CPU et GPU
+
+Demande de l'utilisateur : « quand j'ai beaucoup de fps ça lague parfois »
+— State of Decay 2 (Unreal 4, D3D11 → DXVK, Proton), GPU à fond, ×3 fixe,
+`fps_limit = 48` (144 Hz), `depth = 1`, Hyprland. Banc : la démo à travers
+la couche dans gamescope sans tête, 2560×1440 ×3, `fps_limit = 48`,
+`--gpu-load 115` (le jeu tiendrait ~44 i/s : le cas de l'utilisateur) ou 130.
+CPU par fil depuis `/proc/<pid>/task/*/stat` (fils nommés désormais).
+
+**1. Les attentes de fences du pilote NVIDIA** (`DeviceData::waitFence`,
+option `fence_poll`, auto = pilote propriétaire NVIDIA sous Linux). Banc
+Vulkan isolé (RTX 3060 Ti, une tâche GPU de 10,4 ms, 20 essais) :
+`vkWaitForFences` à timeout ≤ 1 ms tourne à **99,9 % d'un cœur** ; à
+≥ 2 ms il dort et se réveille **+9,4 ms** après la fin du GPU (10 ms :
++8,3 ; 2 ms : +0,3 et 43 % de CPU) ; `vkGetFenceStatus` + sommeils de 0,1 ms
+(marge du minuteur à 1 ns) : −0,3 ms par rapport à la boucle active (au pire
++0,6), **1,9 %** de CPU ; 0,2 ms : 1,1 %. Le fichier de synchronisation
+exporté (`poll()`) ne se signalait pas : écarté. La couche attendait par
+tranches de 0,5 ms dans le worker (`waitGpu`, `waitUntilOrCancelled` à 1 ms :
+le fil `chuds-fg-worker` à 21–38 % d'un cœur sous saturation) et à 100 ms sur
+le fil du jeu (`max_frame_latency`) et sur celui de présentation de DXVK
+(`waitPresent`, `fps_limit_wait`) : réveil 9 ms trop tard. Toutes les
+attentes du chemin de chaque image passent par `waitFence` (aussi la capture
+Linux) ; destruction et vidage gardent `vkWaitForFences`. Mesa attend dans
+le noyau (précis, au repos) : pas de sondage.
+
+**2. Qualité avant FPS** (`headroom_quality`, défaut 2,
+`pacing::HeadroomCap::quality`) : `gpu_headroom` abaissait les FPS du jeu dès
+la saturation (48 → 41,5–43 : ×3 = 124,5–129 i/s sur 144 Hz). D'abord les
+niveaux par image de `gpu_budget` (1 : passes sur l'image finie, 1440p ×3
+3,18 → 1,94 ms par image du jeu ; 2 : recherche étroite), un par seconde ;
+le jeu n'est tenu qu'au-delà. Retour : le plafond d'abord, puis un niveau
+après 8 s calmes (re-saturé dans les 3 s : remonte, attente ×2, 64 s max).
+Simulateur (`pacing_gpu_headroom_quality_before_frame_rate`) : 18,5 ms de
+GPU du jeu + génération, limite 48 → 48,0 stables au niveau 1 au lieu de
+41,5 ; niveau qui libère plus que la marge : 3 retours en 120 s.
+
+**3. Sommeil de la limite** (`sleepUntilSteadyMs`, `syncFrameStart`) :
+boucle `yield` de 1,5 ms par image → `platformSleepUntilPrecise` (marge du
+minuteur abaissée le temps du sommeil, celle du fil rendue) puis 0,5 ms sous
+Linux (`kSpinMarginUs` ; Windows inchangé). Réveil d'un sommeil de 20,8 ms :
+médiane 68 → 18 µs, p99 ~250 µs ; sous charge totale, plusieurs ms dans les
+deux cas (la boucle active n'y change rien, elle est préemptée aussi).
+
+**Mesures de bout en bout** (démo `--gpu-load 115`, deux essais par version,
+couche d'avant compilée depuis `HEAD` à côté) : CPU du processus 43–47 % →
+**6,4–6,9 %** d'un cœur ; jeu 43,2 → **46,0–48,0** i/s ; affichées 129,6 →
+**137,9–144,0** ; image→écran 45,0–45,5 → **41,4–43,8 ms**. Charge 130,
+`headroom_quality` seul : 38,0–38,2 → 40,1–43,4 i/s. Charge légère (20) :
+48,0 → 144 dans les deux cas, CPU 36 → 26–32 %.
+**Pas de gain** : `false_detail` est déjà tuilé en mémoire partagée (0,55 ms
+par image du jeu à 1440p ×3) ; la file de synthèse a déjà la priorité
+relative 1,0 (globale : refusée par NVIDIA sans privilèges) ; `pollConfig`
+est déjà limité à 2 Hz.
+**Tests** : unitaires, sans affichage (18/18), d'affichage dans gamescope
+sans tête dont `validation` (Khronos + synchronisation : aucune erreur avec
+le sondage). `latency_probe` et `gamescope_limit` échouent **aussi avec la
+couche d'avant** sur ce poste (« present-to-screen » absent des statistiques
+avec le gamescope installé) : préexistant.
+**4. `depth` moins cher, sorties identiques** (`interpolate.comp`) :
+mesuré en 1440p ×3 (`make_game.py fps` agrandi ×2, profondeur comprise),
+`depth = 1` doublait la synthèse (1,80 → 3,92 ms par image du jeu). La
+boucle des 24 candidats calcule `quadError` (18 lectures) pour chaque
+trajectoire à profondeur égale : presque toutes dans un décor uniforme.
+Exact : sortie de la boucle dès `minE ≤ DEPTH_GATE` (le bloc ne s'applique
+qu'au-dessus, et `minE` ne fait que baisser) ; l'erreur du dernier vecteur
+gardée (même vecteur → même erreur). A/B à la suite, trois essais : 3,76–3,88
+→ **3,29–3,30 ms** ; 214 images (5 séquences avec profondeur, ×2/×3/×4)
+identiques à l'octet près. Reste ~+1,3 ms pour `depth` à 1440p ×3 : un GPU
+saturé gagne encore à la couper (`depth = 0`).
+**Non vérifié** : State of Decay 2 lui-même. **Piège d'installation** : la
+couche installée chez l'utilisateur porte encore l'ancien nom
+(`VK_LAYER_BDEX_framegen`, `~/.config/bdex-framegen.conf`) ; installer la
+nouvelle sans retirer l'ancienne charge deux générations.
