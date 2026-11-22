@@ -542,6 +542,17 @@ struct GamescopeCycle {
 //    lighter scene gets its frame rate back in seconds; a probe that
 //    saturates comes back to 1 - headroom of the rate it reached, and the
 //    next waits twice as long (32 s at most), small again.
+// Quality before frame rate (`maxQuality` > 0, headroom_quality): saturated
+// and not capped yet, the generation's own cost steps down first — gpu_budget's
+// per-frame levels (FrameGen::effectiveConfig: level 1 drops the passes over
+// each finished frame, 1440p x3 3.18 -> 1.94 ms a game frame on an RTX 3060
+// Ti; 2 the narrowest search), one level a second, the frame rate untouched
+// — and only at `maxQuality` is the game held. A held rate misses the
+// display's (simulated: 48 x3 = 144 Hz -> 41.5 x3 = 124.5) and is seen as
+// stutter; a tenth of a dB is not. Back up, the cap is lifted first;
+// a level returns after a quiet while (8 s), and when that saturates again
+// within 3 s the level comes back and the next wait doubles (64 s at most;
+// halved again, 8 s at least, after a return that held).
 struct HeadroomCap {
     double capFps = 0.0;    // the game's frame rate is held under this (0: none)
     double floorFps = 0.0;  // ...never under this
@@ -551,11 +562,26 @@ struct HeadroomCap {
     double busySum = 0.0;
     double quietMs = 0.0, probeMs = 4000.0, probeStep = 0.0, raisedMs = 0.0, unboundMs = 0.0;
     int quietProbes = 0;  // probes in a row that did not saturate
+    int quality = 0;      // generation quality levels stepped down (0..maxQuality)
+    double qualityUpMs = 0.0, qualityBackMs = 0.0, qualityQuietMs = 0.0, qualityWaitMs = 8000.0;
     void reset() { *this = HeadroomCap{}; }
+    // The cap gone, the quality steps kept (they leave on their own clock).
+    void dropCap() {
+        HeadroomCap fresh;
+        fresh.windowMs = windowMs;
+        fresh.quality = quality;
+        fresh.qualityUpMs = qualityUpMs;
+        fresh.qualityBackMs = qualityBackMs;
+        fresh.qualityQuietMs = qualityQuietMs;
+        fresh.qualityWaitMs = qualityWaitMs;
+        *this = fresh;
+    }
     // Per game frame: how long the game waited for the GPU to finish its
     // previous frame (< 0 unknown), its frame interval (estimate), the GPU's
-    // busy percent if read since the last call (< 0 none). Returns capFps.
-    double update(double nowMs, double waitedMs, double intervalMs, int busyPercent, double headroom) {
+    // busy percent if read since the last call (< 0 none), how many quality
+    // levels may go before the game is held. Returns capFps.
+    double update(double nowMs, double waitedMs, double intervalMs, int busyPercent, double headroom,
+                  int maxQuality = 0) {
         if (!(headroom > 0.0) || !(intervalMs > 0.5 && intervalMs < 500.0)) {
             reset();
             return 0.0;
@@ -570,6 +596,43 @@ struct HeadroomCap {
         const bool waited = waits * 5 >= frames * 3;  // (60 % of the frames)
         const double target = 100.0 * (1.0 - headroom);
         const double busy = busyN ? busySum / busyN : -1.0;
+        const auto endWindow = [&] {
+            windowMs = nowMs;
+            frames = waits = busyN = 0;
+            busySum = 0.0;
+            return capFps;
+        };
+        maxQuality = std::max(0, maxQuality);
+        if (quality > maxQuality) quality = maxQuality;
+        const bool saturated = waited && (busy < 0.0 || busy > std::min(98.0, target + 4.0));
+        if (saturated && !(capFps > 0.0) && quality < maxQuality) {
+            // (a second for the last step to show in the game's waits)
+            if (!(qualityUpMs > 0.0) || nowMs - qualityUpMs >= 900.0 ||
+                (qualityBackMs > 0.0 && nowMs - qualityBackMs < 3000.0)) {
+                if (qualityBackMs > 0.0 && nowMs - qualityBackMs < 3000.0)
+                    qualityWaitMs = std::min(2.0 * qualityWaitMs, 64000.0);  // (the return did not hold)
+                ++quality;
+                qualityUpMs = nowMs;
+                qualityBackMs = qualityQuietMs = 0.0;
+            }
+            return endWindow();
+        }
+        if (saturated && !(capFps > 0.0) && quality > 0 && nowMs - qualityUpMs < 900.0) return endWindow();
+        if (!saturated && !(capFps > 0.0) && quality > 0) {
+            if (qualityBackMs > 0.0 && nowMs - qualityBackMs >= 3000.0) {  // (the last return held)
+                qualityWaitMs = std::max(8000.0, 0.5 * qualityWaitMs);
+                qualityBackMs = 0.0;
+            }
+            const bool room = busy < 0.0 || busy < target - 6.0;
+            qualityQuietMs = room ? qualityQuietMs + spanMs : 0.0;
+            if (qualityQuietMs >= qualityWaitMs) {
+                --quality;
+                qualityBackMs = nowMs;
+                qualityQuietMs = 0.0;
+            }
+            return endWindow();
+        }
+        if (saturated || capFps > 0.0) qualityQuietMs = 0.0;
         if (busy >= 0.0) {
             const bool over = busy > std::min(98.0, target + 4.0);
             if (!(capFps > 0.0)) {
@@ -586,7 +649,7 @@ struct HeadroomCap {
             } else if (busy < target - 6.0) {
                 if (rate < 0.9 * capFps) {  // (not what holds the game)
                     unboundMs += spanMs;
-                    if (unboundMs >= 4000.0) reset();
+                    if (unboundMs >= 4000.0) dropCap();
                 } else {
                     unboundMs = 0.0;
                     capFps *= std::min(1.08, target / std::max(busy, 1.0));
@@ -613,7 +676,7 @@ struct HeadroomCap {
             quietMs += spanMs;
             unboundMs = rate < 0.9 * capFps ? unboundMs + spanMs : 0.0;
             if (unboundMs >= 4000.0) {
-                reset();
+                dropCap();
             } else if (quietMs >= probeMs) {
                 if (raisedMs > 0.0 && ++quietProbes >= 2) {  // (two went through: sooner, larger)
                     probeMs = std::max(2000.0, 0.5 * probeMs);
@@ -625,10 +688,7 @@ struct HeadroomCap {
                 quietMs = 0.0;
             }
         }
-        windowMs = nowMs;
-        frames = waits = busyN = 0;
-        busySum = 0.0;
-        return capFps;
+        return endWindow();
     }
 };
 

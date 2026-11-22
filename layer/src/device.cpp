@@ -374,13 +374,45 @@ VkResult DeviceData::submit(const VkSubmitInfo& info, VkFence fence) {
 
 namespace chuds_fg {
 
+bool fencePollWanted(int fencePoll, const VkPhysicalDeviceProperties& props, VkDriverId driverId) {
+    if (fencePoll >= 0) return fencePoll > 0;
+#ifdef _WIN32
+    (void)props;
+    (void)driverId;
+    return false;
+#else
+    return driverId == VK_DRIVER_ID_NVIDIA_PROPRIETARY ||
+           (driverId == VkDriverId(0) && props.vendorID == 0x10DE && !std::strstr(props.deviceName, "NVK"));
+#endif
+}
+
+VkResult DeviceData::waitFence(VkFence fence, uint64_t timeoutNs) const {
+    if (!pollFences || timeoutNs == 0) return vt.WaitForFences(device, 1, &fence, VK_TRUE, timeoutNs);
+    VkResult r = vt.GetFenceStatus(device, fence);
+    if (r != VK_NOT_READY) return r;
+    using clock = std::chrono::steady_clock;
+    const auto deadline = timeoutNs >= uint64_t(INT64_MAX) / 2
+                              ? clock::time_point::max()
+                              : clock::now() + std::chrono::duration_cast<clock::duration>(std::chrono::nanoseconds(timeoutNs));
+    PreciseSleeps precise;
+    for (;;) {
+        const auto now = clock::now();
+        if (now >= deadline) return VK_TIMEOUT;
+        const auto step = std::chrono::microseconds(100);
+        platformSleepUntil(deadline - now < step ? deadline : now + step);
+        r = vt.GetFenceStatus(device, fence);
+        if (r != VK_NOT_READY) return r;
+    }
+}
+
 void sleepUntilSteadyMs(double ms) {
     using clock = std::chrono::steady_clock;
     const auto until = clock::time_point(std::chrono::duration_cast<clock::duration>(std::chrono::duration<double, std::milli>(ms)));
     const auto now = clock::now();
     if (until <= now) return;
-    const auto coarse = until - std::chrono::microseconds(1500);
-    if (coarse > now) platformSleepUntil(coarse);
+    // (sleep precisely, then spin the timer's remaining slack: kSpinMarginUs)
+    const auto coarse = until - std::chrono::microseconds(kSpinMarginUs);
+    if (coarse > now) platformSleepUntilPrecise(coarse);
     while (clock::now() < until) std::this_thread::yield();
 }
 

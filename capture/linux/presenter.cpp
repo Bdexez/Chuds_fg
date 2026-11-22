@@ -238,6 +238,7 @@ bool Presenter::init(Display* dpy, Window overlay, const std::string& gpu, bool 
     layerDev_.layerUsable = true;
     layerDev_.cmdPool = cpool_;
     layerDev_.config.autoConfigure(layerDev_.props, layerDev_.memProps);
+    layerDev_.pollFences = fencePollWanted(cfg.fencePoll, layerDev_.props, VkDriverId(0));  // (DeviceData::waitFence)
     const Config& fc = layerDev_.config;
     CHUDS_FG_INFO("using gpu %zu: %s; frame generation x%d %s, preset %s", pick, gpuName_.c_str(), fc.multiplier,
               fc.modeName(), fc.autoTunedTo.empty() ? "(explicit)" : fc.autoTunedTo.c_str());
@@ -654,7 +655,8 @@ Presenter::clock::time_point Presenter::waitFence(VkFence fence, bool (*cancel)(
     if (!fence) return clock::now();
     const auto limit = clock::now() + std::chrono::milliseconds(250);
     for (;;) {
-        if (vkWaitForFences(dev_, 1, &fence, VK_TRUE, 500'000) != VK_TIMEOUT) break;
+        // (NVIDIA: polled, its short waits spin a core — DeviceData::waitFence)
+        if (layerDev_.waitFence(fence, 500'000) != VK_TIMEOUT) break;
         if ((cancel && cancel(ctx)) || clock::now() >= limit) break;
     }
     return clock::now();

@@ -1,6 +1,7 @@
 #include "recorder.h"
 #include "framegen.h"
 #include "log.h"
+#include "platform.h"
 #include "vk_util.h"
 
 #include <algorithm>
@@ -151,6 +152,7 @@ void FrameRecorder::finish(const SlotDone& done) {
 }
 
 void FrameRecorder::writerLoop() {
+    platformNameThread("chuds-fg-record");
     std::ofstream timestamps(dir_ + "/timestamps.csv");
     timestamps << "frame,present_ms,interval_ms\n" << std::fixed << std::setprecision(3);
     double previousMs = 0.0;

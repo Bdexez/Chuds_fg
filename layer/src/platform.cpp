@@ -24,6 +24,8 @@
 #include <dirent.h>
 #include <dlfcn.h>
 #include <fstream>
+#include <pthread.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 extern char** environ;
@@ -409,6 +411,25 @@ bool platformIsNonGame(const std::string& name) {
     return false;
 }
 
+void platformNameThread(const char* name) {
+#ifdef _WIN32
+    using SetDescription = HRESULT(WINAPI*)(HANDLE, PCWSTR);
+    static const SetDescription set = [] {
+        HMODULE k = GetModuleHandleW(L"kernel32.dll");
+        return k ? reinterpret_cast<SetDescription>(reinterpret_cast<void*>(GetProcAddress(k, "SetThreadDescription")))
+                 : nullptr;
+    }();
+    if (!set) return;
+    wchar_t wide[32] = {};
+    for (size_t i = 0; i + 1 < 32 && name[i]; ++i) wide[i] = static_cast<wchar_t>(static_cast<unsigned char>(name[i]));
+    set(GetCurrentThread(), wide);
+#else
+    char shortName[16] = {};
+    std::strncpy(shortName, name, sizeof shortName - 1);
+    pthread_setname_np(pthread_self(), shortName);
+#endif
+}
+
 void platformFineTimer(bool on) {
 #ifdef _WIN32
     using Period = UINT(WINAPI*)(UINT);
@@ -466,6 +487,25 @@ void platformSleepUntil(std::chrono::steady_clock::time_point until) {
 #else
     std::this_thread::sleep_until(until);
 #endif
+}
+
+PreciseSleeps::PreciseSleeps() {
+#ifndef _WIN32
+    const int old = prctl(PR_GET_TIMERSLACK, 0UL, 0UL, 0UL, 0UL);
+    if (old > 1 && prctl(PR_SET_TIMERSLACK, 1UL, 0UL, 0UL, 0UL) == 0) old_ = old;
+#endif
+}
+
+PreciseSleeps::~PreciseSleeps() {
+#ifndef _WIN32
+    if (old_ > 1) prctl(PR_SET_TIMERSLACK, static_cast<unsigned long>(old_), 0UL, 0UL, 0UL);
+#endif
+}
+
+void platformSleepUntilPrecise(std::chrono::steady_clock::time_point until) {
+    // (the thread's own slack back after: the game's threads keep theirs)
+    PreciseSleeps precise;
+    platformSleepUntil(until);
 }
 
 std::string platformCacheDir() {

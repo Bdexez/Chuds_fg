@@ -170,7 +170,7 @@ void VirtualSwapchain::publishStatus(int multiplier) {
             statusRateAtMs_ = nowMs;
         }
     }
-    e.budgetLevel = budget_.level();
+    e.budgetLevel = qualityApplied_;
     e.uncertainPct = uncertainPct_;
     e.width = displayExtent_.width;
     e.height = displayExtent_.height;
@@ -532,7 +532,7 @@ void VirtualSwapchain::followSurface() {
     realOutOfDate_ = VK_NULL_HANDLE;  // (the worker is idle)
     gsCycle_ = {};                    // (gamescope's WSI layer starts it at its default again)
     fg_ = std::move(fg);
-    fg_->setQualityLevel(budget_.level());
+    fg_->setQualityLevel(qualityApplied_ = qualityLevel());
     generating_ = generating;
     historyLost_ = true;
     try {
@@ -945,13 +945,13 @@ VirtualSwapchain::FrameSlot& VirtualSwapchain::nextSlot(std::vector<FrameSlot>& 
     FrameSlot& s = slots[cursor];
     cursor = (cursor + 1) % slots.size();
     if (s.submitted) {
-        dev_.vt.WaitForFences(dev_.device, 1, &s.fence, VK_TRUE, UINT64_MAX);
+        dev_.waitFence(s.fence, UINT64_MAX);
         dev_.vt.ResetFences(dev_.device, 1, &s.fence);
         s.submitted = false;
         fg_->profileCollect(static_cast<uint32_t>((&slots == &slots_ ? 0 : slots_.size()) + (&s - slots.data())));
     }
     if (s.readySubmitted) {  // (signalled before the synthesis the fence above waited)
-        dev_.vt.WaitForFences(dev_.device, 1, &s.readyFence, VK_TRUE, UINT64_MAX);
+        dev_.waitFence(s.readyFence, UINT64_MAX);
         dev_.vt.ResetFences(dev_.device, 1, &s.readyFence);
         s.readySubmitted = false;
     }
@@ -975,7 +975,7 @@ VkResult VirtualSwapchain::consumeSemaphores(const VkSemaphore* sems, uint32_t c
 bool VirtualSwapchain::slotDone(uint32_t slot, uint64_t generation, bool wait) {
     FrameSlot& s = slots_[slot];
     if (s.generation != generation || !s.submitted) return true;
-    return dev_.vt.WaitForFences(dev_.device, 1, &s.fence, VK_TRUE, wait ? UINT64_MAX : 0) != VK_TIMEOUT;
+    return dev_.waitFence(s.fence, wait ? UINT64_MAX : 0) != VK_TIMEOUT;
 }
 
 void VirtualSwapchain::dumpFrame(FrameSlot& slot, bool generated, float t, uint32_t output) {
@@ -1156,7 +1156,7 @@ bool VirtualSwapchain::fastGame(double hz) {
 // is handed on, the application's present returns only at its next slot,
 // which paces the game itself without making a finished frame wait. Frame
 // generation works best from an even base rate at a divisor of the refresh
-// rate (60 -> 120, 72 -> 144). Sleeps until ~1.5 ms before the deadline, then
+// rate (60 -> 120, 72 -> 144). Sleeps until kSpinMarginUs before the deadline, then
 // spins briefly for precision; after a late frame the schedule restarts from
 // now instead of letting the game burst to catch up.
 // Where the game itself waits before its next frame, the limit holds it
@@ -1222,7 +1222,19 @@ void VirtualSwapchain::updateHeadroom(bool active, double waitedMs) {
         busy = gpuBusy_ = gpuLoad_->busyPercent();
     }
     const double before = headroomCap_.capFps;
-    const double cap = headroomCap_.update(nowMs, waitedMs, frameIntervalMs_, busy, cfg_.gpuHeadroom);
+    const int qualityBefore = headroomCap_.quality;
+    const double cap = headroomCap_.update(nowMs, waitedMs, frameIntervalMs_, busy, cfg_.gpuHeadroom,
+                                           std::clamp(cfg_.headroomQuality, 0, 2));
+    if (headroomCap_.quality != qualityBefore) {
+        if (headroomCap_.quality > qualityBefore)
+            CHUDS_FG_INFO("gpu_headroom: GPU saturated (%s, the game waits for it): generation quality level %d -> %d, "
+                      "the game's frame rate untouched",
+                      gpuBusy_ >= 0 ? (std::to_string(gpuBusy_) + " % busy").c_str() : "load not measured",
+                      qualityBefore, headroomCap_.quality);
+        else
+            CHUDS_FG_INFO("gpu_headroom: room again: generation quality level %d -> %d", qualityBefore,
+                      headroomCap_.quality);
+    }
     if (cap == before) return;
     // (no load reading on this GPU, or none yet: said so, not "-1 % busy")
     char load[32];
@@ -1274,9 +1286,19 @@ void VirtualSwapchain::applyGpuBudget() {
             flowScaleFactor_ = oldFactor;
         }
     }
-    fg_->setQualityLevel(level);
+    fg_->setQualityLevel(qualityApplied_ = qualityLevel());
     CHUDS_FG_INFO("gpu budget: generation %.2f ms for a %.1f%% budget of %.1f ms: quality level %d -> %d (flow 1/%d)",
               gpuMs, 100.0 * cfg_.gpuBudget, frameIntervalMs_, before, level, fg_->flowScale());
+}
+
+// The quality level fg_ synthesises at (qualityLevel): gpu_budget's, or the
+// one gpu_headroom stepped down to — set by the presenting thread outside
+// mutex_ (updateHeadroom), given to fg_ here, under it, at the next present.
+void VirtualSwapchain::syncQualityLevel() {
+    const int level = qualityLevel();
+    if (level == qualityApplied_ || !fg_) return;
+    fg_->setQualityLevel(level);
+    qualityApplied_ = level;
 }
 
 // require_app: the control panel changed a setting that sizes the output
@@ -1294,7 +1316,7 @@ void VirtualSwapchain::rebuildOutput() {
     try {
         auto fg = makeFrameGen(generating);
         fg_ = std::move(fg);
-        fg_->setQualityLevel(budget_.level());
+        fg_->setQualityLevel(qualityApplied_ = qualityLevel());
         generating_ = generating;
         prepareStaging();
         historyLost_ = true;
@@ -1361,6 +1383,7 @@ VkResult VirtualSwapchain::present(uint32_t imageIndex, const VkPresentInfoKHR& 
     if (surfaceChanged_.exchange(false)) followSurface();
     if (cfg_.rebuildGen != outputGen_) rebuildOutput();
     if (cfg_.gpuBudget > 0.f && generating_) applyGpuBudget();
+    syncQualityLevel();
 
     // The previous job must have been fully submitted by the worker before
     // we overwrite the images it copies from; this is also where FIFO
@@ -2155,7 +2178,7 @@ VkResult VirtualSwapchain::present(uint32_t imageIndex, const VkPresentInfoKHR& 
     double gpuWaitMs = -1.0;  // (how long the game waited for the GPU: gpu_headroom)
     if (latencyFence) {
         const auto w0 = clock::now();
-        dev_.vt.WaitForFences(dev_.device, 1, &latencyFence, VK_TRUE, 100'000'000ull);
+        dev_.waitFence(latencyFence, 100'000'000ull);
         gpuWaitMs = std::chrono::duration<double, std::milli>(clock::now() - w0).count();
         // (a game with Reflex or Anti-Lag on paces itself through the driver)
         const bool appPaced = dev_.appPacesLatency(msOf(clock::now()));
@@ -2235,7 +2258,7 @@ VkResult VirtualSwapchain::waitPresent(uint64_t presentId, uint64_t timeoutNs) {
     if (w.fence) {
         const auto left = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline - clock::now()).count();
         const uint64_t ns = std::clamp<int64_t>(left, 0, 100'000'000);
-        const VkResult r = dev_.vt.WaitForFences(dev_.device, 1, &w.fence, VK_TRUE, ns);
+        const VkResult r = dev_.waitFence(w.fence, ns);
         if (r == VK_TIMEOUT && ns < 100'000'000u) return VK_TIMEOUT;
         if (r < 0) return r;
     }
@@ -2277,7 +2300,7 @@ void VirtualSwapchain::syncFrameStart(double waitedMs) {
     const auto until = clock::now() + std::chrono::duration_cast<clock::duration>(
                                           std::chrono::duration<double, std::milli>(delay));
     const auto coarse = until - std::chrono::microseconds(500);
-    if (coarse > clock::now()) platformSleepUntil(coarse);
+    if (coarse > clock::now()) platformSleepUntilPrecise(coarse);
     while (clock::now() < until) std::this_thread::yield();
 }
 

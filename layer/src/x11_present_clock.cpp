@@ -1,4 +1,5 @@
 #include "x11_present_clock.h"
+#include "platform.h"
 #include "log.h"
 
 #include <cerrno>
@@ -174,6 +175,7 @@ X11PresentClock::~X11PresentClock() {
 }
 
 void X11PresentClock::run() {
+    platformNameThread("chuds-fg-x11clk");
     Xcb& x = *xcb_;
     pollfd fds[2] = {{x.fd(x.conn), POLLIN, 0}, {stopPipe_[0], POLLIN, 0}};
     for (;;) {

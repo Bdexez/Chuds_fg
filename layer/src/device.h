@@ -81,9 +81,14 @@ inline double steadyMs() {
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-// Sleeps until steady-clock `ms` (steadyMs()): until ~1.5 ms before, then
-// spins, for precision.
+// Sleeps until steady-clock `ms` (steadyMs()): precisely until kSpinMarginUs
+// before (0.5 ms on Linux, 1.5 on Windows), then spins, for precision.
 void sleepUntilSteadyMs(double ms);
+
+// fence_poll's choice (DeviceData::pollFences): forced on or off, or auto —
+// NVIDIA's proprietary driver under Linux; not NVK (Mesa), which reports
+// NVIDIA's vendor too (`driverId` 0: unknown, the vendor and name decide).
+bool fencePollWanted(int fencePoll, const VkPhysicalDeviceProperties& props, VkDriverId driverId);
 
 // fps_limit's schedule: wait() returns at the next slot of a `fps` cadence
 // (pacing::CapSchedule: after a late frame it restarts from now instead of
@@ -102,6 +107,18 @@ struct DeviceData {
     Config config;
 
     VkPhysicalDeviceProperties props{};
+    VkDriverId driverId = VkDriverId(0);  // VkPhysicalDeviceDriverProperties (Vulkan 1.2; 0 unknown)
+    // fence_poll: waitFence polls the fence's status instead of waiting in
+    // the driver (NVIDIA's proprietary one, Linux: see waitFence).
+    bool pollFences = false;
+    // vkWaitForFences on one fence, the same results — NVIDIA's proprietary
+    // driver on Linux either spins a core (timeouts up to ~1 ms) or sleeps and
+    // wakes 9.4 ms after the GPU's end (2 ms and longer; RTX 3060 Ti, 22/11,
+    // a 10.4 ms job): with pollFences, its status every 0.1 ms, the timer
+    // slack down — as close to the end as the spin (-0.3 ms, at most +0.6),
+    // 1.9 % of a core. Elsewhere (Mesa: a kernel wait on the syncobj, precise
+    // and idle) vkWaitForFences itself.
+    VkResult waitFence(VkFence fence, uint64_t timeoutNs) const;
     uint8_t deviceUuid[VK_UUID_SIZE] = {};  // VkPhysicalDeviceIDProperties (Vulkan 1.1), for gpu_load's NVML match
     bool haveUuid = false;
     VkPhysicalDeviceMemoryProperties memProps{};

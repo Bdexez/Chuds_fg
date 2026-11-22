@@ -106,6 +106,11 @@ std::string platformCacheDir();
 // default 15.6 ms makes a 4 ms sleep last 15. Elsewhere a no-op (Linux
 // sleeps are precise; see prctl in the worker).
 void platformFineTimer(bool on);
+// Names the calling thread (15 characters at most on Linux), so that htop,
+// top -H or a debugger tell the layer's threads apart from the game's —
+// the worker, the display feedback, the X11 clock, the recorder's writer.
+// Windows 10 1607+ (SetThreadDescription, looked up at run time); else nothing.
+void platformNameThread(const char* name);
 // Sleeps until `until` (never earlier). Linux: std::this_thread::sleep_until,
 // precise. Windows: a high-resolution waitable timer (Windows 10 1803+, a
 // plain one before) — the standard library's timed waits end on the timer's
@@ -114,6 +119,34 @@ void platformFineTimer(bool on);
 // (2026-11-10); MSVC's are whole milliseconds of Sleep(), as precise as the
 // process's timer resolution (15.6 ms by default).
 void platformSleepUntil(std::chrono::steady_clock::time_point until);
+// The same, as close to `until` as the system allows, on a thread that may
+// be the game's own: Linux drops the thread's timer slack (50 us by default)
+// for this sleep only and puts it back — measured 22/11, a 20.8 ms sleep
+// woke 68 us late (median, p99 250) with the default slack, 18 us (p99 255)
+// without. Windows: platformSleepUntil (its timer is already precise).
+void platformSleepUntilPrecise(std::chrono::steady_clock::time_point until);
+// The calling thread's timer slack down for the scope's sleeps (Linux; the
+// thread's own back after — it may be the game's), as platformSleepUntilPrecise
+// does for one sleep. Elsewhere nothing.
+class PreciseSleeps {
+public:
+    PreciseSleeps();
+    ~PreciseSleeps();
+    PreciseSleeps(const PreciseSleeps&) = delete;
+    PreciseSleeps& operator=(const PreciseSleeps&) = delete;
+
+private:
+    long old_ = -1;  // the slack to put back (-1: unchanged)
+};
+// The margin a sleep-then-spin wait spins for after platformSleepUntilPrecise
+// (sleepUntilSteadyMs): a quarter of a frame of yield loop at 120 fps before
+// 22/11 (1.5 ms everywhere), on the game's or DXVK's present thread.
+constexpr int kSpinMarginUs =
+#ifdef _WIN32
+    1500;
+#else
+    500;
+#endif
 // Whether a timed wait on a condition variable ends close to its deadline
 // (Linux): false on Windows, where it ends on the timer's ticks — wait on it
 // with a margin, then finish with platformSleepUntil.

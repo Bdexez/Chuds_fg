@@ -9,6 +9,7 @@
 #include "recorder.h"
 #include "x11_present_clock.h"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -182,6 +183,11 @@ private:
     // current extent when it no longer matches; application thread, mutex_ held.
     void followSurface();
     void applyGpuBudget();  // gpu_budget: re-evaluates the quality level about once a second
+    // The quality level in force: the higher of gpu_budget's and the one
+    // gpu_headroom stepped down to (headroom_quality); applied to fg_ under
+    // mutex_ (syncQualityLevel, from present()).
+    int qualityLevel() const { return std::max(budget_.level(), headroomCap_.quality); }
+    void syncQualityLevel();
     void rebuildOutput();   // require_app: the control panel changed the output stage's settings
     std::unique_ptr<FrameGen> makeFrameGen(bool& generating);
     void createVirtualImages(const VkSwapchainCreateInfoKHR& appInfo, bool forGeneration);
@@ -495,6 +501,7 @@ private:
     uint32_t statsCutFade_ = 0;  // ... between scene_cut_low and scene_cut_high (partly faded to it)
     double statsCostSum_ = 0.0;
     GpuBudget budget_;           // gpu_budget governor
+    int qualityApplied_ = 0;     // the level fg_ was last given (syncQualityLevel)
     clock::time_point budgetAt_{};
     uint64_t outputGen_ = 0;     // Config::rebuildGen the output stage was built with (require_app)
     int flowScaleFactor_ = 1;    // flow resolution divisor multiplier of the current output stage (gpu_budget)

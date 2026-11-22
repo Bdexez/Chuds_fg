@@ -750,12 +750,21 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physDev, const VkDe
     if (inst->apiVersion >= VK_API_VERSION_1_1 && data->props.apiVersion >= VK_API_VERSION_1_1 &&
         inst->vt.GetPhysicalDeviceProperties2) {
         VkPhysicalDeviceIDProperties id{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES};
+        VkPhysicalDeviceDriverProperties drv{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
         VkPhysicalDeviceProperties2 p2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
         p2.pNext = &id;
+        // (core in 1.2: a 1.1 device would not know the structure)
+        if (inst->apiVersion >= VK_API_VERSION_1_2 && data->props.apiVersion >= VK_API_VERSION_1_2) id.pNext = &drv;
         inst->vt.GetPhysicalDeviceProperties2(physDev, &p2);
         memcpy(data->deviceUuid, id.deviceUUID, VK_UUID_SIZE);
         data->haveUuid = true;
+        data->driverId = drv.driverID;
     }
+    // fence_poll (DeviceData::waitFence)
+    data->pollFences = fencePollWanted(data->config.fencePoll, data->props, data->driverId);
+    if (data->pollFences)
+        CHUDS_FG_INFO("fence_poll: the layer's GPU waits poll their fences (%s)",
+                  data->config.fencePoll > 0 ? "forced" : "NVIDIA's driver");
     inst->vt.GetPhysicalDeviceMemoryProperties(physDev, &data->memProps);
     data->config.autoConfigure(data->props, data->memProps);
     data->setFrameLimitHint();

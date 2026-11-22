@@ -1482,6 +1482,89 @@ TEST(pacing_gpu_headroom_holds_a_saturated_game_under_the_gpu) {
     CHECK(cap.capFps >= 0.5 * 1000.0 / 11.0 - 0.01 && cap.capFps < 0.5 * 1000.0 / 11.0 + 1.0);
 }
 
+namespace {
+// gpu_headroom with quality first (headroom_quality) against a game held by
+// the user's limit: each frame takes gameGpuMs of the game's GPU work plus
+// genMs[level] of ours, the game runs at the slower of that and its limit
+// (or the headroom cap); busy read every 200 ms.
+struct QualityRun { double fps = 0.0, minFps = 1e9, maxFps = 0.0, capFps = 0.0; int quality = 0, capMoves = 0, returns = 0; };
+QualityRun runQuality(double limitFps, std::vector<double> gameGpuMs, const double genMs[3], double seconds,
+                      int maxQuality, double lastSeconds = 5.0) {
+    pacing::HeadroomCap cap;
+    pacing::IntervalFilter filter;
+    double now = 0.0, interval = 0.0, lastRead = -1000.0, lastCap = 0.0;
+    int lastQuality = 0;
+    QualityRun r;
+    double sum = 0.0;
+    int n = 0;
+    const double phaseMs = seconds * 1000.0 / gameGpuMs.size();
+    while (now < seconds * 1000.0) {
+        const double game = gameGpuMs[std::min(gameGpuMs.size() - 1, size_t(now / phaseMs))];
+        const double gpuMs = game + genMs[cap.quality];
+        double limitMs = 1000.0 / limitFps;
+        if (cap.capFps > 0.0) limitMs = std::max(limitMs, 1000.0 / cap.capFps);
+        const double frame = std::max(gpuMs, limitMs);
+        now += frame;
+        interval = filter.update(interval, frame);
+        int read = -1;
+        if (now - lastRead >= 200.0) {
+            read = int(std::round(100.0 * gpuMs / frame));
+            lastRead = now;
+        }
+        cap.update(now, gpuMs > limitMs ? gpuMs - limitMs : 0.0, interval, read, 0.1, maxQuality);
+        if (cap.quality < lastQuality) ++r.returns;
+        lastQuality = cap.quality;
+        if (now > (seconds - lastSeconds) * 1000.0) {
+            sum += 1000.0 / frame, ++n;
+            r.minFps = std::min(r.minFps, 1000.0 / frame);
+            r.maxFps = std::max(r.maxFps, 1000.0 / frame);
+            if (cap.capFps != lastCap) ++r.capMoves;
+        }
+        lastCap = cap.capFps;
+    }
+    r.fps = sum / n;
+    r.capFps = cap.capFps;
+    r.quality = cap.quality;
+    return r;
+}
+} // namespace
+
+// The user's case (22/11): a heavy game held at 48 fps for x3 on 144 Hz, its
+// own GPU work 18.5 ms a frame, the generation's 3.18 ms at 1440p x3 (1.94 at
+// quality level 1, 1.8 at 2; RTX 3060 Ti, profile = 2): together over the
+// 20.8 ms a frame. Holding the game (headroom_quality 0) leaves it at 41.5
+// (x3 = 124.5 fps on 144 Hz: the outputs no longer land on the refreshes);
+// a quality level down instead gives it its 48 back, steady, no cap.
+TEST(pacing_gpu_headroom_quality_before_frame_rate) {
+    const double gen[3] = {3.18, 1.94, 1.8};
+    const QualityRun old = runQuality(48.0, {18.5}, gen, 30.0, 0);
+    const QualityRun now = runQuality(48.0, {18.5}, gen, 30.0, 2);
+    std::printf("headroom_quality 0: %.1f fps (%.1f..%.1f), cap %.1f, %d cap moves in 5 s; 2: %.1f fps (%.1f..%.1f), "
+                "quality %d, cap %.1f\n", old.fps, old.minFps, old.maxFps, old.capFps, old.capMoves, now.fps, now.minFps,
+                now.maxFps, now.quality, now.capFps);
+    CHECK(old.capFps > 0.0 && old.fps < 46.0);
+    CHECK(now.capFps == 0.0 && now.quality == 1);
+    CHECK(std::abs(now.fps - 48.0) < 0.05 && now.minFps > 47.9);
+    // Heavier than any level makes up for (22 ms of the game's own): the
+    // levels go first, then the game is held as before.
+    const QualityRun heavy = runQuality(48.0, {22.0}, gen, 40.0, 2);
+    CHECK(heavy.quality == 2 && heavy.capFps > 0.0 && heavy.fps < 1000.0 / 23.8);
+    // Lighter again (12 ms): the cap gone first, then the levels come back.
+    const QualityRun lighter = runQuality(48.0, {22.0, 12.0}, gen, 60.0, 2);
+    CHECK(lighter.capFps == 0.0 && lighter.quality == 0 && std::abs(lighter.fps - 48.0) < 0.05);
+    // A level that frees more than the headroom (8 ms -> 3 ms): with it the
+    // GPU has room, without it saturates — each return that saturates again
+    // comes back and waits twice as long: a few returns in two minutes, not
+    // one every few seconds.
+    const double big[3] = {8.0, 3.0, 2.8};
+    const QualityRun swing = runQuality(48.0, {14.0}, big, 120.0, 2);
+    std::printf("  swinging level: %d returns in 120 s, quality %d\n", swing.returns, swing.quality);
+    CHECK(swing.returns >= 1 && swing.returns <= 4 && swing.capFps == 0.0);
+    // Not saturated (16 ms + 3.18 under 20.8): nothing moves.
+    const QualityRun calm = runQuality(48.0, {16.0}, gen, 20.0, 2);
+    CHECK(calm.quality == 0 && calm.capFps == 0.0);
+}
+
 // fps_limit on a game presenting through DXVK or VKD3D-Proton (Proton's
 // Direct3D): the game thread renders each frame and hands it to a present
 // thread of theirs, which submits its GPU work and presents (our

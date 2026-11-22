@@ -29,6 +29,7 @@ namespace chuds_fg {
 // ---------------------------------------------------------------------------
 
 void VirtualSwapchain::workerLoop() {
+    platformNameThread("chuds-fg-worker");
 #ifdef __linux__
     // (precise_wake: no 50 us of timer slack on this thread's sleeps)
     if (cfg_.preciseWake) prctl(PR_SET_TIMERSLACK, 1UL, 0UL, 0UL, 0UL);
@@ -258,7 +259,7 @@ void VirtualSwapchain::runJob(const Job& job) {
             // present then waits for nothing still running.
             if (!restSubmitted && deferRest && job.fallbackFrom >= 0 && err >= 0 && target > clock::now()) {
                 const int64_t left = std::chrono::duration_cast<std::chrono::nanoseconds>(target - clock::now()).count();
-                if (left > 0 && dev_.vt.WaitForFences(dev_.device, 1, &slotFence, VK_TRUE, uint64_t(left)) == VK_SUCCESS)
+                if (left > 0 && dev_.waitFence(slotFence, uint64_t(left)) == VK_SUCCESS)
                     submitRest();
             }
             if (paced) sleepUntilPrecise(target);
@@ -466,7 +467,7 @@ bool VirtualSwapchain::waitUntilOrCancelled(clock::time_point target) {
         if (now >= target) return dev_.vt.GetFenceStatus(dev_.device, next) != VK_SUCCESS;
         // Short waits, so that cancelPredicted_ is honoured promptly.
         const int64_t left = std::chrono::duration_cast<std::chrono::nanoseconds>(target - now).count();
-        const VkResult r = dev_.vt.WaitForFences(dev_.device, 1, &next, VK_TRUE, uint64_t(std::min<int64_t>(left, 1'000'000)));
+        const VkResult r = dev_.waitFence(next, uint64_t(std::min<int64_t>(left, 1'000'000)));
         if (r != VK_TIMEOUT) return false;  // ready (or lost): obsolete
         std::lock_guard<std::mutex> wlock(workerMutex_);
         if (cancelPredicted_ || stop_) return false;
@@ -479,8 +480,10 @@ bool VirtualSwapchain::waitGpu(VkFence fence, bool cancellable, clock::time_poin
     const auto limit = clock::now() + std::chrono::milliseconds(250);
     for (;;) {
         // Short waits: vkWaitForFences returns as soon as the fence signals,
-        // so doneAt stays within the driver's wake-up time of the GPU's end.
-        const VkResult r = dev_.vt.WaitForFences(dev_.device, 1, &fence, VK_TRUE, 500'000);
+        // so doneAt stays within the driver's wake-up time of the GPU's end
+        // (NVIDIA: polled instead, DeviceData::waitFence — its short waits
+        // spin a core, 21 % of one for the worker at 1440p x3).
+        const VkResult r = dev_.waitFence(fence, 500'000);
         if (r != VK_TIMEOUT) break;
         if (cancellable && predictedCancelled()) return false;
         if (clock::now() >= limit) break;
@@ -554,6 +557,7 @@ void VirtualSwapchain::logX11Completions() {
 // its predecessor (well within a refresh) means the predecessor was replaced
 // before being shown (mailbox), and the display time belongs to this one.
 void VirtualSwapchain::feedbackLoop() {
+    platformNameThread("chuds-fg-vblank");
     for (;;) {
         FbEntry entry;
         {
