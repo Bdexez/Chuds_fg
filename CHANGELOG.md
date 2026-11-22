@@ -14,13 +14,16 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   the waits of the worker, of the game's thread (`max_frame_latency`) and
   of DXVK's present wait under a limit now poll the fence every 0.1 ms.
   1440p x3 at a 48 fps limit, GPU saturated: process CPU 43–47 % of a core
-  → 6–7 %, game 43.2 → 46–48 fps, displayed 130 → 138–144, frame to screen
+  → 6–7 %, game 43.2 → 46–48 fps, presented 130 → 138–144, frame to screen
   45 → 41–44 ms.
 - **GPU saturated: quality before frame rate** (`headroom_quality`, default
   2): `gpu_headroom` first steps the generation's cost down (`gpu_budget`'s
   per-frame levels: 1440p x3 3.18 → 1.94 ms a game frame) and holds the
   game's frame rate only past them — a lowered rate (48 → 41.5 at x3 on
-  144 Hz) no longer lands on the refreshes.
+  144 Hz) no longer lands on the refreshes. Every level taken, a game that
+  still waits for the GPU is held as before: through DXVK's present thread
+  it would otherwise run a frame behind (frame to screen 64 ms); held at
+  45–46 fps instead of 43–45, 43.5 ms instead of 45–48.
 - **`depth` costs less, same frames**: the synthesis stops reading
   candidates once a trajectory explains the pixel (the depth step then
   changes nothing) and keeps each vector's windowed error — 1440p x3,
