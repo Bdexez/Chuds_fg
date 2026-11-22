@@ -29,6 +29,12 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   changes nothing) and keeps each vector's windowed error — 1440p x3,
   synthesis with depth 3.77 → 3.30 ms a game frame, every frame of five
   depth sequences byte-identical.
+- Through real DXVK (a Direct3D 11 probe under Wine with Proton's DXVK,
+  the Linux layer, 1440p x3, a 48 fps limit, GPU saturated; four runs
+  each): frames shown 123.5 → 130.8 fps on average, game 41.2 → 43.7 fps,
+  process CPU 54–57 % → 14–16 % of a core, the game's own input-to-GPU
+  latency unchanged (19.1 ms). `d3d11_probe.exe` takes `size=WxH` and
+  `load=N` for this.
 - `fps_limit`'s and `latency_limiter`'s waits sleep precisely and spin
   0.5 ms instead of 1.5 (Linux); the layer's threads are named
   (`chuds-fg-worker`, `chuds-fg-vblank`, `chuds-fg-x11clk`, `chuds-fg-record`).
