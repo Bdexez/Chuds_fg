@@ -4768,9 +4768,24 @@ Linux (`kSpinMarginUs` ; Windows inchangé). Réveil d'un sommeil de 20,8 ms :
 médiane 68 → 18 µs, p99 ~250 µs ; sous charge totale, plusieurs ms dans les
 deux cas (la boucle active n'y change rien, elle est préemptée aussi).
 
+**2 bis. Le chemin DXVK** (démo `--present-thread 4 --engine DXVK
+--sim-thread --mode immediate`, le fil de présentation de DXVK et un fil
+« jeu » d'Unreal ; même charge) : avec les paliers seuls, le jeu atteint 48
+i/s mais le fil de présentation attend **17 ms par image** l'image
+précédente à 90 % de charge (NVML) — la synthèse de N−1 s'intercale avec le
+rendu de N — : image→écran 45–48 → 57–64 ms, présent 4 → 17 ms. Journal
+temporaire par fenêtre (attentes, charge, plafond, niveau) pour le voir.
+Règle ajoutée : tous les paliers pris, un jeu qui attend sur la plupart des
+images à charge ≥ cible − 2 est saturé (plafond comme avant). Résultat :
+jeu **45,2–46,1** i/s (ancien 43,2–45,2), image→écran **43,5–43,8 ms**
+(ancien 45–48), présent 0,07 ms, CPU 62–64 → 26 %. Jeu Vulkan natif
+(sans fil de présentation) : 48 i/s au palier 1, sans plafond, inchangé.
+**Correction** : sous `--gpu-load`, gamescope sans tête compose au rythme du
+jeu (`displayed` = FPS du jeu, AGENTS §5) ; les « affichées » ci-dessous sont
+les images **présentées** (`output`), pas celles vues à l'écran.
 **Mesures de bout en bout** (démo `--gpu-load 115`, deux essais par version,
 couche d'avant compilée depuis `HEAD` à côté) : CPU du processus 43–47 % →
-**6,4–6,9 %** d'un cœur ; jeu 43,2 → **46,0–48,0** i/s ; affichées 129,6 →
+**6,4–6,9 %** d'un cœur ; jeu 43,2 → **46,0–48,0** i/s ; présentées 129,6 →
 **137,9–144,0** ; image→écran 45,0–45,5 → **41,4–43,8 ms**. Charge 130,
 `headroom_quality` seul : 38,0–38,2 → 40,1–43,4 i/s. Charge légère (20) :
 48,0 → 144 dans les deux cas, CPU 36 → 26–32 %.
