@@ -6,6 +6,30 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Less stutter at high frame rates with a heavy game (2026-11-22)
+
+- **The layer's GPU waits no longer burn a core on NVIDIA** (`fence_poll`,
+  auto on NVIDIA's proprietary driver under Linux): its `vkWaitForFences`
+  spins at 100 % for short timeouts and wakes 9.4 ms late for long ones —
+  the waits of the worker, of the game's thread (`max_frame_latency`) and
+  of DXVK's present wait under a limit now poll the fence every 0.1 ms.
+  1440p x3 at a 48 fps limit, GPU saturated: process CPU 43–47 % of a core
+  → 6–7 %, game 43.2 → 46–48 fps, displayed 130 → 138–144, frame to screen
+  45 → 41–44 ms.
+- **GPU saturated: quality before frame rate** (`headroom_quality`, default
+  2): `gpu_headroom` first steps the generation's cost down (`gpu_budget`'s
+  per-frame levels: 1440p x3 3.18 → 1.94 ms a game frame) and holds the
+  game's frame rate only past them — a lowered rate (48 → 41.5 at x3 on
+  144 Hz) no longer lands on the refreshes.
+- **`depth` costs less, same frames**: the synthesis stops reading
+  candidates once a trajectory explains the pixel (the depth step then
+  changes nothing) and keeps each vector's windowed error — 1440p x3,
+  synthesis with depth 3.77 → 3.30 ms a game frame, every frame of five
+  depth sequences byte-identical.
+- `fps_limit`'s and `latency_limiter`'s waits sleep precisely and spin
+  0.5 ms instead of 1.5 (Linux); the layer's threads are named
+  (`chuds-fg-worker`, `chuds-fg-vblank`, `chuds-fg-x11clk`, `chuds-fg-record`).
+
 ### Animated README (2026-11-21)
 
 - **The README shows the engine at work in six animated GIFs**: 30 → 120 fps
