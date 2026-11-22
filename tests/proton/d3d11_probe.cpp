@@ -2,7 +2,7 @@
 // swapchain, a moving bar drawn by clearing rectangles of the back buffer at
 // 30 fps for a few seconds. Under Wine + DXVK it reaches the Vulkan layer as a
 // Proton game does (DXVK's swapchain through winevulkan).
-//   d3d11_probe.exe [SECONDS] [uncapped] [depth]
+//   d3d11_probe.exe [SECONDS] [uncapped] [depth] [size=WxH] [load=N]
 // uncapped: no limit of its own (the layer's fps_limit then holds it); with
 // D3D11 fences (DXVK has them) it also reports how long after a frame began
 // (its input read) the GPU had done it, as d3d12_probe.cpp.
@@ -10,6 +10,10 @@
 // a reversed Z — and written by the pixel shader: the bar nearer than the
 // background), the scene a draw; shaders compiled at run time by
 // d3dcompiler_47 (Wine's). The layer's depth option finds it there.
+// size=WxH: the window and swapchain (640x360 by default); load=N (with
+// depth): the scene drawn N times a frame — a game held by its own GPU work,
+// to judge the layer under a saturated GPU through real DXVK (22/11: 1440p
+// x3 at a 48 fps limit, the Proton path of a heavy Unreal game).
 //   x86_64-w64-mingw32-g++ -O2 -static d3d11_probe.cpp -ld3d11 -ldxgi -o d3d11_probe.exe
 #include <windows.h>
 #include <d3d11.h>
@@ -96,21 +100,25 @@ static DWORD WINAPI watchFrames(void* p) {
 int main(int argc, char** argv) {
     const int seconds = argc > 1 ? atoi(argv[1]) : 8;
     bool uncapped = false, withDepth = false;
+    int width = 640, height = 360, load = 1;
+    bool sized = false;
     for (int i = 2; i < argc; ++i) {
         if (strcmp(argv[i], "uncapped") == 0) uncapped = true;
         if (strcmp(argv[i], "depth") == 0) withDepth = true;
+        if (strncmp(argv[i], "size=", 5) == 0) sized = sscanf(argv[i] + 5, "%dx%d", &width, &height) == 2;
+        if (strncmp(argv[i], "load=", 5) == 0) load = std::max(1, atoi(argv[i] + 5));
     }
     WNDCLASSA wc{};
     wc.lpfnWndProc = wndProc;
     wc.hInstance = GetModuleHandleA(nullptr);
     wc.lpszClassName = "chuds_fg_probe";
     RegisterClassA(&wc);
-    HWND hwnd = CreateWindowA("chuds_fg_probe", "chuds-fg d3d11 probe", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 640, 360,
+    HWND hwnd = CreateWindowA("chuds_fg_probe", "chuds-fg d3d11 probe", (sized ? WS_POPUP : WS_OVERLAPPEDWINDOW) | WS_VISIBLE, 0, 0, width, height,
                               nullptr, nullptr, wc.hInstance, nullptr);
     DXGI_SWAP_CHAIN_DESC sd{};
     sd.BufferCount = 2;
-    sd.BufferDesc.Width = 640;
-    sd.BufferDesc.Height = 360;
+    sd.BufferDesc.Width = UINT(width);
+    sd.BufferDesc.Height = UINT(height);
     sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     sd.BufferDesc.RefreshRate = {60, 1};
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -140,8 +148,8 @@ int main(int argc, char** argv) {
     ID3D11Buffer* cb = nullptr;
     if (withDepth) {
         D3D11_TEXTURE2D_DESC td{};
-        td.Width = 640;
-        td.Height = 360;
+        td.Width = UINT(width);
+        td.Height = UINT(height);
         td.MipLevels = td.ArraySize = 1;
         td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
         td.SampleDesc.Count = 1;
@@ -198,14 +206,19 @@ int main(int argc, char** argv) {
             ctx->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 0.f, 0);
             const float c[4] = {float((f * 8) % 600), 0.f, 0.f, 0.f};
             ctx->UpdateSubresource(cb, 0, nullptr, c, 0, 0);
-            D3D11_VIEWPORT vp{0.f, 0.f, 640.f, 360.f, 0.f, 1.f};
+            D3D11_VIEWPORT vp{0.f, 0.f, float(width), float(height), 0.f, 1.f};
             ctx->RSSetViewports(1, &vp);
             ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             ctx->VSSetShader(vs, nullptr, 0);
             ctx->PSSetShader(ps, nullptr, 0);
             ctx->PSSetConstantBuffers(0, 1, &cb);
             ctx->OMSetDepthStencilState(dss, 0);
-            ctx->Draw(3, 0);
+            for (int k = 0; k < load; ++k) {
+                // (the depth cleared again: else the test rejects every pixel
+                // of the draws after the first, which then cost nothing)
+                if (k) ctx->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 0.f, 0);
+                ctx->Draw(3, 0);
+            }
             if (frameFence) ctx4->Signal(frameFence, UINT64(f) + 1);
             swap->Present(0, 0);
             if (!uncapped) {
