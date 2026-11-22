@@ -549,7 +549,12 @@ struct GamescopeCycle {
 // Ti; 2 the narrowest search), one level a second, the frame rate untouched
 // — and only at `maxQuality` is the game held. A held rate misses the
 // display's (simulated: 48 x3 = 144 Hz -> 41.5 x3 = 124.5) and is seen as
-// stutter; a tenth of a dB is not. Back up, the cap is lifted first;
+// stutter; a tenth of a dB is not. Every level taken, a game still waiting
+// for the GPU on most frames at the target's load (busy >= target - 2) is
+// held too: at 90 % busy and a 48 fps limit, DXVK's present thread waited
+// 17 ms a frame behind the previous one — a frame of latency (frame to
+// screen 64 ms); held at 45-46, the waits went and so did that frame (43.5
+// ms, against 45-48 before 22/11 at 43-45 fps). Back up, the cap is lifted first;
 // a level returns after a quiet while (8 s), and when that saturates again
 // within 3 s the level comes back and the next wait doubles (64 s at most;
 // halved again, 8 s at least, after a return that held).
@@ -604,7 +609,13 @@ struct HeadroomCap {
         };
         maxQuality = std::max(0, maxQuality);
         if (quality > maxQuality) quality = maxQuality;
-        const bool saturated = waited && (busy < 0.0 || busy > std::min(98.0, target + 4.0));
+        // (every quality level taken: a game that still waits for the GPU
+        // on most frames at the target's load is saturated too — at a 48
+        // fps limit, DXVK's present thread waited 17 ms a frame for the
+        // previous one at 90 % busy, a frame of latency more)
+        const bool over = busy > std::min(98.0, target + 4.0) ||
+                          (maxQuality > 0 && quality >= maxQuality && busy >= target - 2.0);
+        const bool saturated = waited && (busy < 0.0 || over);
         if (saturated && !(capFps > 0.0) && quality < maxQuality) {
             // (a second for the last step to show in the game's waits)
             if (!(qualityUpMs > 0.0) || nowMs - qualityUpMs >= 900.0 ||
@@ -634,7 +645,6 @@ struct HeadroomCap {
         }
         if (saturated || capFps > 0.0) qualityQuietMs = 0.0;
         if (busy >= 0.0) {
-            const bool over = busy > std::min(98.0, target + 4.0);
             if (!(capFps > 0.0)) {
                 if (waited && over) {
                     capFps = rate * std::clamp(target / std::max(busy, 1.0), 0.9, 0.98);

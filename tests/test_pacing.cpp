@@ -1563,6 +1563,26 @@ TEST(pacing_gpu_headroom_quality_before_frame_rate) {
     // Not saturated (16 ms + 3.18 under 20.8): nothing moves.
     const QualityRun calm = runQuality(48.0, {16.0}, gen, 20.0, 2);
     CHECK(calm.quality == 0 && calm.capFps == 0.0);
+    // Every level taken, the GPU at the target's load (91 %) and the game
+    // still waiting for it on every frame (DXVK's present thread, 17 ms of
+    // its 20.8 behind the previous frame, measured 22/11: a frame of
+    // latency): held, as when the load was over the target — the waits
+    // gone under 46 fps (measured: none at 45.2); at 85 % (under target - 2)
+    // the waits are the pacing's, not held. (Every level already taken.)
+    for (int busy : {91, 85}) {
+        pacing::HeadroomCap cap;
+        cap.quality = 2;
+        double t = 0.0;
+        for (int f = 0; f < 900; ++f) {
+            const bool held = cap.capFps > 0.0 && cap.capFps < 46.0;
+            const double interval = cap.capFps > 0.0 ? std::max(20.83, 1000.0 / cap.capFps) : 20.83;
+            cap.update(t += interval, held ? 0.0 : 17.0, interval, busy, 0.1, 2);
+        }
+        std::printf("  waits at %d %% busy, every level taken: quality %d, cap %.1f\n", busy, cap.quality, cap.capFps);
+        CHECK(cap.quality == 2);
+        if (busy == 91) CHECK(cap.capFps > 43.0 && cap.capFps < 48.0);
+        else CHECK(cap.capFps == 0.0);
+    }
 }
 
 // fps_limit on a game presenting through DXVK or VKD3D-Proton (Proton's
