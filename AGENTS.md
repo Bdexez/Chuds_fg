@@ -183,6 +183,7 @@ tools/ci/proton-wayland-check.sh                       # le même sous le pilote
 tools/ci/wine-layer-check.sh                           # la couche Windows (DLL MinGW) chargée par le chargeur officiel Windows sous Wine : x2
 tools/ci/wine-gpu-check.sh [DIR]                       # la même DLL (x64 + Win32) sur le VRAI GPU (Wine de l'hôte, gamescope sans tête) : Vulkan 64/32 bits, D3D11/12 par DXVK/VKD3D copiés à côté (l'injection), depth, limite
 tools/ci/lib32-check.sh                                # couche 32 bits exécutée (vkcube i386)
+WINEPREFIX=… wine d3d11_probe.exe 40 uncapped depth size=2560x1440 load=5500  # vrai DXVK (de Proton, copié à côté), couche Linux par winevulkan, gamescope sans tête : GPU saturé comme un jeu lourd (MEMOIRE 22/11 §5)
 chuds-fg-capture --list | --pid PID [--gpu N] [-m N]        # génération par capture (X11/Xwayland), autre GPU possible
 tools/ci/decky-check.sh [outdir]                       # plugin Decky (packaging/decky) : tsc + rollup (Docker Node), zip
 tools/ci/fuzz.sh [secondes] [cible...]                # libFuzzer + ASan/UBSan sur les analyseurs (config, statut, options_ui, cache online_tune) ; entrée fautive -> tests/fuzz/corpus/
