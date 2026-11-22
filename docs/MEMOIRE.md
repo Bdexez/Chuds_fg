@@ -4813,3 +4813,19 @@ saturé gagne encore à la couper (`depth = 0`).
 couche installée chez l'utilisateur porte encore l'ancien nom
 (`VK_LAYER_BDEX_framegen`, `~/.config/bdex-framegen.conf`) ; installer la
 nouvelle sans retirer l'ancienne charge deux générations.
+
+**5. Le vrai DXVK** (22/11, suite) : `tests/proton/d3d11_probe.exe 40 uncapped
+depth size=2560x1440 load=5500` (nouvelles options : taille, et N dessins
+plein écran par image, la profondeur effacée entre eux — sinon le test de
+profondeur rejetait tout et la charge ne coûtait rien) sous le Wine de l'hôte
+(11.22) avec le DXVK de Proton Experimental copié à côté, la couche Linux
+chargée par winevulkan (le chemin de Proton), gamescope sans tête 1440p
+144 Hz, ×3, `fps_limit = 48`. Sur ce chemin, gamescope compose nos images :
+`displayed` est fiable. Quatre paires, couche d'avant (`0c9d273`) / nouvelle :
+affichées 119,7–127,9 (moy. 123,5) → **125,7–136,0 (130,8)** ; jeu 40,0–42,6
+→ **41,9–45,6** ; image→écran 46,9–47,1 → **45,7–46,6 ms** ; CPU du
+processus 54–57 % → **14–16 %** d'un cœur (fils de la couche 2,1–2,3 %) ;
+latence vue par le jeu (début d'image → fin GPU, fences D3D11) 19,1 ms des
+deux côtés. Séquence observée : palier 1, palier 2, puis jeu tenu à
+43,0–43,5 i/s (la règle « tous les paliers pris »).
+
